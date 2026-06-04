@@ -1,0 +1,106 @@
+using Hostpoint.Api;
+using Lazuli.Auth;
+using Hostpoint.Api.Modules.Account;
+//<lz:tenancy>
+using Hostpoint.Api.Tenancy;
+//</lz:tenancy>
+using Microsoft.EntityFrameworkCore;
+
+namespace Hostpoint.Tests.Modules.Account;
+
+public class RefreshTests
+{
+    [Unit]
+    [Fact]
+    public async Task Rotates_and_returns_a_fresh_pair()
+    {
+        var store = Guid.NewGuid().ToString();
+        var refresh = await SeedAndLogin(store);
+
+        await using var db = NewDb(store);
+        var result = await Refresh.Handle(new Refresh.Input(refresh), db, Tokens(), TimeProvider.System, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotEmpty(result.Value.AccessToken);
+        Assert.NotEqual(refresh, result.Value.RefreshToken);
+    }
+
+    [Unit]
+    [Fact]
+    public async Task The_old_token_is_dead_after_rotation()
+    {
+        var store = Guid.NewGuid().ToString();
+        var refresh = await SeedAndLogin(store);
+        await using (var db = NewDb(store))
+            await Refresh.Handle(new Refresh.Input(refresh), db, Tokens(), TimeProvider.System, default);
+
+        await using var reuse = NewDb(store);
+        var result = await Refresh.Handle(new Refresh.Input(refresh), reuse, Tokens(), TimeProvider.System, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorKind.Unauthorized, result.Error.Kind);
+    }
+
+    [Unit]
+    [Fact]
+    public async Task Reusing_a_rotated_token_revokes_the_whole_family()
+    {
+        var store = Guid.NewGuid().ToString();
+        var original = await SeedAndLogin(store);
+
+        string fresh;
+        await using (var db = NewDb(store))
+        {
+            var rotated = await Refresh.Handle(new Refresh.Input(original), db, Tokens(), TimeProvider.System, default);
+            fresh = rotated.Value.RefreshToken;
+        }
+
+        // Reuse the spent original → theft → the family is burned.
+        await using (var db = NewDb(store))
+        {
+            var reuse = await Refresh.Handle(new Refresh.Input(original), db, Tokens(), TimeProvider.System, default);
+            Assert.True(reuse.IsFailure);
+            Assert.Equal(ErrorKind.Unauthorized, reuse.Error.Kind);
+        }
+
+        // The fresh token issued before the theft is dead too — the whole family went down.
+        await using (var after = NewDb(store))
+        {
+            var result = await Refresh.Handle(new Refresh.Input(fresh), after, Tokens(), TimeProvider.System, default);
+            Assert.True(result.IsFailure);
+        }
+    }
+
+    [Unit]
+    [Fact]
+    public async Task Rejects_an_unknown_token()
+    {
+        await using var db = NewDb();
+
+        var result = await Refresh.Handle(new Refresh.Input("not-a-real-token"), db, Tokens(), TimeProvider.System, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorKind.Unauthorized, result.Error.Kind);
+    }
+
+    private static async Task<string> SeedAndLogin(string store)
+    {
+        await using var db = NewDb(store);
+        await Register.Handle(new Register.Input("a@x.com", "password1"), db, TimeProvider.System, default);
+        var login = await Login.Handle(new Login.Input("a@x.com", "password1"), db, Tokens(), TimeProvider.System, default);
+        return login.Value.RefreshToken;
+    }
+
+    private static IAccessTokens Tokens() =>
+        new AccessTokens("test-secret-for-jwt-signing-please-32+chars", "hostpoint", "hostpoint", TimeProvider.System);
+
+    //<lz:tenancy>
+    private static AppDb NewDb(string? store = null) =>
+        new(new DbContextOptionsBuilder<AppDb>().UseInMemoryDatabase(store ?? Guid.NewGuid().ToString()).Options,
+            new Tenant { OrgId = Guid.NewGuid() });
+    //</lz:tenancy>
+    //<lz:!tenancy>
+    private static AppDb NewDb(string? store = null) =>
+        new(new DbContextOptionsBuilder<AppDb>().UseInMemoryDatabase(store ?? Guid.NewGuid().ToString()).Options);
+    //</lz:!tenancy>
+}

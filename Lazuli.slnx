@@ -1,0 +1,25 @@
+<Solution>
+  <Folder Name="/analyzers/">
+    <Project Path="analyzers/Lazuli.Doctor/Lazuli.Doctor.csproj" />
+    <Project Path="analyzers/Lazuli.SelfHarness/Lazuli.SelfHarness.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Lazuli.Abstractions/Lazuli.Abstractions.csproj" />
+    <Project Path="src/Lazuli.Auth/Lazuli.Auth.csproj" />
+    <Project Path="src/Lazuli.Cli/Lazuli.Cli.csproj" />
+    <Project Path="src/Lazuli.AspNetCore/Lazuli.AspNetCore.csproj" />
+    <Project Path="src/Lazuli.Mail/Lazuli.Mail.csproj" />
+    <Project Path="src/Lazuli.Sms/Lazuli.Sms.csproj" />
+    <Project Path="src/Lazuli.Identity/Lazuli.Identity.csproj" />
+    <Project Path="src/Lazuli.Storage/Lazuli.Storage.csproj" />
+    <Project Path="src/Lazuli.Testing/Lazuli.Testing.csproj" />
+    <Project Path="src/Lazuli.Testing.InMemory/Lazuli.Testing.InMemory.csproj" />
+    <Project Path="src/Sample.Api/Sample.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lazuli.Cli.Tests/Lazuli.Cli.Tests.csproj" />
+    <Project Path="tests/Lazuli.Doctor.Tests/Lazuli.Doctor.Tests.csproj" />
+    <Project Path="tests/Lazuli.SelfHarness.Tests/Lazuli.SelfHarness.Tests.csproj" />
+    <Project Path="tests/Sample.Tests/Sample.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,451 @@
+using System.Linq;
+
+namespace Lazuli.Cli;
+
+/// <summary>The three provider-backed auth sub-flows a generated Account module can be augmented with.</summary>
+public enum AuthFlow
+{
+    /// <summary>Phone verification by one-time SMS code (<c>Lazuli.Sms</c>).</summary>
+    Otp,
+
+    /// <summary>Sign-up / sign-in with an external OIDC identity, e.g. Google (<c>Lazuli.Identity</c>).</summary>
+    OAuth,
+
+    /// <summary>Email verification + password reset by emailed token (<c>Lazuli.Mail</c>).</summary>
+    Email,
+}
+
+/// <summary>
+/// Augments an already-scaffolded Account module (from <c>lazuli g auth</c>) with a provider-backed flow:
+/// <c>auth:otp</c> (phone code over SMS), <c>auth:oauth</c> (Google sign-in), or <c>auth:email</c> (email
+/// verification + password reset). It emits the flow's slices, tests, and entities, then best-effort
+/// edits the existing <c>User</c>, <c>AppDb</c>, <c>AccountModule</c>, <c>Program.cs</c>, and the API
+/// csproj to wire them in. Every edit is idempotent — re-running a flow never duplicates a field, DbSet,
+/// map line, DI registration, or package reference — and a missing anchor prints a precise manual-step
+/// note rather than failing the whole generator.
+/// </summary>
+/// <remarks>
+/// Targets the default multi-tenant scaffold only. An app generated with <c>--skip-tenancy</c> is rejected
+/// with a clear message; the single-tenant augment is a later addition.
+/// </remarks>
+public static class AuthFlowGenerator
+{
+    /// <summary>Augment the Account module under <paramref name="root"/> with <paramref name="flow"/>.</summary>
+    /// <param name="root">The application project directory (the one holding <c>&lt;App&gt;.Api.csproj</c>).</param>
+    public static int Generate(string root, AuthFlow flow)
+    {
+        var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
+        if (csproj is null)
+        {
+            Console.Error.WriteLine("lazuli: no .csproj here — run this from the application project directory.");
+            return 1;
+        }
+
+        var appNamespace = Path.GetFileNameWithoutExtension(csproj);            // e.g. Acme.Api
+        var appName = appNamespace.EndsWith(".Api", StringComparison.Ordinal)
+            ? appNamespace[..^4]
+            : appNamespace;                                                     // e.g. Acme
+        var appLower = appName.ToLowerInvariant();
+
+        var accountModule = Path.Combine(root, "Modules", "Account", "AccountModule.cs");
+        if (!File.Exists(accountModule))
+        {
+            Console.Error.WriteLine("lazuli: no Account module here — run `lazuli g auth` first.");
+            return 1;
+        }
+
+        var userFile = Path.Combine(root, "Modules", "Account", "User.cs");
+        if (File.Exists(userFile) && !File.ReadAllText(userFile).Contains("ITenantScoped"))
+        {
+            Console.Error.WriteLine($"lazuli: auth:{Token(flow)} currently supports the default (multi-tenant) "
+                + "scaffold; this app was generated with --skip-tenancy.");
+            return 1;
+        }
+
+        var spec = Spec(flow);
+
+        EmitTemplates(spec, root, appName, appLower);
+        AugmentUser(userFile, spec);
+        AugmentAppDb(Path.Combine(root, "AppDb.cs"), spec);
+        AugmentAccountModule(accountModule, spec);
+        AugmentProgram(Path.Combine(root, "Program.cs"), spec);
+        AugmentApiProject(csproj, spec);
+
+        Console.WriteLine(spec.Summary);
+        return 0;
+    }
+
+    // Emit each flow template into the API tree (slices + tests + entities all live under the API project;
+    // co-located *.Tests.cs are compiled by the test project via its existing glob). Sessions.cs is skipped
+    // when the scaffold already has it, so re-running (or a second flow) never clobbers it.
+    private static void EmitTemplates(FlowSpec spec, string root, string appName, string appLower)
+    {
+        foreach (var logical in FlowTemplates.All(spec.Folder))
+        {
+            var relative = FlowTemplates.RenderPath(logical, appName, appLower);
+            var destination = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+
+            if (File.Exists(destination))
+            {
+                Console.WriteLine($"skipped {destination} (already present)");
+                continue;
+            }
+
+            var body = FlowTemplates.Render(FlowTemplates.Read(spec.Folder, logical), appName, appLower);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.WriteAllText(destination, body);
+            Console.WriteLine($"created {destination}");
+        }
+    }
+
+    // Add the flow's user fields, idempotently, just before the line that declares CreatedAt (so they sit
+    // with the other columns) — or before the class's closing brace if that anchor is gone.
+    private static void AugmentUser(string userFile, FlowSpec spec)
+    {
+        if (spec.UserFields.Count == 0)
+            return;
+        if (!File.Exists(userFile))
+        {
+            foreach (var f in spec.UserFields)
+                Console.WriteLine($"note: add `{f.Trim()}` to Modules/Account/User.cs");
+            return;
+        }
+
+        var text = File.ReadAllText(userFile);
+        var nl = Newline(text);
+        var missing = spec.UserFields.Where(f => !ContainsMember(text, f)).ToList();
+        if (missing.Count == 0)
+            return;
+
+        var block = string.Join(nl, missing);
+        var anchor = "    public DateTime CreatedAt { get; set; }";
+        if (text.Contains(anchor))
+            text = ReplaceFirst(text, anchor, block + nl + anchor);
+        else if (!InsertBeforeClassClose(ref text, block, nl))
+        {
+            foreach (var f in missing)
+                Console.WriteLine($"note: add `{f.Trim()}` to {userFile}");
+            return;
+        }
+
+        File.WriteAllText(userFile, text);
+        Console.WriteLine($"added {missing.Count} field(s) to User.cs");
+    }
+
+    // Add the flow's DbSet properties and their indexes to the shared AppDb, idempotently. DbSets anchor
+    // after the existing UserSessions DbSet; indexes anchor after the UserSession index block (FamilyId line).
+    private static void AugmentAppDb(string dbFile, FlowSpec spec)
+    {
+        if (!File.Exists(dbFile))
+        {
+            Console.WriteLine("note: no AppDb.cs — add the flow's DbSet(s) and index(es) by hand.");
+            return;
+        }
+
+        var text = File.ReadAllText(dbFile);
+        var nl = Newline(text);
+        var changed = false;
+
+        foreach (var (property, declaration) in spec.DbSets)
+        {
+            if (text.Contains($"DbSet<{property}>"))
+                continue;
+            var anchor = "    public DbSet<UserSession> UserSessions => Set<UserSession>();";
+            if (text.Contains(anchor))
+            {
+                text = ReplaceFirst(text, anchor, anchor + nl + nl + declaration);
+                changed = true;
+            }
+            else
+            {
+                Console.WriteLine($"note: add `{declaration.Trim()}` to AppDb.cs");
+            }
+        }
+
+        foreach (var index in spec.Indexes)
+        {
+            if (text.Contains(index.Trim()))
+                continue;
+            var anchor = "        session.HasIndex(s => s.FamilyId);";
+            if (text.Contains(anchor))
+            {
+                text = ReplaceFirst(text, anchor, anchor + nl + nl + index);
+                changed = true;
+            }
+            else
+            {
+                Console.WriteLine($"note: add `{index.Trim()}` to AppDb.cs OnModelCreating");
+            }
+        }
+
+        if (changed)
+        {
+            File.WriteAllText(dbFile, text);
+            Console.WriteLine("wired DbSet(s) + index(es) into AppDb.cs");
+        }
+    }
+
+    // Add the flow's slice Map(account) lines to AccountModule, idempotently, before the closing brace of
+    // the Map method (anchored on its "    }" that follows the existing maps).
+    private static void AugmentAccountModule(string moduleFile, FlowSpec spec)
+    {
+        var text = File.ReadAllText(moduleFile);
+        var nl = Newline(text);
+        var missing = spec.MapLines.Where(m => !text.Contains(m.Trim())).ToList();
+        if (missing.Count == 0)
+            return;
+
+        var block = string.Join(nl, missing);
+        // The Map method body closes with a line that is exactly four spaces + "}" (the method), inside the
+        // class. Insert before the last "Map(account);" line's following brace by anchoring on that brace.
+        var anchor = nl + "    }" + nl + "}";
+        if (text.Contains(anchor))
+        {
+            text = ReplaceFirst(text, anchor, nl + block + anchor);
+            File.WriteAllText(moduleFile, text);
+            Console.WriteLine($"wired {missing.Count} slice map(s) into AccountModule.cs");
+        }
+        else
+        {
+            foreach (var m in missing)
+                Console.WriteLine($"note: add `{m.Trim()}` to AccountModule.Map");
+        }
+    }
+
+    // Register the flow's provider DI in Program.cs, idempotently, just before the app is built. Adds the
+    // package's using at the top too. Anchored on the scaffold's "var app =" line.
+    private static void AugmentProgram(string program, FlowSpec spec)
+    {
+        if (!File.Exists(program))
+        {
+            Console.WriteLine($"note: no Program.cs — register `{spec.DiLine.Trim()}` before the app is built.");
+            return;
+        }
+
+        var text = File.ReadAllText(program);
+        var nl = Newline(text);
+        var changed = false;
+
+        var usingLine = $"using {spec.ProviderNamespace};";
+        if (!text.Contains(usingLine))
+        {
+            text = usingLine + nl + text;
+            changed = true;
+        }
+
+        if (!text.Contains(spec.DiLine.Trim()))
+        {
+            if (text.Contains("var app ="))
+            {
+                text = ReplaceFirst(text, "var app =", spec.DiLine + nl + nl + "var app =");
+                changed = true;
+            }
+            else
+            {
+                Console.WriteLine($"note: Program.cs looks unusual — add `{spec.DiLine.Trim()}` before the app is built.");
+            }
+        }
+
+        if (changed)
+        {
+            File.WriteAllText(program, text);
+            Console.WriteLine($"registered {spec.ProviderNamespace} provider in Program.cs");
+        }
+    }
+
+    // Add the flow's framework reference to the API csproj, idempotently. Matches the existing Lazuli.*
+    // reference style: ProjectReference in co-dev (when Lazuli.AspNetCore is a ProjectReference), else a
+    // PackageReference 0.1.0.
+    private static void AugmentApiProject(string csproj, FlowSpec spec)
+    {
+        var text = File.ReadAllText(csproj);
+        if (text.Contains(spec.PackageId))
+            return;
+
+        var nl = Newline(text);
+        string reference;
+        var aspNetProjectRef = FindProjectReference(text, "Lazuli.AspNetCore");
+        if (aspNetProjectRef is not null)
+        {
+            var relativeDir = Path.GetDirectoryName(aspNetProjectRef.Replace('/', Path.DirectorySeparatorChar))!;
+            var siblingDir = Path.Combine(Path.GetDirectoryName(relativeDir) ?? "", spec.PackageId);
+            var projPath = Path.Combine(siblingDir, spec.PackageId + ".csproj").Replace('/', '\\');
+            reference = $"    <ProjectReference Include=\"{projPath}\" />";
+        }
+        else
+        {
+            reference = $"    <PackageReference Include=\"{spec.PackageId}\" Version=\"0.1.0\" />";
+        }
+
+        text = InsertBeforeClosingItemGroup(text, reference, nl);
+        File.WriteAllText(csproj, text);
+        Console.WriteLine($"added {spec.PackageId} reference to {Path.GetFileName(csproj)}");
+    }
+
+    // ---- helpers ----------------------------------------------------------------------------------
+
+    private static string Token(AuthFlow flow) => flow switch
+    {
+        AuthFlow.Otp => "otp",
+        AuthFlow.OAuth => "oauth",
+        AuthFlow.Email => "email",
+        _ => throw new ArgumentOutOfRangeException(nameof(flow)),
+    };
+
+    // A field is "present" if its property name already appears as a member declaration. The field string
+    // is e.g. "    public bool IsEmailVerified { get; set; }"; we test on the "Name {" shape so a differing
+    // type or default does not cause a duplicate.
+    private static bool ContainsMember(string text, string fieldLine)
+    {
+        var name = MemberName(fieldLine);
+        return name is not null && text.Contains($"{name} {{");
+    }
+
+    private static string? MemberName(string fieldLine)
+    {
+        var braceAt = fieldLine.IndexOf('{');
+        if (braceAt <= 0)
+            return null;
+        var beforeBrace = fieldLine[..braceAt].TrimEnd();
+        var lastSpace = beforeBrace.LastIndexOf(' ');
+        return lastSpace < 0 ? null : beforeBrace[(lastSpace + 1)..];
+    }
+
+    private static bool InsertBeforeClassClose(ref string text, string block, string nl)
+    {
+        var at = text.LastIndexOf(nl + "}", StringComparison.Ordinal);
+        if (at < 0)
+            return false;
+        text = text[..at] + nl + block + text[at..];
+        return true;
+    }
+
+    private static string? FindProjectReference(string csproj, string projectName)
+    {
+        foreach (var raw in csproj.Replace("\r\n", "\n").Split('\n'))
+        {
+            var line = raw.Trim();
+            if (!line.StartsWith("<ProjectReference", StringComparison.Ordinal) || !line.Contains(projectName + ".csproj"))
+                continue;
+            const string key = "Include=\"";
+            var start = line.IndexOf(key, StringComparison.Ordinal);
+            if (start < 0)
+                continue;
+            start += key.Length;
+            var end = line.IndexOf('"', start);
+            if (end < 0)
+                continue;
+            return line[start..end];
+        }
+        return null;
+    }
+
+    private static string ReplaceFirst(string text, string find, string replacement)
+    {
+        var at = text.IndexOf(find, StringComparison.Ordinal);
+        return at < 0 ? text : text[..at] + replacement + text[(at + find.Length)..];
+    }
+
+    private static string InsertBeforeClosingItemGroup(string text, string lines, string nl)
+    {
+        var at = text.IndexOf("</ItemGroup>", StringComparison.Ordinal);
+        if (at < 0)
+            return text;
+        var lineStart = text.LastIndexOf('\n', at) + 1;
+        return text[..lineStart] + lines + nl + text[lineStart..];
+    }
+
+    private static string Newline(string text) => text.Contains("\r\n") ? "\r\n" : "\n";
+
+    // ---- flow specs -------------------------------------------------------------------------------
+
+    private sealed record FlowSpec(
+        string Folder,
+        string PackageId,
+        string ProviderNamespace,
+        string DiLine,
+        IReadOnlyList<string> UserFields,
+        IReadOnlyList<(string Property, string Declaration)> DbSets,
+        IReadOnlyList<string> Indexes,
+        IReadOnlyList<string> MapLines,
+        string Summary);
+
+    private static FlowSpec Spec(AuthFlow flow) => flow switch
+    {
+        AuthFlow.Otp => new FlowSpec(
+            Folder: "auth-otp",
+            PackageId: "Lazuli.Sms",
+            ProviderNamespace: "Lazuli.Sms",
+            DiLine: "builder.Services.AddSingleton<ISmsSender, ConsoleSmsSender>();",
+            UserFields:
+            [
+                "    public string? Phone { get; set; }",
+                "    public bool IsPhoneVerified { get; set; }",
+            ],
+            DbSets:
+            [
+                ("PhoneOtp", "    public DbSet<PhoneOtp> PhoneOtps => Set<PhoneOtp>();"),
+            ],
+            Indexes:
+            [
+                "        model.Entity<PhoneOtp>().HasIndex(o => o.UserId);",
+            ],
+            MapLines:
+            [
+                "        ResendPhoneCode.Map(account);",
+                "        VerifyPhone.Map(account);",
+            ],
+            Summary: "auth:otp generated — phone verification by SMS code (ConsoleSmsSender in dev). "
+                + "Run `lazuli doctor` then `lazuli test`."),
+
+        AuthFlow.OAuth => new FlowSpec(
+            Folder: "auth-oauth",
+            PackageId: "Lazuli.Identity",
+            ProviderNamespace: "Lazuli.Identity",
+            DiLine: "builder.Services.AddSingleton<IExternalIdentity, FakeExternalIdentity>();",
+            UserFields:
+            [
+                "    public bool IsEmailVerified { get; set; }",
+            ],
+            DbSets: [],
+            Indexes: [],
+            MapLines:
+            [
+                "        RegisterWithGoogle.Map(account);",
+                "        LoginWithGoogle.Map(account);",
+            ],
+            Summary: "auth:oauth generated — Google sign-up/sign-in (FakeExternalIdentity in dev). "
+                + "Run `lazuli doctor` then `lazuli test`."),
+
+        AuthFlow.Email => new FlowSpec(
+            Folder: "auth-email",
+            PackageId: "Lazuli.Mail",
+            ProviderNamespace: "Lazuli.Mail",
+            DiLine: "builder.Services.AddSingleton<IEmailSender, ConsoleEmailSender>();",
+            UserFields:
+            [
+                "    public bool IsEmailVerified { get; set; }",
+            ],
+            DbSets:
+            [
+                ("EmailVerificationToken", "    public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();"),
+                ("PasswordResetToken", "    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();"),
+            ],
+            Indexes:
+            [
+                "        model.Entity<EmailVerificationToken>().HasIndex(t => t.TokenHash);",
+                "        model.Entity<PasswordResetToken>().HasIndex(t => t.TokenHash);",
+            ],
+            MapLines:
+            [
+                "        RequestEmailVerification.Map(account);",
+                "        VerifyEmail.Map(account);",
+                "        RequestPasswordReset.Map(account);",
+                "        ResetPassword.Map(account);",
+            ],
+            Summary: "auth:email generated — email verification + password reset by emailed token "
+                + "(ConsoleEmailSender in dev). Run `lazuli doctor` then `lazuli test`."),
+
+        _ => throw new ArgumentOutOfRangeException(nameof(flow)),
+    };
+}

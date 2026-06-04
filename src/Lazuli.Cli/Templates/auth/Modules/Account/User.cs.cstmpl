@@ -1,0 +1,26 @@
+//<lz:tenancy>
+using Hostpoint.Api.Tenancy;
+//</lz:tenancy>
+
+namespace Hostpoint.Api.Modules.Account;
+
+/// <summary>A user account. The email is unique globally — one-human-one-account — so a user signs
+/// in by email regardless of org. Fields grow as the account slices are ported.</summary>
+//<lz:tenancy>
+public class User : ITenantScoped
+//</lz:tenancy>
+//<lz:!tenancy>
+public class User
+//</lz:!tenancy>
+{
+    public Guid Id { get; set; }
+    //<lz:tenancy>
+    public Guid OrgId { get; set; }
+    //</lz:tenancy>
+    public Email Email { get; set; }
+    public string Name { get; set; } = "";
+    public PasswordHash PasswordHash { get; set; }
+    public RegistrationStep RegistrationStep { get; set; } = RegistrationStep.EmailPending;
+    public Role? Role { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

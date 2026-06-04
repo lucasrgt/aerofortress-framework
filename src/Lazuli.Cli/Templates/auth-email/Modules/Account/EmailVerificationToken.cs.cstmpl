@@ -1,0 +1,16 @@
+namespace Hostpoint.Api.Modules.Account;
+
+/// <summary>A one-time email-verification token. <b>Not</b> <c>ITenantScoped</c>: like
+/// <see cref="UserSession"/>, it is a global auth artifact keyed by an unguessable token hash, looked up
+/// directly — there is no tenant filter to bypass, the tell that it should not be scoped. Only the hash
+/// is stored (high-entropy, so a plain SHA-256 hash via <see cref="SessionToken"/>, deterministic for
+/// lookup). Consuming it sets <see cref="ConsumedAt"/>.</summary>
+public class EmailVerificationToken
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string TokenHash { get; set; } = "";
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? ConsumedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

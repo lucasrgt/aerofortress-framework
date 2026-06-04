@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lazuli.Starter.Api/Lazuli.Starter.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lazuli.Starter.Tests/Lazuli.Starter.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,20 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- The .NET analyzers (IDE####, CA####) are the lint engine. EnforceCodeStyleInBuild
+         makes them run at build time, not just in the IDE — so the native lint is part of
+         the doctor's gate alongside the LZ rules. Configuration lives in .editorconfig. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Shared package metadata for the publishable Lazuli.* projects. Non-packable projects
+         (the sample, tests, self-harness) ignore it. -->
+    <Version>0.1.0</Version>
+    <Authors>Lazuli</Authors>
+    <Company>Lazuli</Company>
+    <Description>Lazuli — the opinionated .NET convention framework (vertical slices + the doctor).</Description>
+    <PackageTags>lazuli;vertical-slice;convention;doctor</PackageTags>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+root = true
+
+[*.cs]
+# Test names read as sentences (Deposit_rejects_a_negative_amount); IDE1006 only requires the first
+# letter capitalized, which they satisfy. Gate it.
+dotnet_diagnostic.IDE1006.severity = warning
+
+# An unnecessary using fails the build — clean imports are part of the gate.
+dotnet_diagnostic.IDE0005.severity = warning
+
+# A slice's namespace is its MODULE; the Slices/ folder is organization, not namespace
+# (Account.Deposit, never Account.Slices.Deposit). So "namespace must match folder" does not apply.
+dotnet_diagnostic.IDE0130.severity = none
+
+# A slice Handle has a uniform signature (Input, deps…, CancellationToken ct); simple slices leave
+# some parameters unused by design. Surface as a hint, never gate.
+dotnet_diagnostic.IDE0060.severity = suggestion

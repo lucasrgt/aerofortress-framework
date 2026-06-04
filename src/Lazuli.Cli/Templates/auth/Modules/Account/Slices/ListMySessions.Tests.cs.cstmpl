@@ -1,0 +1,85 @@
+using Hostpoint.Api;
+using Lazuli.Auth;
+using Hostpoint.Api.Modules.Account;
+//<lz:tenancy>
+using Hostpoint.Api.Tenancy;
+//</lz:tenancy>
+using Microsoft.EntityFrameworkCore;
+
+namespace Hostpoint.Tests.Modules.Account;
+
+public class ListMySessionsTests
+{
+    [Unit]
+    [Fact]
+    public async Task Lists_live_sessions_and_flags_the_current_one()
+    {
+        var (store, userId) = (Guid.NewGuid().ToString(), Guid.NewGuid());
+        var current = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await using (var db = NewDb(store))
+        {
+            db.UserSessions.Add(Session(userId, current, now, now.AddDays(14)));
+            db.UserSessions.Add(Session(userId, other, now.AddMinutes(-1), now.AddDays(14)));
+            await db.SaveChangesAsync();
+        }
+
+        await using var db2 = NewDb(store);
+        var result = await ListMySessions.Handle(new ListMySessions.Input(), db2, new FakeUser(userId, current), TimeProvider.System, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Sessions.Count);
+        Assert.Single(result.Value.Sessions, s => s.IsCurrent && s.SessionId == current);
+        Assert.Single(result.Value.Sessions, s => !s.IsCurrent && s.SessionId == other);
+    }
+
+    [Unit]
+    [Fact]
+    public async Task Excludes_expired_and_rotated_slots()
+    {
+        var (store, userId) = (Guid.NewGuid().ToString(), Guid.NewGuid());
+        var now = DateTime.UtcNow;
+        await using (var db = NewDb(store))
+        {
+            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now, now.AddDays(1)));                  // live
+            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now, now.AddDays(-1)));                 // expired
+            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now, now.AddDays(1), usedAt: now));     // rotated
+            await db.SaveChangesAsync();
+        }
+
+        await using var db2 = NewDb(store);
+        var result = await ListMySessions.Handle(new ListMySessions.Input(), db2, new FakeUser(userId, Guid.NewGuid()), TimeProvider.System, default);
+
+        Assert.Single(result.Value.Sessions);
+    }
+
+    private static UserSession Session(Guid userId, Guid family, DateTime created, DateTime expires, DateTime? usedAt = null) =>
+        new() { UserId = userId, FamilyId = family, TokenHash = family.ToString(), CreatedAt = created, ExpiresAt = expires, UsedAt = usedAt };
+
+    //<lz:tenancy>
+    private static AppDb NewDb(string store) =>
+        new(new DbContextOptionsBuilder<AppDb>().UseInMemoryDatabase(store).Options, new Tenant { OrgId = Guid.NewGuid() });
+
+    private sealed class FakeUser(Guid userId, Guid sessionId) : ICurrentUser
+    {
+        public bool IsAuthenticated => true;
+        public Guid UserId => userId;
+        public Guid OrgId => Guid.Empty;
+        public string? Role => null;
+        public Guid SessionId => sessionId;
+    }
+    //</lz:tenancy>
+    //<lz:!tenancy>
+    private static AppDb NewDb(string store) =>
+        new(new DbContextOptionsBuilder<AppDb>().UseInMemoryDatabase(store).Options);
+
+    private sealed class FakeUser(Guid userId, Guid sessionId) : ICurrentUser
+    {
+        public bool IsAuthenticated => true;
+        public Guid UserId => userId;
+        public string? Role => null;
+        public Guid SessionId => sessionId;
+    }
+    //</lz:!tenancy>
+}

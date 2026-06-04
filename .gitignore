@@ -1,0 +1,35 @@
+## Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+
+## .NET / IDE
+*.user
+*.suo
+*.userprefs
+.vs/
+.idea/
+*.swp
+
+## Test / coverage
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+coverage/
+
+## Local NuGet feed + packages (build artifacts)
+local-feed/
+packages/
+*.nupkg
+
+## Node (template clients, if any)
+node_modules/
+
+## OS
+.DS_Store
+Thumbs.db

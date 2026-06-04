@@ -1,0 +1,100 @@
+using Lazuli.Auth;
+using Microsoft.EntityFrameworkCore;
+
+namespace Hostpoint.Api.Modules.Account;
+
+/// <summary>Exchange a valid refresh token for a fresh access + refresh pair, rotating the session.
+/// Reuse of an already-rotated token is treated as theft and burns the whole token family. The session
+/// row is not tenant-scoped, so it is looked up directly.</summary>
+/// <remarks>Critical: the sad path <em>is</em> the security feature — replaying a rotated token must
+/// burn the whole family (theft detection). If that fails silently a stolen token lives forever, so
+/// LZ0008 forces both the rotation (happy) and the theft-burn (sad) to be proven end-to-end (see
+/// Journeys/AuthJourney).</remarks>
+[Slice]
+[Critical]
+public static class Refresh
+{
+    public record Input(string RefreshToken);
+
+    public record Output(string AccessToken, string RefreshToken);
+
+    public static async Task<Result<Output>> Handle(Input input, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct)
+    {
+        var hash = SessionToken.Hash(input.RefreshToken);
+        var session = await db.UserSessions.FirstOrDefaultAsync(s => s.TokenHash == hash, ct);
+        if (session is null)
+            return Error.Unauthorized("invalid or expired session");
+
+        var now = clock.GetUtcNow().UtcDateTime;
+
+        // Reuse of a spent token: the legit client still holds the live one, so a second presentation
+        // of a rotated token means it leaked. Burn the whole family — thief's and victim's alike —
+        // forcing a fresh login.
+        if (session.UsedAt is not null)
+        {
+            await RevokeFamily(db, session.FamilyId, ct);
+            return Error.Unauthorized("session revoked");
+        }
+
+        if (session.ExpiresAt < now)
+            return Error.Unauthorized("invalid or expired session");
+
+        var user = await db.Users
+            //<lz:tenancy>
+            // The access token is expired by now, so the request carries no org; look up across the filter.
+            .IgnoreQueryFilters()
+            //</lz:tenancy>
+            .FirstOrDefaultAsync(u => u.Id == session.UserId, ct);
+        if (user is null)
+            return Error.Unauthorized("invalid or expired session");
+
+        session.UsedAt = now;
+        var (refresh, refreshHash) = SessionToken.Issue();
+        db.UserSessions.Add(new UserSession
+        {
+            UserId = user.Id,
+            FamilyId = session.FamilyId,
+            TokenHash = refreshHash,
+            CreatedAt = now,
+            ExpiresAt = now.Add(SessionToken.Lifetime),
+        });
+        await db.SaveChangesAsync(ct);
+
+        //<lz:tenancy>
+        var access = tokens.Issue(user.Id, user.OrgId, user.Role?.ToString(), session.FamilyId, user.Name);
+        //</lz:tenancy>
+        //<lz:!tenancy>
+        var access = tokens.Issue(user.Id, Guid.Empty, user.Role?.ToString(), session.FamilyId, user.Name);
+        //</lz:!tenancy>
+        return new Output(access, refresh);
+    }
+
+    internal static async Task RevokeFamily(AppDb db, Guid familyId, CancellationToken ct)
+    {
+        var family = await db.UserSessions.Where(s => s.FamilyId == familyId).ToListAsync(ct);
+        db.UserSessions.RemoveRange(family);
+        await db.SaveChangesAsync(ct);
+    }
+
+    //<lz:cookies>
+    public static void Map(IEndpointRouteBuilder app) =>
+        app.MapPost("/refresh", async (Input? body, HttpContext http, AppDb db, IAccessTokens tokens, RefreshCookie cookies, TimeProvider clock, CancellationToken ct) =>
+            Respond(await Handle(new Input(cookies.RefreshFrom(http.Request, body?.RefreshToken)), db, tokens, clock, ct), http, cookies, clock));
+
+    private static IResult Respond(Result<Output> result, HttpContext http, RefreshCookie cookies, TimeProvider clock)
+    {
+        if (result.IsFailure)
+            return result.ToHttp();
+        var o = result.Value;
+        if (!cookies.IsWeb(http.Request))
+            return Results.Ok(o);
+        cookies.SetRefresh(http.Response, o.RefreshToken, clock.GetUtcNow().Add(SessionToken.Lifetime));
+        return Results.Ok(new { o.AccessToken });
+    }
+    //</lz:cookies>
+    //<lz:!cookies>
+    public static void Map(IEndpointRouteBuilder app) =>
+        app.MapPost("/refresh", async (Input body, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct) =>
+            (await Handle(body, db, tokens, clock, ct)).ToHttp());
+    //</lz:!cookies>
+}

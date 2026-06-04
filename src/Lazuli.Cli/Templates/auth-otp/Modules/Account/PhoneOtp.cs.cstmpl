@@ -1,0 +1,19 @@
+namespace Hostpoint.Api.Modules.Account;
+
+/// <summary>A one-time phone-verification code. <b>Not</b> <c>ITenantScoped</c>: like
+/// <see cref="UserSession"/>, it is a global auth artifact keyed by the user, looked up directly by
+/// <see cref="UserId"/>. Unlike the token entities, the code is <em>low-entropy</em> (6 digits), so it is
+/// hashed with argon2id (<see cref="PasswordHash"/>) — a fast SHA-256 would be brute-forceable — and
+/// verified, not looked up by hash. Using it sets <see cref="UsedAt"/>; a wrong attempt bumps
+/// <see cref="Attempts"/>.</summary>
+public class PhoneOtp
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Phone { get; set; } = "";
+    public string CodeHash { get; set; } = "";
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? UsedAt { get; set; }
+    public int Attempts { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

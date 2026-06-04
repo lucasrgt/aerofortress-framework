@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lazuli.Abstractions\Lazuli.Abstractions.csproj" />
+    <!-- The doctor rides along as a build/IDE analyzer. Remove this line and the app still
+         compiles and runs (Law 2) — you only lose the enforcement. -->
+    <ProjectReference Include="..\..\analyzers\Lazuli.Doctor\Lazuli.Doctor.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Lazuli.AspNetCore\Lazuli.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tests live co-located with the slice they exercise. The production assembly never
+         compiles them (no test deps ship); the test project pulls them via glob. The doctor
+         (LZ0003) reads them as AdditionalFiles to require every slice has one beside it. -->
+    <Compile Remove="**\*.Tests.cs" />
+    <AdditionalFiles Include="**\*.Tests.cs" />
+    <!-- The doctor reads the module context docs (LZ0004/LZ0005) as AdditionalFiles too. -->
+    <AdditionalFiles Include="**\*.ctx.md" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The sample app is not shipped. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

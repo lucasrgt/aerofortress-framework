@@ -1,0 +1,38 @@
+using System.Security.Cryptography;
+using Lazuli.Auth;
+using Lazuli.Sms;
+
+namespace Hostpoint.Api.Modules.Account;
+
+/// <summary>Send a fresh 6-digit verification code to the caller's phone. The code is stored
+/// argon2-hashed (low-entropy → verified, never looked up) and expires in 10 minutes.</summary>
+[Slice]
+public static class ResendPhoneCode
+{
+    public record Input(string Phone);
+
+    public record Output();
+
+    public static async Task<Result<Output>> Handle(Input input, AppDb db, ISmsSender sms, ICurrentUser current, TimeProvider clock, CancellationToken ct)
+    {
+        var now = clock.GetUtcNow().UtcDateTime;
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        db.PhoneOtps.Add(new PhoneOtp
+        {
+            UserId = current.UserId,
+            Phone = input.Phone,
+            CodeHash = PasswordHash.Create(code).Value,
+            ExpiresAt = now.AddMinutes(10),
+            CreatedAt = now,
+        });
+        await db.SaveChangesAsync(ct);
+
+        await sms.SendAsync(input.Phone, $"Your Hostpoint code is {code}", ct);
+        return new Output();
+    }
+
+    public static void Map(IEndpointRouteBuilder app) =>
+        app.MapPost("/phone-code", async (Input input, AppDb db, ISmsSender sms, ICurrentUser current, TimeProvider clock, CancellationToken ct) =>
+            (await Handle(input, db, sms, current, clock, ct)).ToHttp())
+            .RequireAuthorization();
+}

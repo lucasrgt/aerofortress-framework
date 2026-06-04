@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    Shared standard for the Lazuli libraries (not the user's app). Imported by every
+    Lazuli.* project so the bar is declared once: nullable on, latest language, and missing
+    public XML documentation is a build error. Tracking-style analyzer noise is silenced.
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+    <!-- RS2008: analyzer release-tracking noise. CS8524: exhaustive enum switches flag a
+         cast-to-unnamed-value that a closed enum can't produce — suppress it, but keep CS8509
+         (a new named enum value with no case) so the switch warns when the catalog grows. -->
+    <NoWarn>$(NoWarn);RS2008;CS8524</NoWarn>
+  </PropertyGroup>
+
+</Project>
