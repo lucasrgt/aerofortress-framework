@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -26,7 +27,13 @@ public static class InMemoryStores
         // seed and each request must share one store, or the seed lands somewhere the request never
         // reads (a silent 404). The Guid keeps this test instance isolated from every other.
         var store = $"{typeof(TContext).Name}-{Guid.NewGuid()}";
+        // Drop the real registration completely before adding the in-memory one. Removing only
+        // DbContextOptions<TContext> is not enough on EF Core 9+: AddDbContext also registers the provider's
+        // option-config as IDbContextOptionsConfiguration<TContext>, and if the app uses a relational
+        // provider (e.g. Npgsql) that config survives — leaving two providers registered, which EF rejects
+        // ("Only a single database provider can be registered"). Clear both, then add InMemory.
         services.RemoveAll<DbContextOptions<TContext>>();
+        services.RemoveAll<IDbContextOptionsConfiguration<TContext>>();
         services.AddDbContext<TContext>(options => options.UseInMemoryDatabase(store));
         return services;
     }
