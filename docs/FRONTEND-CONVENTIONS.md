@@ -281,6 +281,13 @@ client` (stock orval, wrapped) with the shipped config + mutator. One blessed fr
   re-emitted. No "smart stubs" that pre-fill logic. (The Lazuli-2 vector.)
 - **No MVVM framework.** Plain custom hooks, not classes/observables/two-way binding. (The
   stranger-maintainable law.)
+- **No prescribed styling system.** The blessed shape pins what touches the seam (router, query
+  layer, generator, form lib, test runner — all relevant to *wired/tested*) and stays silent on pure
+  paint: the styling library (StyleSheet / NativeWind / Tamagui / Unistyles), the component kit, the
+  icon set, the design tokens are **the app's choice**. The `LZFE*` harness is styling-neutral by
+  construction — it polices the data seam (`LZFE001` no data layer in a View, `LZFE002` one data door,
+  `LZFE009` platform-agnostic ViewModel), never the paint above it. (Hostpoint picks NativeWind + its
+  own design system; another app picks differently — the convention and harness are unchanged.)
 - **No TS decorators (`@Slice`/`@Journey`/`@Critical`).** The backend's `[Slice]` is a first-class
   C# attribute the Roslyn doctor reads natively; React function components have no idiomatic decorator
   seam, and bolting one on (babel `experimentalDecorators`, wrapper indirection) *adds* LLM decision
