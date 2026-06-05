@@ -78,7 +78,7 @@ allowed shape.
    wired against a harness.
 1. **Spine** — `AsyncState`/`Resource` (done); graduate route guards + session from app pilots.
 2. **Rules** — grow LZFE into categories the way the backend has: state-completeness (screens use `<Resource>`),
-   i18n-completeness (keys in every locale, no hardcoded strings), design-tokens (no inline hex), a11y,
-   error-handling (every mutation surfaces its error).
+   i18n-completeness (keys in every locale), design-tokens (no inline hex) — **done**; still ahead: the
+   "no hardcoded string" half of i18n, a11y, error-handling (every mutation surfaces its error).
 3. **Generators** — beyond the typed client: scaffold a feature unit, assemble the i18n resource tree, wire route
    guards from declared policy.

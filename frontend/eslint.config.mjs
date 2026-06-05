@@ -24,6 +24,9 @@ export default [
       "lazuli/viewmodel-platform-agnostic": "error",
       "lazuli/test-colocated": "error",
       "lazuli/no-mock": "error",
+      "lazuli/state-completeness": "error",
+      "lazuli/i18n-completeness": "error",
+      "lazuli/design-tokens": "error",
     },
   },
 ];

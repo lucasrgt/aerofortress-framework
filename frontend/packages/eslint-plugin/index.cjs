@@ -165,6 +165,135 @@ const rules = {
       return forbidImport(context, MOCKS, "mock");
     },
   },
+
+  // LZFE010 — a View routes loading/error/empty through the spine (<Resource> over an AsyncState), never raw
+  // react-query booleans. The moment a View hand-reads isPending/isError it has taken on state handling the spine
+  // exists to make exhaustive — and the forgotten branch (no empty state, no error UI) is exactly what slips
+  // through. So the booleans are the ViewModel's (it projects them via toAsyncState); the View consumes the union.
+  "state-completeness": {
+    meta: {
+      type: "problem",
+      docs: { description: "A View handles async state through <Resource>, not raw isPending/isError." },
+      messages: {
+        raw:
+          "LZFE010: a View routes loading/error/empty through <Resource> (the spine), not raw `{{name}}` — expose the resource as AsyncState in the ViewModel and render it via <Resource>, so every state is handled by construction.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isView(f)) return {};
+      const RAW = /^(isPending|isLoading|isError|isFetching|isRefetching|isSuccess)$/;
+      return {
+        // `query.isPending`
+        MemberExpression(node) {
+          if (!node.computed && node.property.type === "Identifier" && RAW.test(node.property.name)) {
+            context.report({ node: node.property, messageId: "raw", data: { name: node.property.name } });
+          }
+        },
+        // `const { isError } = useFooModel()`
+        Property(node) {
+          if (
+            node.parent.type === "ObjectPattern" &&
+            !node.computed &&
+            node.key.type === "Identifier" &&
+            RAW.test(node.key.name)
+          ) {
+            context.report({ node: node.key, messageId: "raw", data: { name: node.key.name } });
+          }
+        },
+      };
+    },
+  },
+
+  // LZFE011 — every locale in a *.i18n.ts declares the same keys. A feature's copy lives as sibling catalogs
+  // (ptBR / esES / enUS …); a key added to one but not the others is a silent untranslated string at runtime. The
+  // rule compares the top-level key sets across the file's exported object literals and flags any catalog missing a
+  // key its siblings have. (Catalog assembly + the "no hardcoded string" half are the generator's / a later rule's
+  // job; this pins parity, the failure that actually ships.)
+  "i18n-completeness": {
+    meta: {
+      type: "problem",
+      docs: { description: "Every locale catalog in a *.i18n.ts declares the same keys." },
+      messages: {
+        missing:
+          "LZFE011: i18n catalog `{{catalog}}` is missing key(s) {{keys}} that sibling locales declare — every locale must carry the same keys.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!/\.i18n\.ts$/.test(f)) return {};
+      const keysOf = (objExpr) => {
+        const keys = new Set();
+        for (const p of objExpr.properties) {
+          if (p.type !== "Property" || p.computed) continue;
+          const k = p.key.type === "Identifier" ? p.key.name : p.key.type === "Literal" ? String(p.key.value) : null;
+          if (k !== null) keys.add(k);
+        }
+        return keys;
+      };
+      return {
+        "Program:exit"(program) {
+          const catalogs = [];
+          for (const stmt of program.body) {
+            const decl =
+              stmt.type === "ExportNamedDeclaration" && stmt.declaration && stmt.declaration.type === "VariableDeclaration"
+                ? stmt.declaration
+                : stmt.type === "VariableDeclaration"
+                  ? stmt
+                  : null;
+            if (!decl) continue;
+            for (const d of decl.declarations) {
+              let init = d.init;
+              while (init && init.type === "TSAsExpression") init = init.expression; // unwrap `as const`
+              if (init && init.type === "ObjectExpression" && d.id.type === "Identifier") {
+                catalogs.push({ name: d.id.name, keys: keysOf(init), node: d });
+              }
+            }
+          }
+          if (catalogs.length < 2) return; // need >= 2 locales to compare
+          const union = new Set();
+          for (const c of catalogs) for (const k of c.keys) union.add(k);
+          for (const c of catalogs) {
+            const missing = [...union].filter((k) => !c.keys.has(k));
+            if (missing.length) {
+              context.report({
+                node: c.node,
+                messageId: "missing",
+                data: { catalog: c.name, keys: missing.map((k) => `"${k}"`).join(", ") },
+              });
+            }
+          }
+        },
+      };
+    },
+  },
+
+  // LZFE012 — no inline hex color in production code. Color is a design-system decision; a literal `#3b82f6` in a
+  // screen forks the palette and defeats theming (dark mode, white-label). Colors come from a token (the theme),
+  // so the only place a hex literal belongs is where the tokens are DEFINED — those files (theme/tokens/palette)
+  // are exempt; everywhere else a hex is the smell the rule catches.
+  "design-tokens": {
+    meta: {
+      type: "problem",
+      docs: { description: "No inline hex color outside the token/theme definition files." },
+      messages: {
+        hex: "LZFE012: no inline hex color (`{{hex}}`) — use a design token from the theme, not a literal.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (isTest(f) || !/\.(ts|tsx)$/.test(f)) return {};
+      if (/(^|\/|\.)(theme|tokens|palette|colors)(\/|\.|$)/i.test(f)) return {}; // token definitions live somewhere
+      const HEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+      return {
+        Literal(node) {
+          if (typeof node.value === "string" && HEX.test(node.value.trim())) {
+            context.report({ node, messageId: "hex", data: { hex: node.value } });
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {

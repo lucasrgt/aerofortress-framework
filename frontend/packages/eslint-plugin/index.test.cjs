@@ -79,5 +79,54 @@ ruleTester.run("no-mock", plugin.rules["no-mock"], {
   ],
 });
 
+// LZFE010 — a View routes async state through <Resource>, never raw react-query booleans (member access OR
+// destructuring). The booleans are the ViewModel's; the View consumes the AsyncState union.
+ruleTester.run("state-completeness", plugin.rules["state-completeness"], {
+  valid: [
+    { filename: "Foo.view.tsx", code: `const { state } = useFooModel(); const data = state.items;` },
+    // Non-views own the booleans (the ViewModel projects them through toAsyncState).
+    { filename: "Foo.viewModel.ts", code: `const x = query.isPending;` },
+  ],
+  invalid: [
+    { filename: "Foo.view.tsx", code: `const x = query.isPending;`, errors: [{ messageId: "raw" }] },
+    { filename: "Foo.view.tsx", code: `const { isError } = useFooModel();`, errors: [{ messageId: "raw" }] },
+  ],
+});
+
+// LZFE011 — every locale catalog in a *.i18n.ts declares the same keys; a key in one but not its siblings is a
+// silent untranslated string. Scope is the *.i18n.ts file only.
+ruleTester.run("i18n-completeness", plugin.rules["i18n-completeness"], {
+  valid: [
+    { filename: "x.i18n.ts", code: `export const ptBR = { a: "1", b: "2" }; export const enUS = { a: "x", b: "y" };` },
+    // `as const` is unwrapped; dotted keys compared as flat keys.
+    {
+      filename: "x.i18n.ts",
+      code: `export const ptBR = { "e.t": "1" } as const; export const enUS = { "e.t": "x" } as const;`,
+    },
+    // A single catalog has nothing to compare against.
+    { filename: "x.i18n.ts", code: `export const ptBR = { a: "1" };` },
+  ],
+  invalid: [
+    {
+      filename: "x.i18n.ts",
+      code: `export const ptBR = { a: "1", b: "2" }; export const enUS = { a: "x" };`,
+      errors: [{ messageId: "missing" }],
+    },
+  ],
+});
+
+// LZFE012 — no inline hex color outside the token/theme definition files.
+ruleTester.run("design-tokens", plugin.rules["design-tokens"], {
+  valid: [
+    { filename: "Foo.view.tsx", code: `const c = theme.colors.primary;` },
+    // Token definitions are where hex legitimately lives.
+    { filename: "src/theme/colors.ts", code: `export const primary = "#3b82f6";` },
+  ],
+  invalid: [
+    { filename: "Foo.view.tsx", code: `const c = "#3b82f6";`, errors: [{ messageId: "hex" }] },
+    { filename: "Foo.viewModel.ts", code: `const bg = "#fff";`, errors: [{ messageId: "hex" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
