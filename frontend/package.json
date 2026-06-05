@@ -9,14 +9,17 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit -p packages/lazuli-react/tsconfig.json && tsc --noEmit -p sample/tsconfig.json",
+    "lint": "eslint sample && node packages/eslint-plugin/index.test.cjs",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run test"
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.62.7",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
     "i18next": "^24.2.0",
     "jsdom": "^25.0.1",
     "react": "^19.0.0",

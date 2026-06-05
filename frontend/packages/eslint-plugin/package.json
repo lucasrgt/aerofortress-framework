@@ -1,0 +1,13 @@
+{
+  "name": "eslint-plugin-lazuli",
+  "version": "0.1.0",
+  "description": "The Lazuli frontend harness — LZFE* rules that keep React Native + web screens wired, not mocked.",
+  "main": "index.cjs",
+  "private": true,
+  "scripts": {
+    "test": "node index.test.cjs"
+  },
+  "peerDependencies": {
+    "eslint": ">=9"
+  }
+}
