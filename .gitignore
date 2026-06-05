@@ -23,8 +23,9 @@ x86/
 coverage/
 
 ## Local NuGet feed + packages (build artifacts)
+## anchored to root so it ignores the NuGet drop dir, NOT frontend source packages
 local-feed/
-packages/
+/packages/
 *.nupkg
 
 ## Node (template clients, if any)
