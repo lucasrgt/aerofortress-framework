@@ -123,6 +123,39 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
   `MapPost("/deposit", …).WithName("Deposit")` → the OpenAPI `operationId` → orval emits
   `useDeposit`. The contract of the `Handle` becomes the name of the wire, with nothing bespoke
   in between. (Candidate doctor rule: endpoint name = slice name.)
+- **Audience filters the client at the generator, not the rule.** orval is configured to include only
+  endpoints tagged for *this* frontend's audience (`app`). Webhooks, internal/server-to-server, and
+  other-audience endpoints carry a different `[Endpoint(...)]` kind (below), are tagged accordingly, and
+  never enter `client.gen/`. So `LZFE008` (loose-endpoint coverage) is high-signal by construction — the
+  noise is removed in the plumbing (config of a stock tool), not papered over by the rule. This is the old
+  lazuli's "audience SDK projection", done by tool config instead of a bespoke compiler.
+
+---
+
+## Endpoint kinds — the wiring vocabulary
+
+Not every endpoint should have a frontend wiring, and that is not a rare exception (webhooks, internal
+server-to-server, OAuth redirects, other-audience admin panels). So the framework classifies an endpoint's
+**nature** with a closed-vocabulary marker — `[Endpoint(...)]` — pulled from the same `[Slice]` shape that
+drives everything else. This is **classification, not suppression**: it does not say "ignore the rule here",
+it says "this endpoint *is* a webhook", and the harness derives that a webhook has no UI wiring.
+
+- **Opt-out, not opt-in.** The default is `App` — app-facing, *must* be wired (`LZFE008`). The dangerous
+  case (forgot to wire) must be loud by default; the legitimate exception (a webhook) costs one marker. (This
+  is right *because* a Lazuli app is UI-first/mobile — app-facing is dominant. An API-first product would
+  reconsider.)
+- **One mark, many derivations** — the `[Critical]` pattern again. A single marker on the slice feeds: orval
+  (audience filter → non-app endpoints leave the client), `LZFE008` (covers only app-facing), and a future
+  backend doctor rule (a `Webhook` must verify its signature / be idempotent). One declaration, several
+  enforcements; intent flowing back→front.
+- **Closed enum of natures, zero behavior params** — the guard-rail against the mini-language the constitution
+  forbids. The marker says *what it is*; the `Handle` says *what it does*.
+  - `(default)` → `App` — app-facing; must be wired.
+  - `[Endpoint(Webhook)]` → third-party callback; never UI.
+  - `[Endpoint(Internal)]` → server-to-server; outside any client.
+  - `[Endpoint(Audience = "admin")]` → wired by *another* frontend, not this one.
+  - Forbidden: `[Webhook(Retries = 3, Signature = "hmac")]` — config-as-annotation is the fattening that
+    killed earlier scenarios. Retry/signature/idempotency live in the `Handle`, visibly, never in the mark.
 
 ---
 
@@ -173,9 +206,15 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE005` | Every feature carries a co-located `*.test.tsx` | planned | mirror of `LZ0003` |
 | `LZFE006` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done |
 | `LZFE007` | Mandatory states — a ViewModel exposing server data exposes `loading` + `error` + `empty` | planned | the sad-path discipline of `[Critical]` slices |
+| `LZFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 ViewModel; an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | planned | back→front completeness — catches "backend done, UI not wired" |
 
-The completeness gate — "does this call a real endpoint?" — is **not** a rule. It is `tsc`
-against the generated client. Lean on the type system; the harness only forbids the bypass.
+The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
+endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
+generated, so it can't compile). **back→front** (the endpoint exists, nothing wired it yet) is a
+legitimate intermediate state → a **warning** (`LZFE008`). Failing the build there would be wrong;
+revealing it is the point. The completeness gate — "does this call a real endpoint?" — is **not** a
+rule. It is `tsc` against the generated client. Lean on the type system; the harness only forbids the
+bypass and surfaces the loose ends.
 
 ---
 
