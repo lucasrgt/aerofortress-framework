@@ -223,7 +223,7 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE002` | ViewModel is the only data door — only `*.viewModel.ts` may (value-)import the generated client | **shipped** | one data path, one policed surface |
 | `LZFE003` | **No mock in production code** — no import from `**/__mocks__`/`**/fixtures`/MSW outside `*.test.*` | **shipped** | hostpoint: `WAR-*` storybook fixtures shipped as data |
 | `LZFE004` | ViewModel is render-agnostic — a `*.viewModel.ts` imports no JSX/`react-dom` | planned | keeps the ViewModel unit-testable without rendering |
-| `LZFE005` | Every feature carries a co-located `*.test.tsx` | planned | mirror of `LZ0003` |
+| `LZFE005` | **Co-located test that exercises the ViewModel** — every `*.viewModel.ts` has a sibling `*.test.tsx` that imports it and calls `renderHook()`. Existence alone is not enough: mounting `useXModel()` compiles the ViewModel against the real generated client and proves the hook is callable. Behavior assertions stay per-screen judgment (no test-theater) | **shipped** | mirror of `LZ0003` — the triple's third leg; "renders + has a data door but no test" is not done |
 | `LZFE006` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done |
 | `LZFE007` | Mandatory states — a ViewModel exposing server data exposes `loading` + `error` + `empty` | planned | the sad-path discipline of `[Critical]` slices |
 | `LZFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 ViewModel; an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | **shipped** (fs pass in `npm run lint`) | back→front completeness — catches "backend done, UI not wired" |
@@ -251,6 +251,15 @@ client` (stock orval, wrapped) with the shipped config + mutator. One blessed fr
   re-emitted. No "smart stubs" that pre-fill logic. (The Lazuli-2 vector.)
 - **No MVVM framework.** Plain custom hooks, not classes/observables/two-way binding. (The
   stranger-maintainable law.)
+- **No TS decorators (`@Slice`/`@Journey`/`@Critical`).** The backend's `[Slice]` is a first-class
+  C# attribute the Roslyn doctor reads natively; React function components have no idiomatic decorator
+  seam, and bolting one on (babel `experimentalDecorators`, wrapper indirection) *adds* LLM decision
+  space — the opposite of the goal. Symmetry of **concept** (the slice), not of **mechanism**: on the
+  front the **folder/file convention is the annotation**, discovered structurally
+  (`features/<x>/<X>.view.tsx`), exactly as `[Slice]` is on the back. When `@Critical`/`@Journey`
+  earn their place (a concrete multi-screen flow needing flow-level coverage), they arrive as a plain
+  `export const meta = { critical, journey } satisfies FeatureMeta` the doctor reads — never a
+  decorator. Deferred until a real journey lands (YAGNI).
 - **No multi-app sprawl.** One frontend shape, enforced — sprawl was aerocoding's *N* apps, not
   one blessed convention.
 - **No frontend in core.** The harness ships as a separate, optional, doctor-removable package —
