@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- The OpenAPI document generator (AddOpenApi / OpenApiOptions) ships as a separate package, not in the
+         shared framework. Lazuli owns the slice-aware document conventions so apps don't re-derive them. -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
