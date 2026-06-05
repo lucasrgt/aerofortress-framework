@@ -76,11 +76,20 @@ One screen = a co-located triple. The suffixes are the analyzer anchor, the way 
 `.ctx.md` are on the backend:
 
 ```
-features/<name>/
+features/<zone>/<name>/
   <Name>.view.tsx        # the View — pure render; consumes exactly one ViewModel
   <Name>.viewModel.ts    # the ViewModel — the only data door; composes generated slice-hooks
   <Name>.test.tsx        # co-located test, as on the backend (LZ0003)
+  <name>.i18n.ts         # the feature's i18n namespace (ptBR/esES/enUS)
+  panels/ | steps/       # for multi-panel/multi-step features (sub-views, same harness rules)
 ```
+
+- **Group features by `<zone>` = audience, not by backend domain.** When an app has distinct personas,
+  the feature tree mirrors the **route tree** and how the product is *experienced* — e.g. Hostpoint:
+  `features/{host,traveler,account,shared}/<name>/`. The domain axis (Catalog/Operations/…) is already
+  carried by the generated client; re-mirroring the backend's modules on the front would scatter a single
+  audience across domains. The harness is depth-agnostic (`LZFE*` match by filename, not folder), so the
+  grouping is a free organizational choice. Single-persona apps can stay flat (`features/<name>/`).
 
 - **The ViewModel is a plain custom hook**, never a class: `useDepositModel(params) → { state,
   ...commands }`. Custom hooks *are* React's idiomatic way to extract logic — you get the MVVM
