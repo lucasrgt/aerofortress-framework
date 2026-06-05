@@ -18,14 +18,37 @@ return args switch
     _ => Usage(),
 };
 
-// The doctor is the build-time analyzers: a clean build is a clean bill of health; an LZ#### error
-// fails it. The branded entry point runs the build and frames the verdict.
+// The doctor is bidirectional — one verdict over both halves of the stack. The backend leg is the build-time
+// Roslyn analyzers (a clean build = a clean bill of health; an LZ#### error fails it). The frontend leg, for
+// each Lazuli client (a dir under clients/ carrying eslint.config.js), is the TS-world harness: eslint
+// (eslint-plugin-lazuli, the LZFE* rules) + tsc (the "wired" gate against the generated client). One command,
+// both sides — so nothing is left loose in either direction.
 static int Doctor(string[] rest)
 {
-    Console.WriteLine("lazuli doctor — running the convention analyzers (build)...");
+    Console.WriteLine("lazuli doctor — backend conventions (build)...");
     var code = Tooling.Dotnet("build", rest);
+
+    foreach (var client in FrontendClients(Directory.GetCurrentDirectory()))
+    {
+        Console.WriteLine($"lazuli doctor — frontend conventions ({Path.GetFileName(client)}: eslint + tsc)...");
+        code = Math.Max(code, Tooling.Run("npm", ["run", "lint"], client));
+        code = Math.Max(code, Tooling.Run("npm", ["run", "typecheck"], client));
+    }
+
     Console.WriteLine(code == 0 ? "doctor: conventions pass." : "doctor: violations reported above.");
     return code;
+}
+
+// A Lazuli frontend lives under clients/<app>/ with an eslint.config.js (wiring eslint-plugin-lazuli). The
+// doctor discovers them by convention rather than configuration — no frontend, no frontend leg.
+static IEnumerable<string> FrontendClients(string root)
+{
+    var clients = Path.Combine(root, "clients");
+    if (!Directory.Exists(clients))
+        return [];
+    return Directory.EnumerateDirectories(clients)
+        .Where(dir => File.Exists(Path.Combine(dir, "eslint.config.js"))
+                   && File.Exists(Path.Combine(dir, "package.json")));
 }
 
 // The fast leg: dotnet test, with a category shorthand. --unit/--integration/--e2e map to the

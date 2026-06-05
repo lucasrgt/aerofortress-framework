@@ -24,4 +24,34 @@ internal static class Tooling
         process.WaitForExit();
         return process.ExitCode;
     }
+
+    // Run an external tool (npm, npx) in a working directory, inheriting stdio — for the frontend leg of the
+    // doctor, which shells out to the TS-world harness (eslint + tsc). On Windows the npm/npx shims are .cmd,
+    // so they go through cmd.exe; elsewhere the executable is invoked directly.
+    public static int Run(string exe, string[] args, string workingDirectory)
+    {
+        var windows = OperatingSystem.IsWindows();
+        var info = new ProcessStartInfo(windows ? "cmd.exe" : exe)
+        {
+            UseShellExecute = false,
+            WorkingDirectory = workingDirectory,
+        };
+        if (windows)
+        {
+            info.ArgumentList.Add("/c");
+            info.ArgumentList.Add(exe);
+        }
+        foreach (var arg in args)
+            info.ArgumentList.Add(arg);
+
+        using var process = Process.Start(info);
+        if (process is null)
+        {
+            Console.Error.WriteLine($"lazuli: could not start '{exe}'.");
+            return 1;
+        }
+
+        process.WaitForExit();
+        return process.ExitCode;
+    }
 }
