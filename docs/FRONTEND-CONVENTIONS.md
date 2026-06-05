@@ -269,6 +269,33 @@ bypass and surfaces the loose ends.
 
 ---
 
+## Code comments — the code speaks for itself
+
+Comments are **English**, and they earn their place. The default is **no comment**: a well-named
+ViewModel/hook/component + the types say what the code does. A comment exists only to say what the
+code *can't* — a non-obvious **why**, a **gotcha**, an invariant, a contract quirk. Rails-style:
+prose that adds signal, never restating the line below it.
+
+Explicitly **out** (this is the junk an LLM tends to emit — strip it on sight):
+- Migration play-by-play / thinking-out-loud (`// Faithful clone of the old screen…`, `// re-skinned
+  onto…`, `// Step 1: …`). The git history is the narrative; the file is not.
+- Restating the obvious (`// the name field` over `name:`, `// loading state` over `loading`).
+- Mixed PT/EN. Comments are English; **only user-facing copy is pt-BR, and that lives in i18n**, not
+  in comments or string literals.
+
+Keep: a non-obvious gotcha (e.g. *why* a value is coerced, *why* an effect is gated), a contract
+caveat, an invariant. If you're unsure whether a comment earns its place, delete it.
+
+## i18n — react-i18next, per-feature namespaces
+
+User-facing copy is **never inlined** in a View; it goes through `react-i18next`. One i18next instance
+(`src/i18n`), pt-BR today. Each feature owns a **namespace** = its folder name, in a co-located
+`src/features/<feat>/<feat>.i18n.ts` (the `ptBR` export), assembled in `src/i18n/resources.ts`; shared
+copy (nav, generic actions) lives in the `common` namespace. A View reads `const { t } =
+useTranslation("<feat>")` and renders `t("some.key")`. Adding a locale is a second key in `resources`
++ a language switch — the feature namespaces don't change. (Like styling, i18n is the app's choice, not
+a framework mechanism; this is Hostpoint's.)
+
 ## Scope — and non-goals
 
 **In:** the MVVM feature convention, the `LZFE*` harness, a `g view` scaffold, and `lazuli gen
