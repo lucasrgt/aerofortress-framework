@@ -7,6 +7,7 @@ return args switch
     ["g", "slice", var module, var name] => SliceGenerator.Generate(Directory.GetCurrentDirectory(), module, name),
     ["g", "slice", var module, var name, "--critical"] => SliceGenerator.Generate(Directory.GetCurrentDirectory(), module, name, critical: true),
     ["g", "crud", var module, var entity] => CrudGenerator.Generate(Directory.GetCurrentDirectory(), module, entity),
+    ["g", "hub", var module, var name] => HubGenerator.Generate(Directory.GetCurrentDirectory(), module, name),
     ["g", "auth", .. var flags] => AuthGenerator.Generate(Directory.GetCurrentDirectory(), skipTenancy: flags.Contains("--skip-tenancy"), skipCookies: flags.Contains("--skip-cookies")),
     ["g", "auth:otp"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.Otp),
     ["g", "auth:oauth"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.OAuth),
@@ -48,6 +49,7 @@ static int Usage()
           lazuli g module <Name>            generate a module + wire it into Program.cs
           lazuli g slice <Module> <Name> [--critical]   generate a slice + tests (+ journeys if critical)
           lazuli g crud <Module> <Entity>   generate CRUD slices (list/lookup/create/update/delete +me) for an entity
+          lazuli g hub <Module> <Name>      generate a SignalR hub (real-time: typing/presence/live fan-out)
           lazuli g auth [--skip-tenancy] [--skip-cookies]   generate the auth module (register/login/refresh/logout/me)
           lazuli g auth:otp                 augment auth with phone verification by SMS code
           lazuli g auth:oauth               augment auth with Google sign-up/sign-in

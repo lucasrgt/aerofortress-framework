@@ -132,6 +132,28 @@ tests/<App>.Tests/                 # thin runner: globs the co-located *.Tests.c
 
 ---
 
+## Real-time — hubs (opt-in)
+
+Real-time is **opt-in**, the way Rails 8 dropped the default `channels/` folder: a fresh app has no hub, so
+it carries no transport it doesn't use. When a feature needs server-pushed liveness — live messages, typing,
+presence — `lazuli g hub <Module> <Name>` scaffolds a SignalR hub under `Modules/<Module>/Realtime/<Name>Hub.cs`.
+
+- **A hub is wire, not logic — the same law as an endpoint.** A hub method persists nothing itself: it calls
+  the matching slice (the one source of the write + its rules) and then fans the result out to the room.
+  Ephemeral signals (typing, presence) ride the hub and never touch the database. SignalR is first-party
+  ASP.NET Core — wire, not a vendor; the harness stays doctor-removable.
+- **The caller comes from `Context.User` via `ClaimsCurrentUser`**, not the request-scoped `ICurrentUser` — a
+  hub method runs outside the HTTP pipeline, where `IHttpContextAccessor.HttpContext` is not reliably set. The
+  token rides the query string for hub paths (a WebSocket can't send an `Authorization` header); the generator
+  prints the `Program.cs` wiring.
+- **Webhook ≠ hub.** An inbound provider callback (a payment webhook) is a normal slice with a route, not a
+  hub. A hub pushes to *your* connected users; it never receives third-party callbacks.
+- **Ephemeral state is not an entity.** Presence and typing are in-memory (a singleton registry) on a single
+  instance; scaling to several instances swaps in a backplane + shared store (Redis, TTL heartbeat) — one line
+  at the composition root, the only place that changes. No database write per heartbeat.
+
+---
+
 ## The ctx.md schema
 
 Every module carries one `<Module>.ctx.md` — the home for the business *why* the code cannot show. It
