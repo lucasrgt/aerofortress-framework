@@ -148,6 +148,36 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
 
 ---
 
+## Forms — react-hook-form, validation grounded in the contract
+
+Multi-field forms (the property/service editors) use **react-hook-form**, not a hand-rolled
+`useState` draft. The same "wire, not reinvention" law that keeps us off a bespoke OpenAPI
+compiler keeps us off a hand-rolled form engine: RHF gives uncontrolled inputs + field-level
+subscriptions (no whole-form re-render per keystroke), dirty/touched/validation state, and one
+submit path. Reimplementing that is the gesture the framework forbids.
+
+- **The `useForm` lives in the ViewModel.** It is form *logic*, not rendering, and RHF's core
+  imports no `react-native` — so the ViewModel stays platform-agnostic (`LZFE009`) and the same
+  form would back a web client. The ViewModel exposes `control` + a `submit`; panels bind their
+  slice with `<Controller>`. The View layer stays the only platform-specific piece.
+- **Validation is grounded in the contract.** The field *shape* and closed enums are already
+  enforced at compile time by the form type (built from the generated enums) and at runtime by the
+  controlled pickers — an invalid enum value cannot be produced. The zod resolver adds only what
+  the type system can't: required fields and documented `@pattern`s (e.g. the coordinate regex,
+  lifted verbatim from the contract). Small, hand-authored, contract-grounded — not free-invented.
+- **Why not generate the zod from the contract.** orval's `client: "zod"` output is the ideal
+  (schema straight from OpenAPI), but v7 emits invalid `zod.number().regex(...)` for numeric fields
+  carrying a `pattern` — it does not compile. Until coordinates are typed as `string` server-side
+  (or orval fixes it), forms hand-author the compact schema. Revisit when the generator can.
+- **Plain `useState` is fine for trivial input.** A one- or two-field reply/search box does not
+  need RHF; the convention is for genuine multi-field forms.
+
+Big forms decompose **panel-per-tab**: a hand-written spine (the ViewModel + the tab-shell View
+with a panel registry) plus one pure `panels/<X>Panel.view.tsx` per tab, each a function of the
+shared `control`. The panels are independent, so they migrate as panel-granularity fan-out.
+
+---
+
 ## Endpoint kinds — the wiring vocabulary
 
 Not every endpoint should have a frontend wiring, and that is not a rare exception (webhooks, internal
