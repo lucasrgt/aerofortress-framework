@@ -10,6 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p packages/lazuli-react/tsconfig.json && tsc --noEmit -p sample/tsconfig.json",
     "lint": "eslint sample && node packages/eslint-plugin/index.test.cjs",
+    "scaffold": "node tools/scaffold-feature.mjs",
+    "assemble-i18n": "node tools/assemble-i18n.mjs",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run test"
   },

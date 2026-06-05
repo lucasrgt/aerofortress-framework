@@ -20,6 +20,7 @@ frontend/
   sample/
     items/            # the canonical feature unit — the blessed reference an app/agent copies (kept pristine)
     harness/          # stand-ins for the app's @/ui, @/i18n, @/client.gen — so the sample compiles + tests
+  tools/              # generators: scaffold a feature unit + assemble the i18n resource tree (npm run scaffold / assemble-i18n)
 ```
 
 The gate (`npm run check`, also run by `.github/workflows/ci.yml` next to `dotnet build`): `tsc --noEmit` over
@@ -80,5 +81,6 @@ allowed shape.
 2. **Rules** — grow LZFE into categories the way the backend has: state-completeness (screens use `<Resource>`),
    i18n-completeness (keys in every locale), design-tokens (no inline hex) — **done**; still ahead: the
    "no hardcoded string" half of i18n, a11y, error-handling (every mutation surfaces its error).
-3. **Generators** — beyond the typed client: scaffold a feature unit, assemble the i18n resource tree, wire route
-   guards from declared policy.
+3. **Generators** — beyond the typed client: scaffold a feature unit + assemble the i18n resource tree (`tools/`,
+   **done**); still ahead: wire route guards from declared policy, and the `lazuli` .NET CLI front-door that shells
+   out to these.
