@@ -11,12 +11,21 @@ OAuth) are platform seams (`*.web.ts` / `*.native.ts`).
 
 ```
 frontend/
+  package.json        # npm workspace root — `npm run check` = typecheck + test (the gate CI runs)
+  tsconfig.base.json  # strict TS config every package/sample extends
+  vitest.config.ts    # jsdom + the @/… aliases that let the sample run wired (not mocked)
   packages/
     lazuli-react/     # @lazuli/react — the spine: AsyncState, Resource (+ guards, session as they graduate)
     eslint-plugin/    # eslint-plugin-lazuli — the LZFE harness (rules + RuleTester self-tests)   [planned home]
   sample/
-    items/            # the canonical feature unit — the blessed reference an app/agent copies
+    items/            # the canonical feature unit — the blessed reference an app/agent copies (kept pristine)
+    harness/          # stand-ins for the app's @/ui, @/i18n, @/client.gen — so the sample compiles + tests
 ```
+
+The gate (`npm run check`, also run by `.github/workflows/ci.yml` next to `dotnet build`): `tsc --noEmit` over
+the spine + sample, then `vitest run`. The spine has unit tests (every `toAsyncState` branch, every `<Resource>`
+state); the sample's test mounts its data door against the harness's real react-query hook — **wired, not mocked**,
+the same shape a real generated client would have.
 
 Apps (e.g. the Hostpoint dogfood) consume `@lazuli/react` + the eslint plugin as packages; the `lazuli` .NET CLI
 scaffolds them in and `lazuli doctor` shells out to `npm run lint` for the frontend slice (Roslyn in-proc for the
@@ -65,6 +74,8 @@ allowed shape.
 
 ## Roadmap (closing the gap with the backend)
 
+0. **Toolchain/CI** — workspace + strict TS + vitest + a CI gate beside `dotnet build` (done); the sample runs
+   wired against a harness.
 1. **Spine** — `AsyncState`/`Resource` (done); graduate route guards + session from app pilots.
 2. **Rules** — grow LZFE into categories the way the backend has: state-completeness (screens use `<Resource>`),
    i18n-completeness (keys in every locale, no hardcoded strings), design-tokens (no inline hex), a11y,

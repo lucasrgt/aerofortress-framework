@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@lazuli/react": ["../packages/lazuli-react/src/index.ts"],
+      "@/*": ["./harness/*"]
+    }
+  },
+  "include": ["items", "harness"]
+}

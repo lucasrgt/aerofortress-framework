@@ -1,8 +1,8 @@
-import { View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Resource } from "@lazuli/react";
-// Illustrative: the app's design-system primitives + a thin Screen wrapper.
-import { Screen, Text, EmptyState } from "@/ui";
+// Illustrative: the app's design-system primitives. The View reaches the design system through these names only —
+// it never imports `react-native` directly, so layout stays design-system-driven and the View tests on web.
+import { Screen, Stack, Text, EmptyState } from "@/ui";
 import { useItemsModel } from "./Items.viewModel";
 import type { Item } from "./Items.viewModel";
 
@@ -29,13 +29,13 @@ export function ItemsView() {
 function ItemList({ items }: { items: Item[] }) {
   return (
     <Screen>
-      <View className="gap-3">
+      <Stack className="gap-3">
         {items.map((item) => (
           <Text key={item.id} variant="body">
             {item.name}
           </Text>
         ))}
-      </View>
+      </Stack>
     </Screen>
   );
 }
