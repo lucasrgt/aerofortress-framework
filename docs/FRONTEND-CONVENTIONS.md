@@ -156,6 +156,10 @@ it says "this endpoint *is* a webhook", and the harness derives that a webhook h
   - `[Endpoint(Audience = "admin")]` → wired by *another* frontend, not this one.
   - Forbidden: `[Webhook(Retries = 3, Signature = "hmac")]` — config-as-annotation is the fattening that
     killed earlier scenarios. Retry/signature/idempotency live in the `Handle`, visibly, never in the mark.
+- **The .NET spelling is a builder call, not a class attribute.** A minimal-API handler is a lambda; a `[Endpoint]`
+  attribute on the slice class can't reach the endpoint metadata. So the marker is `.WithEndpointKind(EndpointKind.Webhook)`
+  on the slice's `Map` (framework extension, `Lazuli.AspNetCore`) — it tags the endpoint, and `AddLazuliOpenApi` /
+  the orval audience filter carry the nature into the client. `App` is the default and needs no call (opt-out).
 
 ---
 
