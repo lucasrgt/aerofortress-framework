@@ -47,10 +47,26 @@ less (Rails-in-RN):
   (`/openapi/v1.json`). RN-agnostic output; the same wire works on device.
 - **zod** + **react-hook-form** — input schemas + form state.
 - **TypeScript strict** — `tsc` is part of the gate; it is what makes "wired" decidable.
+- **Vitest** (jsdom) — the test runner for the **platform-agnostic core**: ViewModels (render-agnostic hooks,
+  tested with `@testing-library/react`'s `renderHook` — no RN runtime), the generated client, types, schemas.
+  *Not* jest-expo: rendering RN components is out of scope (the View is thin by convention), and Vitest is
+  faster, one runner, and the same tests cover a future web client.
 
 expo-router (the route tree) and the feature triple compose: a route file under `app/` is a thin shell that
 renders one feature's `*.view.tsx`; the feature folder holds the view/model/test. Navigation is the router's
 job; data is the ViewModel's. Two seams, never crossed.
+
+### The shared core — the View is the only platform-specific layer
+
+Everything below the View — the ViewModel (a render-agnostic hook), the generated client, the contract types,
+the schemas — is **pure TypeScript with no platform dependency** (`LZFE009` enforces it). So the core is
+**shareable web↔mobile**: a future web client (React + react-dom) and this mobile app (RN) consume the *same*
+ViewModels + client + types; only the Views differ. And it is **tested once, in Vitest** (jsdom), since none of
+it touches a native runtime. Platform capabilities (storage, navigation, push, camera) are **injected ports**
+(the frontend's `IFileStorage`), wired by each platform's View/shell — never imported into the ViewModel. This
+is the old lazuli's "audience/platform projection" done as plain shared TS + thin per-platform Views, not a
+bespoke compiler. Physically extracting a `core` package is a `move` when the web client lands (YAGNI until
+then); the discipline holds from day one.
 
 ---
 
@@ -203,14 +219,15 @@ by construction, and completeness is the compiler. Every rule is born from obser
 
 | Rule | Enforces | Status | Origin |
 |------|----------|--------|--------|
-| `LZFE001` | View purity — a `*.view.tsx` imports no data layer (generated hooks, the client, `fetch`/`axios`); it consumes exactly one ViewModel | planned | the wired-only seam — keeps the View mock-free |
-| `LZFE002` | ViewModel is the only data door — only `*.viewModel.ts` may import the generated client hooks | planned | one data path, one policed surface |
-| `LZFE003` | **No mock in production code** — no import from `**/__mocks__`/`**/fixtures`/MSW and no inline data-literal above threshold outside `*.test.*`; opt out a genuinely static surface with an explicit marker | planned | hostpoint: `WAR-*` storybook fixtures shipped as data |
+| `LZFE001` | View purity — a `*.view.tsx` imports no data layer (generated hooks, the client, `fetch`/`axios`); it consumes its ViewModel. Type-only imports of the contract are exempt | **shipped** | the wired-only seam — keeps the View mock-free |
+| `LZFE002` | ViewModel is the only data door — only `*.viewModel.ts` may (value-)import the generated client | **shipped** | one data path, one policed surface |
+| `LZFE003` | **No mock in production code** — no import from `**/__mocks__`/`**/fixtures`/MSW outside `*.test.*` | **shipped** | hostpoint: `WAR-*` storybook fixtures shipped as data |
 | `LZFE004` | ViewModel is render-agnostic — a `*.viewModel.ts` imports no JSX/`react-dom` | planned | keeps the ViewModel unit-testable without rendering |
 | `LZFE005` | Every feature carries a co-located `*.test.tsx` | planned | mirror of `LZ0003` |
 | `LZFE006` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done |
 | `LZFE007` | Mandatory states — a ViewModel exposing server data exposes `loading` + `error` + `empty` | planned | the sad-path discipline of `[Critical]` slices |
-| `LZFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 ViewModel; an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | planned | back→front completeness — catches "backend done, UI not wired" |
+| `LZFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 ViewModel; an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | **shipped** (fs pass in `npm run lint`) | back→front completeness — catches "backend done, UI not wired" |
+| `LZFE009` | **ViewModel is platform-agnostic** — a `*.viewModel.ts` imports no `react-native`/`expo-*` (value *or* type); platform capabilities are injected ports | **shipped** | keeps the ViewModel + core shareable web↔mobile and Vitest-testable |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
