@@ -150,6 +150,46 @@ const rules = {
     },
   },
 
+  // LZFE006 — the integration tier: every *.view.tsx has a co-located test that RENDERS the View (not just
+  // renderHook on the ViewModel). renderHook (LZFE005) proves the data door mounts; render(<XView/>) proves the
+  // View composes with its ViewModel + children + design system and mounts without crashing — the front-side of
+  // the backend's integration tests. Same anti-test-theater line as LZFE005: presence + that it renders the View
+  // is enforced, the assertions stay per-screen judgment. Start as "warn" in an app with a test backlog; promote
+  // to "error" once every screen has its render test.
+  "view-integration-test": {
+    meta: {
+      type: "problem",
+      docs: { description: "Every *.view.tsx has a co-located *.test.tsx that render()s the View." },
+      messages: {
+        missing:
+          "LZFE006: a View needs a co-located integration test — create {{test}} that render()s <{{component}}> (prove the screen mounts + composes, not only the ViewModel).",
+        inert:
+          "LZFE006: {{test}} exists but doesn't render the View — it must import ./{{base}}.view and call render() (mount the View, not only renderHook the ViewModel).",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isView(f)) return {};
+      return {
+        Program(node) {
+          const base = path.basename(context.filename).replace(/\.view\.tsx$/, "");
+          const testPath = path.join(path.dirname(context.filename), `${base}.test.tsx`);
+          if (!fs.existsSync(testPath)) {
+            context.report({ node, messageId: "missing", data: { test: `${base}.test.tsx`, component: `${base}View` } });
+            return;
+          }
+          const src = fs.readFileSync(testPath, "utf8");
+          const importsView = new RegExp(`["']\\./${base}\\.view["']`).test(src);
+          // `render(` is the RTL integration call; `\\brender\\s*\\(` does NOT match `renderHook(` (the unit call).
+          const usesRender = /\brender\s*\(/.test(src);
+          if (!importsView || !usesRender) {
+            context.report({ node, messageId: "inert", data: { test: `${base}.test.tsx`, base } });
+          }
+        },
+      };
+    },
+  },
+
   // LZFE003 — no mock/fixture/MSW import in production code (only under *.test.*).
   "no-mock": {
     meta: {

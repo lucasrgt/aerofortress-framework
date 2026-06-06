@@ -123,21 +123,29 @@ function ${Plural}List({ ${collection} }: { ${collection}: ${Entity}[] }) {
 
   const test = `import type { ReactNode } from "react";
 import { describe, it, expect } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { render, renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { use${Plural}Model } from "./${Plural}.viewModel";
+import { ${Plural}View } from "./${Plural}.view";
 
-// CANONICAL TEST (LZFE005) — mounts the data door against the real generated client (wired, not mocked). On mount
-// the query is pending, so the resource is in its \`loading\` state.
+// CANONICAL TESTS — the two co-located tiers the harness enforces:
+//  - LZFE005 (unit): renderHook the ViewModel (the data door) against the real client — wired, not mocked.
+//  - LZFE006 (integration): render the View so it composes with its ViewModel + design system and mounts.
+// Neither asserts behavior beyond "it mounts" — behavior stays per-screen judgment.
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-describe("${Plural} ViewModel", () => {
-  it("starts its resource in loading while the list is fetched", () => {
+describe("${Plural}", () => {
+  it("starts its resource in loading while the list is fetched (LZFE005)", () => {
     const { result } = renderHook(() => use${Plural}Model(), { wrapper });
     expect(result.current.state.${collection}.status).toBe("loading");
+  });
+
+  it("renders the View without crashing (LZFE006)", () => {
+    const { container } = render(<${Plural}View />, { wrapper });
+    expect(container).toBeTruthy();
   });
 });
 `;

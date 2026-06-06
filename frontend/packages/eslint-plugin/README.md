@@ -11,7 +11,8 @@ plugin and the app still builds; you only lose enforcement.
 | `view-purity` | LZFE001 | A `*.view.tsx` renders only — no generated client / axios / react-query import (contract **types** are fine). |
 | `data-door` | LZFE002 | The generated client has exactly two doors: a screen's `*.viewModel.ts`, and the auth/routing infra (`lib/session`, `lib/guards`). |
 | `viewmodel-platform-agnostic` | LZFE009 | A `*.viewModel.ts` imports no `react-native` / `expo` (value **or** type) — the core stays shareable web↔mobile and testable in jsdom. |
-| `test-colocated` | LZFE005 | Every `*.viewModel.ts` has a co-located `*.test.tsx` that `renderHook()`s it (proof the wiring mounts). |
+| `test-colocated` | LZFE005 | Every `*.viewModel.ts` has a co-located `*.test.tsx` that `renderHook()`s it (unit tier — proof the data door mounts). |
+| `view-integration-test` | LZFE006 | Every `*.view.tsx` has a co-located test that `render()`s the View (integration tier — proof the screen composes + mounts). |
 | `no-mock` | LZFE003 | No mock/fixture/MSW import in production code (only under `*.test.*`). |
 | `state-completeness` | LZFE010 | A `*.view.tsx` routes loading/error/empty through `<Resource>` — no raw `isPending`/`isError`/… (the booleans are the ViewModel's). |
 | `i18n-completeness` | LZFE011 | Every locale catalog in a `*.i18n.ts` declares the same keys (a key in one but not its siblings is a silent untranslated string). |

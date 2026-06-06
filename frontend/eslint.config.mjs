@@ -23,6 +23,7 @@ export default [
       "lazuli/data-door": "error",
       "lazuli/viewmodel-platform-agnostic": "error",
       "lazuli/test-colocated": "error",
+      "lazuli/view-integration-test": "error",
       "lazuli/no-mock": "error",
       "lazuli/state-completeness": "error",
       "lazuli/i18n-completeness": "error",
