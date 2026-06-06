@@ -4,9 +4,9 @@ namespace Lazuli.Abstractions;
 /// Marks a class as a module's wiring root — the one place a bounded context plugs into the host. It pairs the
 /// two halves of a module's composition: <c>AddServices(IServiceCollection, IConfiguration)</c> (its own DI) and
 /// <c>Map(IEndpointRouteBuilder)</c> (its routes), so the module owns both and the composition root stays a thin
-/// index. The doctor (<c>LZ0015</c>) enforces that shape and — the part that matters — that every <c>[Module]</c>
-/// is wired in the app's explicit module registry, so generating a module and forgetting to register it is a
-/// build error, not a silent 404.
+/// index. The doctor enforces it: <c>LZ0015</c> checks the shape (both halves are declared), and <c>LZ0016</c>
+/// checks every <c>[Module]</c> is wired in the app's explicit module registry — so generating a module and
+/// forgetting to register it is a build error, not a silent 404.
 ///
 /// Like <see cref="SliceAttribute"/> and <see cref="EntityAttribute"/> it is a pure marker: there is nothing to
 /// inherit and nothing happens at runtime. Crucially it is <strong>not</strong> a discovery mechanism — Lazuli
