@@ -6,8 +6,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- This is a shipped framework package, not a test project — the xunit/Mvc.Testing references
-         make the SDK assume otherwise and disable packing. It ships so consumers get [Unit] etc. -->
+         make the SDK assume otherwise: it disables packing and `dotnet test` tries to run the assembly
+         as tests (which aborts — there are none). IsPackable re-enables the package; IsTestProject=false
+         tells the test runner to skip it. It ships so consumers get [Unit] etc. -->
     <IsPackable>true</IsPackable>
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
