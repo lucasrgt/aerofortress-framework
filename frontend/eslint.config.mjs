@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import tsParser from "@typescript-eslint/parser";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tanstackQuery from "@tanstack/eslint-plugin-query";
 import noSecrets from "eslint-plugin-no-secrets";
 import sonarjs from "eslint-plugin-sonarjs";
@@ -24,10 +25,13 @@ export default [
       parser: tsParser,
       ecmaVersion: 2022,
       sourceType: "module",
-      parserOptions: { ecmaFeatures: { jsx: true } },
+      // type-aware lint (projectService) — required by @typescript-eslint/no-floating-promises.
+      parserOptions: { ecmaFeatures: { jsx: true }, projectService: true, tsconfigRootDir: import.meta.dirname },
     },
-    plugins: { lazuli, "no-secrets": noSecrets, sonarjs },
+    plugins: { lazuli, "no-secrets": noSecrets, sonarjs, "@typescript-eslint": tsPlugin },
     rules: {
+      // promise safety (type-aware) — an unhandled promise is a silent failure; `void p` opts out explicitly.
+      "@typescript-eslint/no-floating-promises": "error",
       "lazuli/view-purity": "error",
       "lazuli/data-door": "error",
       "lazuli/viewmodel-platform-agnostic": "error",
