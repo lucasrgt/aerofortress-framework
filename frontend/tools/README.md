@@ -1,9 +1,21 @@
-# tools — frontend generators
+# tools — frontend generators + doctors
 
 Beyond the typed client (orval generates that from the backend contracts), these emit the *structure* a feature
-needs — the frontend parallel of the backend scaffold. Pure render functions in `generate.mjs` (no I/O, unit-tested
-in `generate.test.ts`); the `*.mjs` CLIs wrap them with file writes. The `lazuli` .NET CLI front-door shells out to
-these (the way `lazuli doctor` shells out to `npm run lint`) — two engines, one front door.
+needs — the frontend parallel of the backend scaffold — and check the parts a per-file lint rule can't see. Pure
+functions (no I/O, unit-tested); the `*.mjs` CLIs wrap them with file writes / reports. The `lazuli` .NET CLI
+front-door shells out to these (the way `lazuli doctor` shells out to `npm run lint`) — two engines, one front door.
+
+## The test tiers (how each is enforced)
+
+| Tier | Enforced by | Where |
+|---|---|---|
+| Unit | `LZFE005` (every ViewModel has a co-located `renderHook` test) | eslint, per-file |
+| Integration | `LZFE006` (every View has a co-located `render()` test) | eslint, per-file |
+| **E2E** | **`e2e-doctor.mjs`** (a curated `e2e/flows.json` + every listed flow has a spec + a runner) | this dir, **per-project** |
+
+E2E is flow-level and expensive, so it is **not** enforced per component — `checkE2e(root)` enforces a *curated
+checklist*: humans declare the critical flows in `e2e/flows.json`, the doctor proves each has a spec. See the
+Hostpoint dogfood's `scripts/lzfe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
 
 ## Scaffold a feature unit
 

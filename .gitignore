@@ -30,8 +30,9 @@ local-feed/
 
 ## Node (template clients, if any)
 node_modules/
-## scaffold-generator test scratch (written under cwd so flat-config globs match; cleaned up after)
+## generator/doctor test scratch (written under cwd; cleaned up after)
 frontend/tools/.scaffold-tmp-*/
+frontend/tools/.e2e-doctor-tmp-*/
 
 ## OS
 .DS_Store
