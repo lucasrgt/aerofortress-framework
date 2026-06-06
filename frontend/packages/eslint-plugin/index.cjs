@@ -150,22 +150,24 @@ const rules = {
     },
   },
 
-  // LZFE006 — the integration tier: every SCREEN (a *.view.tsx with a sibling *.viewModel.ts) has a co-located test
+  // LZFE006 — the integration tier: every SCREEN (a *.view.tsx that consumes a ViewModel) has a co-located test
   // that RENDERS the View (not just renderHook on the ViewModel). renderHook (LZFE005) proves the data door mounts;
   // render(<XView/>) proves the View composes with its ViewModel + children + design system and mounts without
   // crashing — the front-side of the backend's integration tests. Same anti-test-theater line as LZFE005: presence
   // + that it renders the View is enforced, the assertions stay per-screen judgment. Start as "warn" in an app with
   // a test backlog; promote to "error" once every screen has its render test.
   //
-  // SCOPE — the screen unit, not every view file. A *.view.tsx with NO sibling *.viewModel.ts is a presentational
-  // FRAGMENT (a wizard step, a settings panel — props-in, no data door); it has no ViewModel to compose, so it is
-  // not a screen and is covered transitively when its shell renders. This mirrors the canonical View+ViewModel unit
-  // and the data-door architecture (a View with no ViewModel has nothing to test-mount in isolation). The gate is
-  // visible: the sibling-file check is the trigger, surfaced in the lint message and reproducible by `ls`.
+  // SCOPE — the screen unit, detected by IMPORT, not by a sibling file. With the monorepo split the ViewModel lives
+  // in a `core` package while the View lives in the platform shell (mobile/web) — they are no longer siblings. So a
+  // *.view.tsx is a SCREEN when it CONSUMES a ViewModel: it imports a `*.viewModel` module (co-located) OR a
+  // `use<Name>Model` data-door hook (cross-package, e.g. from `@scope/app-core`). A View that imports no ViewModel
+  // is a presentational FRAGMENT (a wizard step, a settings panel — props-in, no data door); it has nothing to
+  // test-mount in isolation and is covered transitively when its shell renders, so it is skipped. The trigger is
+  // visible: it reads off the View's own import statements, surfaced in the lint message and inspectable in source.
   "view-integration-test": {
     meta: {
       type: "problem",
-      docs: { description: "Every screen (a *.view.tsx with a sibling *.viewModel.ts) has a co-located *.test.tsx that render()s the View." },
+      docs: { description: "Every screen (a *.view.tsx that imports a ViewModel) has a co-located *.test.tsx that render()s the View." },
       messages: {
         missing:
           "LZFE006: a screen View needs a co-located integration test — create {{test}} that render()s <{{component}}> (prove the screen mounts + composes, not only the ViewModel).",
@@ -177,11 +179,21 @@ const rules = {
       const f = context.filename.replace(/\\/g, "/");
       if (!isView(f)) return {};
       const base = path.basename(context.filename).replace(/\.view\.tsx$/, "");
-      // Scope to the SCREEN unit: a View with no sibling ViewModel is a presentational fragment (covered via its
-      // shell), not an independently-gated screen. Skip it.
-      if (!fs.existsSync(path.join(path.dirname(context.filename), `${base}.viewModel.ts`))) return {};
+      // A View is a SCREEN if it consumes a ViewModel — detected off its import statements so it works whether the
+      // ViewModel is co-located (`./X.viewModel`) or in a `core` package (a `use<Name>Model` hook). A View with no
+      // such import is a presentational fragment (covered via its shell) — never gated here.
+      let consumesViewModel = false;
       return {
-        Program(node) {
+        ImportDeclaration(node) {
+          const spec = node.source.value;
+          if (typeof spec === "string" && /\.viewModel$/.test(spec)) consumesViewModel = true;
+          for (const s of node.specifiers || []) {
+            const name = s.imported?.name ?? s.local?.name ?? "";
+            if (/^use[A-Z]\w*Model$/.test(name)) consumesViewModel = true;
+          }
+        },
+        "Program:exit"(node) {
+          if (!consumesViewModel) return;
           const testPath = path.join(path.dirname(context.filename), `${base}.test.tsx`);
           if (!fs.existsSync(testPath)) {
             context.report({ node, messageId: "missing", data: { test: `${base}.test.tsx`, component: `${base}View` } });

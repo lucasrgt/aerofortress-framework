@@ -189,5 +189,24 @@ ruleTester.run("no-hardcoded-copy", plugin.rules["no-hardcoded-copy"], {
   ],
 });
 
+// LZFE006 — a screen View (one that imports a ViewModel) needs a co-located render test. Detection is by IMPORT,
+// not a sibling file, so it survives the monorepo split (ViewModel in `core`, View in the platform shell). In
+// RuleTester the co-located test file doesn't exist on disk, so a VM-consuming View reports `missing` (proving the
+// gate fires) while a presentational fragment passes (proving the gate skips). A unique base avoids a cwd collision.
+ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
+  valid: [
+    // a presentational fragment: imports no ViewModel -> not a screen, skipped (covered via its shell).
+    { filename: "Lzfe006Frag.view.tsx", code: `import { View } from "react-native"; export const X = () => <View />;` },
+    // out of scope: not a *.view.tsx (even though it names a model hook).
+    { filename: "Lzfe006Probe.tsx", code: `import { useLzfe006ProbeModel } from "@scope/app-core";` },
+  ],
+  invalid: [
+    // cross-package: imports a use<Name>Model data-door hook from a core package -> a screen, needs the render test.
+    { filename: "Lzfe006Probe.view.tsx", code: `import { useLzfe006ProbeModel } from "@scope/app-core";`, errors: [{ messageId: "missing" }] },
+    // co-located (retrocompat): imports the ./X.viewModel module -> still a screen.
+    { filename: "Lzfe006Probe.view.tsx", code: `import { useLzfe006ProbeModel } from "./Lzfe006Probe.viewModel";`, errors: [{ messageId: "missing" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");

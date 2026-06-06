@@ -65,6 +65,17 @@ the ViewModel is in `core` and the View in `mobile`/`web` — different packages
 render it; the ViewModel's `renderHook` test lives with the ViewModel in `core`. (This is the one framework change
 the migration depends on — do it first.)
 
+**Done in canon (2026-06-06).** `LZFE006` now detects screens by import — off the View's `ImportDeclaration`s: it is a
+screen if it imports a `*.viewModel` module **or** a `use<Name>Model` data-door hook (co-located OR cross-package).
+Self-tests pin both edges (a VM-consuming View fires `missing`; a fragment passes). This import-based form is strictly
+*more correct* than the old sibling heuristic: run against hostpoint it surfaced **32 real screens the sibling rule
+missed** — onboarding steps + property-edit/settings panels that consume per-panel hooks from a *shared* parent
+ViewModel (e.g. `useContactPanelModel` in `TravelerSettings.viewModel.ts`), so they had no sibling `.viewModel.ts` and
+were wrongly skipped as fragments. They own real data doors + flows, so they ARE screens. **hostpoint adopts the
+import-based rule during the front restructure (milestones 4–5), writing each screen's co-located render test as the
+View moves to `mobile/`** — filling that 32-screen backlog honestly in the new structure rather than as throwaway tests
+on files about to move. Until then hostpoint keeps the proven sibling rule (stays pristine); canon is the import form.
+
 ## `Lazuli.toml` schema (orchestrator)
 
 ```toml
