@@ -1,5 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json.Nodes;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi;
 
 namespace Lazuli.AspNetCore;
 
@@ -27,8 +34,50 @@ public static class OpenApiExtensions
     /// </example>
     public static IServiceCollection AddLazuliOpenApi(this IServiceCollection services) =>
         services.AddOpenApi(options =>
+        {
             options.CreateSchemaReferenceId = type =>
                 type.Type.DeclaringType is { } slice
                     ? slice.Name + type.Type.Name
-                    : OpenApiOptions.CreateDefaultSchemaReferenceId(type));
+                    : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+
+            // Enumerate the error codes (every *ErrorCodes registry constant, gathered by reflection) into the
+            // ErrorBody.Code schema, so the generated client is typed on the closed set and the frontend can be
+            // checked for an exhaustive translation of each. LZ0018 guarantees every code is such a constant, so
+            // this set is the whole contract.
+            options.AddSchemaTransformer((schema, context, _) =>
+            {
+                if (context.JsonTypeInfo.Type == typeof(ErrorBody)
+                    && schema.Properties.TryGetValue("code", out var codeSchema)
+                    && codeSchema is OpenApiSchema concreteCode)
+                {
+                    var codes = ErrorCodes();
+                    if (codes.Count > 0)
+                        concreteCode.Enum = codes.Select(code => (JsonNode)JsonValue.Create(code)!).ToList();
+                }
+                return Task.CompletedTask;
+            });
+        });
+
+    // Every error code in the app: the public string constants on classes named *ErrorCodes, across the loaded
+    // assemblies. LZ0018 enforces that this registry set is the complete set of codes the app can emit.
+    private static IReadOnlyList<string> ErrorCodes() =>
+        AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => !assembly.IsDynamic)
+            .SelectMany(SafeTypes)
+            .Where(type => type is { IsClass: true, IsAbstract: true, IsSealed: true }
+                && type.Name.EndsWith("ErrorCodes", StringComparison.Ordinal))
+            .SelectMany(type => type.GetFields(BindingFlags.Public | BindingFlags.Static))
+            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+            .Select(field => field.GetRawConstantValue() as string)
+            .Where(code => !string.IsNullOrEmpty(code))
+            .Select(code => code!)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(code => code, StringComparer.Ordinal)
+            .ToList();
+
+    private static IEnumerable<Type> SafeTypes(Assembly assembly)
+    {
+        try { return assembly.GetTypes(); }
+        catch (ReflectionTypeLoadException ex) { return ex.Types.Where(type => type is not null)!; }
+    }
 }

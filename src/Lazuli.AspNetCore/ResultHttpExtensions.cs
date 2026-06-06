@@ -1,6 +1,9 @@
+using System.Reflection;
 using Lazuli.Abstractions;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http.Metadata;
 
 namespace Lazuli.AspNetCore;
 
@@ -24,20 +27,15 @@ public sealed record ErrorBody(string Error, string Code, string Message, IReadO
 /// </summary>
 public static class ResultHttpExtensions
 {
-    /// <summary>Render the result as a <em>typed</em> response — <see cref="Ok{T}"/> with the value on success,
-    /// or an <see cref="ErrorBody"/> with its mapped status on failure. The return is a typed
-    /// <see cref="Results{T1,T2}"/> union (not bare <c>IResult</c>) so ASP.NET's OpenAPI infers both the 200
-    /// schema (<typeparamref name="T"/>) and the error schema — which is what makes the generated client typed
-    /// end to end, the foundation of the "wired, not mocked" frontend harness.</summary>
-    public static Results<Ok<T>, JsonHttpResult<ErrorBody>> ToHttp<T>(this Result<T> result) =>
-        result.IsSuccess
-            ? TypedResults.Ok(result.Value)
-            : TypedResults.Json(
-                new ErrorBody(result.Error.Kind.ToString(), result.Error.Code, result.Error.Message, result.Error.Fields),
-                statusCode: StatusFor(result.Error.Kind));
+    /// <summary>Render the result as a <see cref="LazuliHttpResult{T}"/> — the value with <c>200</c> on success,
+    /// or an <see cref="ErrorBody"/> with its <see cref="ErrorKind"/>-mapped status on failure. The result
+    /// contributes endpoint metadata for both arms, so ASP.NET's OpenAPI documents the <typeparamref name="T"/>
+    /// success schema <em>and</em> the <see cref="ErrorBody"/> error schema — which is what makes the generated
+    /// client typed end to end (and carries the error <c>code</c> enum to the frontend).</summary>
+    public static LazuliHttpResult<T> ToHttp<T>(this Result<T> result) => new(result);
 
     // Exhaustive over ErrorKind: add a kind without a case here and the compiler flags it.
-    private static int StatusFor(ErrorKind kind) => kind switch
+    internal static int StatusFor(ErrorKind kind) => kind switch
     {
         ErrorKind.Validation => StatusCodes.Status400BadRequest,
         ErrorKind.Unauthorized => StatusCodes.Status401Unauthorized,
@@ -49,4 +47,50 @@ public static class ResultHttpExtensions
         ErrorKind.Internal => StatusCodes.Status500InternalServerError,
         ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
     };
+}
+
+/// <summary>
+/// The HTTP rendering of a slice's <see cref="Result{T}"/>: the value with <c>200</c> on success, or an
+/// <see cref="ErrorBody"/> with the <see cref="ErrorKind"/>-mapped status on failure. It is its own result type
+/// (not a <c>Results&lt;,&gt;</c> union) so it can advertise <em>both</em> arms to OpenAPI — the success
+/// <typeparamref name="T"/> and the <see cref="ErrorBody"/> envelope — which a dynamic-status
+/// <c>JsonHttpResult</c> cannot. That documented envelope is what carries the error <c>code</c> (and its enum)
+/// into the generated client.
+/// </summary>
+/// <typeparam name="T">The success value type.</typeparam>
+public sealed class LazuliHttpResult<T> : IResult, IEndpointMetadataProvider
+{
+    private readonly Result<T> _result;
+
+    internal LazuliHttpResult(Result<T> result) => _result = result;
+
+    /// <inheritdoc />
+    public Task ExecuteAsync(HttpContext httpContext)
+    {
+        IResult response = _result.IsSuccess
+            ? TypedResults.Ok(_result.Value)
+            : TypedResults.Json(
+                new ErrorBody(_result.Error.Kind.ToString(), _result.Error.Code, _result.Error.Message, _result.Error.Fields),
+                statusCode: ResultHttpExtensions.StatusFor(_result.Error.Kind));
+        return response.ExecuteAsync(httpContext);
+    }
+
+    /// <summary>Advertise both arms to OpenAPI: the <typeparamref name="T"/> success and the
+    /// <see cref="ErrorBody"/> envelope at the statuses Lazuli maps errors to. Reuses the framework's own typed
+    /// results so the metadata stays canonical — and so the <see cref="ErrorBody"/> schema (with its code enum)
+    /// is always present in the document.</summary>
+    static void IEndpointMetadataProvider.PopulateMetadata(MethodInfo method, EndpointBuilder builder)
+    {
+        Contribute<Ok<T>>(method, builder);
+        Contribute<BadRequest<ErrorBody>>(method, builder);
+        Contribute<NotFound<ErrorBody>>(method, builder);
+        Contribute<Conflict<ErrorBody>>(method, builder);
+        Contribute<UnprocessableEntity<ErrorBody>>(method, builder);
+    }
+
+    // PopulateMetadata is an explicit static interface member on each typed result, reachable only through a
+    // constrained type parameter.
+    private static void Contribute<TResult>(MethodInfo method, EndpointBuilder builder)
+        where TResult : IEndpointMetadataProvider =>
+        TResult.PopulateMetadata(method, builder);
 }

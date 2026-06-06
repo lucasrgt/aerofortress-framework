@@ -43,7 +43,7 @@ public class Wallet
     {
         var debited = Balance.Subtract(amount);
         if (debited.IsFailure)
-            return Error.BusinessRule("wallets.insufficient_funds",
+            return Error.BusinessRule(WalletsErrorCodes.InsufficientFunds,
                 $"insufficient funds: balance {Balance} cannot cover {amount}");
 
         Balance = debited.Value;
@@ -56,8 +56,8 @@ public class Wallet
     private Result<Wallet> EnsureValid()
     {
         var validation = new Validation()
-            .Check(Id != Guid.Empty, "id", "wallet.id.required", "is required")
-            .Check(Balance.Amount >= 0, "balance", "wallet.balance.negative", "cannot be negative");
+            .Check(Id != Guid.Empty, "id", WalletsErrorCodes.IdRequired, "is required")
+            .Check(Balance.Amount >= 0, "balance", WalletsErrorCodes.BalanceNegative, "cannot be negative");
         if (validation.Failed)
             return validation.ToError();
         return this;

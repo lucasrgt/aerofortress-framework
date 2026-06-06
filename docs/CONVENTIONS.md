@@ -82,10 +82,15 @@ public static class Deposit
   category that maps to the HTTP status; **`Code`** is a stable, language-neutral, namespaced key — `<module>.<reason>`
   (e.g. `wallets.insufficient_funds`), value objects use `<vo>.<reason>`, field errors `<field>.<reason>` — that the
   **frontend localizes from**; `Message` is a developer hint (English, like a log line), never the copy a user reads.
-  The code rides the typed `ErrorBody` into the OpenAPI document, so the generated client gets it for free:
-  localization stays the frontend's job (copy has one owner), the backend ships the key. The factories require it —
-  `Error.NotFound(code, message)`, `Validation.Check(ok, field, code, message)` — while `Collect` inherits the value
-  object's own code.
+  The factories require it — `Error.NotFound(code, message)`, `Validation.Check(ok, field, code, message)` — while
+  `Collect` inherits the value object's own code.
+- **A code is a registry constant, not a literal.** Each module owns a `<Module>ErrorCodes` static class of
+  `const string` codes — the readable catalog of what can go wrong there — and every `Error`/`Check`/`FieldError`
+  references one (`WalletsErrorCodes.NotFound`), never a bare string. The doctor (`LZ0018`) enforces it, which keeps
+  the set **discoverable**: `AddLazuliOpenApi` reflects over the registries and enumerates them into the
+  `ErrorBody.code` schema, and `ToHttp` advertises the `ErrorBody` envelope on every endpoint — so the generated
+  client is typed on the closed set of codes and the frontend's i18n can be checked for an exhaustive translation of
+  each (localization stays the frontend's job — copy has one owner — the backend ships the keys).
 - **Rich types carry the semantics.** Prefer `Money`, `Cpf`, `Email` over `decimal`,
   `string`, and let entities own their invariants (see **The domain** below). The type *is*
   the rule — the AI understands it without reading a validator.
@@ -325,6 +330,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0015` | **Module shape**: a `[Module]` is a static class declaring a public static `AddServices(IServiceCollection, IConfiguration)` (its own DI) and a public static `Map(IEndpointRouteBuilder)` (its routes) — it owns both halves of its wiring | **shipped** | the composition root drifts into a dumping ground; a module's DI scatters across `Program.cs` |
 | `LZ0016` | **Module registered**: every `[Module]`'s `AddServices` and `Map` are actually called in the explicit registry (`AddModules` / `MapModules`) — a compile-time reachability check, no reflection | **shipped** | generating a module and forgetting to wire it — a silent 404 instead of a build error |
 | `LZ0017` | **Composition root is an index**: the top-level statements (`Program.cs`) wire only `AddLazuli` / `AddPlatform` / `AddModules` and the matching `UseLazuli` / `UsePlatform` / `MapModules`; any other service registration (`IServiceCollection`), pipeline step, or endpoint mapping (`Use*`/`Map*`) there is flagged and redirected to the platform or a module | **shipped** | the index rots into a dumping ground — infra creeps back into `Program.cs`, drifts, and bit-rots there unwatched |
+| `LZ0018` | **Error code is a registry constant**: the `code` passed to an `Error` factory / `Validation.Check` / `Validation.Add` / `FieldError` must reference a `const` on a class named `*ErrorCodes` (e.g. `WalletsErrorCodes.NotFound`), never an inline literal | **shipped** | a code invisible to reflection can't be enumerated into the OpenAPI contract — it would reach a user untranslated; the registry keeps the set discoverable + typed end-to-end |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
