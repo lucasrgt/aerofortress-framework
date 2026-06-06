@@ -59,7 +59,7 @@ public static class ValueObjectGenerator
             public static Result<{{name}}> From(string value) =>
                 !string.IsNullOrWhiteSpace(value)
                     ? Result<{{name}}>.Ok(new {{name}}(value))
-                    : Error.Validation("{{name.ToLowerInvariant()}} is required");
+                    : Error.Validation("{{name.ToLowerInvariant()}}.required", "{{name.ToLowerInvariant()}} is required");
 
             /// <inheritdoc />
             public override string ToString() => Value;

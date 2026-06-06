@@ -73,7 +73,7 @@ public static class EntityGenerator
             private Result<{{name}}> EnsureValid()
             {
                 var validation = new Validation()
-                    .Check(Id != Guid.Empty, "id", "is required");
+                    .Check(Id != Guid.Empty, "id", "id.required", "is required");
                 if (validation.Failed)
                     return validation.ToError();
                 return this;

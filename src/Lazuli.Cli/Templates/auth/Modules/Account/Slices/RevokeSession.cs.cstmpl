@@ -17,7 +17,7 @@ public static class RevokeSession
     {
         var owned = await db.UserSessions.AnyAsync(s => s.FamilyId == input.SessionId && s.UserId == current.UserId, ct);
         if (!owned)
-            return Error.NotFound("session not found");
+            return Error.NotFound("account.session_not_found", "session not found");
 
         await Refresh.RevokeFamily(db, input.SessionId, ct);
         return new Output();

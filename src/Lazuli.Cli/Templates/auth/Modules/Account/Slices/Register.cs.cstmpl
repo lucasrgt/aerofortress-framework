@@ -23,7 +23,7 @@ public static class Register
         var email = Email.From(input.Email);
         var validation = new Validation()
             .Collect("email", email)
-            .Check(input.Password.Length >= 8, "password", "must be at least 8 characters");
+            .Check(input.Password.Length >= 8, "password", "password.too_short", "must be at least 8 characters");
         if (validation.Failed)
             return validation.ToError();
 
@@ -33,7 +33,7 @@ public static class Register
             .IgnoreQueryFilters()
             //</lz:tenancy>
             .AnyAsync(u => u.Email == email.Value, ct))
-            return Error.Conflict("an account with this email already exists");
+            return Error.Conflict("account.email_taken", "an account with this email already exists");
 
         var user = new User
         {

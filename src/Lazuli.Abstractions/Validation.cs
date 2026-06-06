@@ -13,30 +13,33 @@ public sealed class Validation
 {
     private readonly List<FieldError> _fields = [];
 
-    /// <summary>Record an error for <paramref name="field"/> unless <paramref name="ok"/> holds. Fluent.</summary>
-    public Validation Check(bool ok, string field, string message)
+    /// <summary>Record an error for <paramref name="field"/> unless <paramref name="ok"/> holds, with a stable
+    /// <paramref name="code"/> the client localizes from and a developer <paramref name="message"/>. Fluent.</summary>
+    public Validation Check(bool ok, string field, string code, string message)
     {
         if (!ok)
-            _fields.Add(new FieldError(field, message));
+            _fields.Add(new FieldError(field, code, message));
         return this;
     }
 
-    /// <summary>Record an error for <paramref name="field"/> directly — e.g. a value object's failure. Fluent.</summary>
-    public Validation Add(string field, string message)
+    /// <summary>Record an error for <paramref name="field"/> directly, with its <paramref name="code"/> and a
+    /// developer <paramref name="message"/>. Fluent.</summary>
+    public Validation Add(string field, string code, string message)
     {
-        _fields.Add(new FieldError(field, message));
+        _fields.Add(new FieldError(field, code, message));
         return this;
     }
 
     /// <summary>
     /// Fold a value object's construction into the accumulation: if <paramref name="result"/>
-    /// failed, record its message under <paramref name="field"/>. Keeps the value object the
-    /// single source of the rule while collecting its failure alongside the others. Fluent.
+    /// failed, record its error under <paramref name="field"/> — inheriting the value object's own
+    /// <see cref="Error.Code"/> and message, since the value object is the single source of the rule
+    /// (and its code). Fluent.
     /// </summary>
     public Validation Collect<T>(string field, Result<T> result)
     {
         if (result.IsFailure)
-            _fields.Add(new FieldError(field, result.Error.Message));
+            _fields.Add(new FieldError(field, result.Error.Code, result.Error.Message));
         return this;
     }
 

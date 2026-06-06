@@ -24,14 +24,14 @@ public static class Deposit
         // of the amount rule — we only collect its failure, never restate "amount >= 0" here.
         var amount = Money.From(input.Amount);
         var validation = new Validation()
-            .Check(input.WalletId != Guid.Empty, "walletId", "is required")
+            .Check(input.WalletId != Guid.Empty, "walletId", "walletId.required", "is required")
             .Collect("amount", amount);
         if (validation.Failed)
             return validation.ToError();
 
         var wallet = await db.Wallets.FindAsync([input.WalletId], ct);
         if (wallet is null)
-            return Error.NotFound($"wallet {input.WalletId} not found");
+            return Error.NotFound("wallets.not_found", $"wallet {input.WalletId} not found");
 
         // The state transition lives on the entity; the slice only orchestrates. Deposit cannot fail
         // (Money already guarantees a non-negative amount), so there is no Result to unwrap here.

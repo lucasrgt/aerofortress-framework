@@ -74,7 +74,7 @@ public static class SliceGenerator
                 public static Task<Result<Output>> Handle(Input input, CancellationToken ct)
                 {
                     if (input.Id == Guid.Empty)
-                        return Task.FromResult<Result<Output>>(Error.Validation("id is required"));
+                        return Task.FromResult<Result<Output>>(Error.Validation("id.required", "id is required"));
 
                     return Task.FromResult<Result<Output>>(new Output(input.Id));
                 }

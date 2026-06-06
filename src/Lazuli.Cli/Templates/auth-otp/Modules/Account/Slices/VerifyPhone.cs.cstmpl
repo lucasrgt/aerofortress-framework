@@ -25,18 +25,18 @@ public static class VerifyPhone
             .OrderByDescending(o => o.CreatedAt)
             .FirstOrDefaultAsync(ct);
         if (otp is null)
-            return Error.Unauthorized("no active code");
+            return Error.Unauthorized("auth.no_active_code", "no active code");
 
         if (!PasswordHash.FromStored(otp.CodeHash).Verify(input.Code))
         {
             otp.Attempts++;
             await db.SaveChangesAsync(ct);
-            return Error.Unauthorized("invalid code");
+            return Error.Unauthorized("auth.invalid_code", "invalid code");
         }
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.UserId, ct);
         if (user is null)
-            return Error.NotFound("user not found");
+            return Error.NotFound("account.user_not_found", "user not found");
 
         otp.UsedAt = now;
         user.Phone = otp.Phone;

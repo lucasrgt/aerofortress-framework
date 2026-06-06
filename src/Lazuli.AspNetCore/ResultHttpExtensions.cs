@@ -7,13 +7,14 @@ namespace Lazuli.AspNetCore;
 /// <summary>
 /// The wire shape of a failed <see cref="Result{T}"/> — the error envelope every endpoint returns on the sad
 /// path. A named type (not an anonymous object) so it lands in the OpenAPI document and the generated client is
-/// typed on the sad path too. The shape is unchanged from the original anonymous body
-/// (<c>error</c>/<c>message</c>/<c>fields</c>), so the wire is stable.
+/// typed on the sad path too — which is what carries the <c>code</c> to the frontend for free: the client reads
+/// it from the typed envelope and renders localized copy keyed by it (the <c>message</c> is only a dev hint).
 /// </summary>
-/// <param name="Error">The <see cref="ErrorKind"/> name (e.g. <c>NotFound</c>).</param>
-/// <param name="Message">The human-readable message.</param>
+/// <param name="Error">The <see cref="ErrorKind"/> name (e.g. <c>NotFound</c>) — drives the HTTP status.</param>
+/// <param name="Code">The stable, language-neutral i18n key the client localizes from (e.g. <c>wallets.insufficient_funds</c>).</param>
+/// <param name="Message">A developer-facing message (English); not the copy a user reads.</param>
 /// <param name="Fields">The field-level errors when the failure is a multi-field validation; otherwise null.</param>
-public sealed record ErrorBody(string Error, string Message, IReadOnlyList<FieldError>? Fields);
+public sealed record ErrorBody(string Error, string Code, string Message, IReadOnlyList<FieldError>? Fields);
 
 /// <summary>
 /// Maps a domain <see cref="Result{T}"/> to an HTTP response at the route boundary, so slice handlers never
@@ -32,7 +33,7 @@ public static class ResultHttpExtensions
         result.IsSuccess
             ? TypedResults.Ok(result.Value)
             : TypedResults.Json(
-                new ErrorBody(result.Error.Kind.ToString(), result.Error.Message, result.Error.Fields),
+                new ErrorBody(result.Error.Kind.ToString(), result.Error.Code, result.Error.Message, result.Error.Fields),
                 statusCode: StatusFor(result.Error.Kind));
 
     // Exhaustive over ErrorKind: add a kind without a case here and the compiler flags it.

@@ -17,7 +17,7 @@ public readonly record struct Email
         var normalized = (raw ?? string.Empty).Trim().ToLowerInvariant();
         var at = normalized.IndexOf('@');
         var valid = at > 0 && at < normalized.Length - 1 && !normalized.Contains(' ');
-        return valid ? new Email(normalized) : Error.Validation("email is not a valid address");
+        return valid ? new Email(normalized) : Error.Validation("email.invalid", "email is not a valid address");
     }
 
     /// <summary>Rehydrate from a value already stored (trusted) — used by the EF value converter.</summary>

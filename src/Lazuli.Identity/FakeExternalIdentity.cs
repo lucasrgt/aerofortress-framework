@@ -12,6 +12,6 @@ public sealed class FakeExternalIdentity : IExternalIdentity
     /// <inheritdoc />
     public Result<ExternalUser> Verify(string idToken) =>
         string.IsNullOrWhiteSpace(idToken)
-            ? Error.Unauthorized("invalid identity token")
+            ? Error.Unauthorized("identity.invalid_token", "invalid identity token")
             : new ExternalUser("fake", idToken, idToken);
 }

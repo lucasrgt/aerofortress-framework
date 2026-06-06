@@ -14,7 +14,7 @@ public static class GetBalance
     {
         var wallet = await db.Wallets.FindAsync([input.WalletId], ct);
         return wallet is null
-            ? Error.NotFound($"wallet {input.WalletId} not found")
+            ? Error.NotFound("wallets.not_found", $"wallet {input.WalletId} not found")
             : new Output(wallet.Id, wallet.Balance.Amount);
     }
 

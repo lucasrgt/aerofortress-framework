@@ -22,14 +22,14 @@ public static class Withdraw
     {
         var amount = Money.From(input.Amount);
         var validation = new Validation()
-            .Check(input.WalletId != Guid.Empty, "walletId", "is required")
+            .Check(input.WalletId != Guid.Empty, "walletId", "walletId.required", "is required")
             .Collect("amount", amount);
         if (validation.Failed)
             return validation.ToError();
 
         var wallet = await db.Wallets.FindAsync([input.WalletId], ct);
         if (wallet is null)
-            return Error.NotFound($"wallet {input.WalletId} not found");
+            return Error.NotFound("wallets.not_found", $"wallet {input.WalletId} not found");
 
         // The overdraw rule lives on the entity; the slice only propagates its verdict. On failure the
         // balance is untouched and SaveChanges never runs — no partial state crosses the boundary.

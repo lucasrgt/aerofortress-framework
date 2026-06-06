@@ -15,7 +15,7 @@ public static class Update__ENTITY__
     {
         var item = await db.__PLURAL__.FirstOrDefaultAsync(e => e.Id == input.Id, ct);
         if (item is null)
-            return Error.NotFound("__ENTITY_LOWER__ not found");
+            return Error.NotFound("__ENTITY_LOWER__.not_found", "__ENTITY_LOWER__ not found");
 
 __UPDATE_ASSIGNMENTS____UPDATE_TODO____UPDATE_TOUCH__        await db.SaveChangesAsync(ct);
         return new Output(item.Id);

@@ -19,7 +19,7 @@ public readonly record struct Money
     public static Result<Money> From(decimal amount) =>
         amount >= 0
             ? Result<Money>.Ok(new Money(amount))
-            : Error.Validation("money cannot be negative");
+            : Error.Validation("money.negative", "money cannot be negative");
 
     public Money Add(Money other) => new(Amount + other.Amount);
 

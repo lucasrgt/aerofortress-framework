@@ -38,49 +38,59 @@ public enum ErrorKind
     Unavailable,
 }
 
-/// <summary>One field-level validation error: which input <paramref name="Field"/> failed, and why.</summary>
+/// <summary>One field-level validation error: which input <paramref name="Field"/> failed, a stable
+/// <paramref name="Code"/> the client localizes from, and a developer <paramref name="Message"/>.</summary>
 /// <param name="Field">The offending input field (e.g. <c>amount</c>).</param>
-/// <param name="Message">A human-readable explanation for that field.</param>
-public readonly record struct FieldError(string Field, string Message);
+/// <param name="Code">The stable, language-neutral i18n key for this field error (e.g. <c>amount.must_be_positive</c>).</param>
+/// <param name="Message">A developer-facing explanation (English); the client renders copy keyed by <paramref name="Code"/>.</param>
+public readonly record struct FieldError(string Field, string Code, string Message);
 
 /// <summary>
-/// A structured failure: a machine-readable <paramref name="Kind"/> (drives HTTP mapping, the
-/// knowledge graph, i18n), a human <paramref name="Message"/>, and — for validation — the list
-/// of <paramref name="Fields"/> that failed, so a slice reports them all at once. Slices return
-/// these instead of throwing for expected, domain-level outcomes.
+/// A structured failure: a machine-readable <paramref name="Kind"/> (drives the HTTP status), a stable
+/// language-neutral <paramref name="Code"/> the client localizes from, a developer <paramref name="Message"/>,
+/// and — for validation — the list of <paramref name="Fields"/> that failed, so a slice reports them all at
+/// once. Slices return these instead of throwing for expected, domain-level outcomes.
+///
+/// The <paramref name="Code"/> is the contract the frontend translates: a namespaced key like
+/// <c>wallets.insufficient_funds</c>, owned by the module that raises it. The <paramref name="Message"/> is a
+/// developer hint (English, like a log line), never the copy a user reads — that is the client's, keyed by the
+/// code. <paramref name="Kind"/> stays the coarse category that maps to the HTTP status.
 /// </summary>
 /// <param name="Kind">The failure category, from the closed <see cref="ErrorKind"/> catalog.</param>
-/// <param name="Message">A human-readable explanation of what went wrong.</param>
+/// <param name="Code">The stable, language-neutral i18n key the client localizes from (e.g. <c>wallets.insufficient_funds</c>).</param>
+/// <param name="Message">A developer-facing explanation (English); the client renders copy keyed by <paramref name="Code"/>.</param>
 /// <param name="Fields">The field-level errors, when the failure is a validation of several inputs.</param>
 public readonly record struct Error(
     ErrorKind Kind,
+    string Code,
     string Message,
     IReadOnlyList<FieldError>? Fields = null)
 {
-    /// <summary>The input failed validation, with a single human message.</summary>
-    public static Error Validation(string message) => new(ErrorKind.Validation, message);
+    /// <summary>The input failed validation, with a stable <paramref name="code"/> and a developer message.</summary>
+    public static Error Validation(string code, string message) => new(ErrorKind.Validation, code, message);
 
-    /// <summary>The input failed validation across one or more <paramref name="fields"/>.</summary>
+    /// <summary>The input failed validation across one or more <paramref name="fields"/>; each field carries its
+    /// own code. The envelope code is the generic <c>validation.failed</c> — the client reads the field codes.</summary>
     public static Error Validation(IReadOnlyList<FieldError> fields) =>
-        new(ErrorKind.Validation, "Validation failed", fields);
+        new(ErrorKind.Validation, "validation.failed", "Validation failed", fields);
 
     /// <summary>A referenced thing does not exist.</summary>
-    public static Error NotFound(string message) => new(ErrorKind.NotFound, message);
+    public static Error NotFound(string code, string message) => new(ErrorKind.NotFound, code, message);
 
     /// <summary>The action conflicts with current state.</summary>
-    public static Error Conflict(string message) => new(ErrorKind.Conflict, message);
+    public static Error Conflict(string code, string message) => new(ErrorKind.Conflict, code, message);
 
     /// <summary>A business rule was violated.</summary>
-    public static Error BusinessRule(string message) => new(ErrorKind.BusinessRule, message);
+    public static Error BusinessRule(string code, string message) => new(ErrorKind.BusinessRule, code, message);
 
     /// <summary>The caller is rate-limited.</summary>
-    public static Error RateLimit(string message) => new(ErrorKind.RateLimit, message);
+    public static Error RateLimit(string code, string message) => new(ErrorKind.RateLimit, code, message);
 
     /// <summary>Authentication is required or failed (e.g. wrong credentials).</summary>
-    public static Error Unauthorized(string message) => new(ErrorKind.Unauthorized, message);
+    public static Error Unauthorized(string code, string message) => new(ErrorKind.Unauthorized, code, message);
 
     /// <summary>Authenticated, but not allowed to perform this action.</summary>
-    public static Error Forbidden(string message) => new(ErrorKind.Forbidden, message);
+    public static Error Forbidden(string code, string message) => new(ErrorKind.Forbidden, code, message);
 }
 
 /// <summary>

@@ -16,7 +16,7 @@ public static class Me
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.UserId, ct);
         return user is null
-            ? Error.NotFound("user not found")
+            ? Error.NotFound("account.user_not_found", "user not found")
             : new Output(user.Id, user.Email.Value, user.RegistrationStep, user.Role);
     }
 

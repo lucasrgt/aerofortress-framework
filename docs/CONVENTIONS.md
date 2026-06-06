@@ -78,6 +78,14 @@ public static class Deposit
   bloat we cut; the doctor forbids reintroducing it (planned rule).
 - **Handlers are HTTP-agnostic.** They return `Result<T>`; the API boundary maps it to a
   status code (`ResultHttpExtensions.ToHttp`). This keeps them unit-testable without a host.
+- **Errors carry a code, not just copy.** An `Error` is `(Kind, Code, Message[, Fields])`. `Kind` is the closed
+  category that maps to the HTTP status; **`Code`** is a stable, language-neutral, namespaced key — `<module>.<reason>`
+  (e.g. `wallets.insufficient_funds`), value objects use `<vo>.<reason>`, field errors `<field>.<reason>` — that the
+  **frontend localizes from**; `Message` is a developer hint (English, like a log line), never the copy a user reads.
+  The code rides the typed `ErrorBody` into the OpenAPI document, so the generated client gets it for free:
+  localization stays the frontend's job (copy has one owner), the backend ships the key. The factories require it —
+  `Error.NotFound(code, message)`, `Validation.Check(ok, field, code, message)` — while `Collect` inherits the value
+  object's own code.
 - **Rich types carry the semantics.** Prefer `Money`, `Cpf`, `Email` over `decimal`,
   `string`, and let entities own their invariants (see **The domain** below). The type *is*
   the rule — the AI understands it without reading a validator.
