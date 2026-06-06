@@ -19,7 +19,9 @@ public class DepositTests
     {
         await using var db = NewDb();
         var id = Guid.NewGuid();
-        db.Wallets.Add(new Wallet { Id = id, Balance = Money.From(10m).Value });
+        var wallet = Wallet.Open(id).Value;
+        wallet.Deposit(Money.From(10m).Value);
+        db.Wallets.Add(wallet);
         await db.SaveChangesAsync();
 
         var result = await Deposit.Handle(new Deposit.Input(id, 5m), db, default);

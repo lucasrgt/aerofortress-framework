@@ -33,15 +33,17 @@ public static class Deposit
         if (wallet is null)
             return Error.NotFound($"wallet {input.WalletId} not found");
 
-        var updated = wallet.Balance.Add(amount.Value);
-        wallet.Balance = updated;
+        // The state transition lives on the entity; the slice only orchestrates. Deposit cannot fail
+        // (Money already guarantees a non-negative amount), so there is no Result to unwrap here.
+        wallet.Deposit(amount.Value);
         await db.SaveChangesAsync(ct);
 
-        return new Output(wallet.Id, updated.Amount);
+        return new Output(wallet.Id, wallet.Balance.Amount);
     }
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/deposit",
-            async (Input input, AppDb db, CancellationToken ct) =>
-                (await Handle(input, db, ct)).ToHttp());
+                async (Input input, AppDb db, CancellationToken ct) =>
+                    (await Handle(input, db, ct)).ToHttp())
+            .WithName(nameof(Deposit));
 }

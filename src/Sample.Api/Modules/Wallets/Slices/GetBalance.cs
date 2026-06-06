@@ -20,6 +20,7 @@ public static class GetBalance
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapGet("/{walletId:guid}/balance",
-            async (Guid walletId, AppDb db, CancellationToken ct) =>
-                (await Handle(new Input(walletId), db, ct)).ToHttp());
+                async (Guid walletId, AppDb db, CancellationToken ct) =>
+                    (await Handle(new Input(walletId), db, ct)).ToHttp())
+            .WithName(nameof(GetBalance));
 }

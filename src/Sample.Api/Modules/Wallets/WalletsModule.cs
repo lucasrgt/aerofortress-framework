@@ -13,6 +13,7 @@ public static class WalletsModule
         var wallets = app.MapGroup("/wallets");
 
         Deposit.Map(wallets);
+        Withdraw.Map(wallets);
         GetBalance.Map(wallets);
     }
 }

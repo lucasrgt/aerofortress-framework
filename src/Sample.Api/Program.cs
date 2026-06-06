@@ -13,7 +13,7 @@ WalletsModule.Map(app);
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    db.Wallets.Add(new Wallet { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Balance = Money.Zero });
+    db.Wallets.Add(Wallet.Open(Guid.Parse("11111111-1111-1111-1111-111111111111")).Value);
     db.SaveChanges();
 }
 

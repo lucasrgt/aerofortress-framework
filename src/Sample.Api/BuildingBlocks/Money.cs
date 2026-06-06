@@ -6,6 +6,7 @@ namespace Sample.Api.BuildingBlocks;
 /// It lives in BuildingBlocks because it is generic and domain-agnostic — shared by any
 /// module, owned by none. (A module-specific value object would live inside the module.)
 /// </summary>
+[ValueObject]
 public readonly record struct Money
 {
     public decimal Amount { get; }
@@ -21,6 +22,13 @@ public readonly record struct Money
             : Error.Validation("money cannot be negative");
 
     public Money Add(Money other) => new(Amount + other.Amount);
+
+    /// <summary>
+    /// Debit <paramref name="other"/>, rejecting an overdraw: the difference would be negative, which
+    /// <see cref="Money"/> forbids. Returns the failure instead of throwing so the caller — typically an
+    /// entity mutator — can restate it in its own domain language (e.g. "insufficient funds").
+    /// </summary>
+    public Result<Money> Subtract(Money other) => From(Amount - other.Amount);
 
     public override string ToString() => Amount.ToString("0.00");
 }

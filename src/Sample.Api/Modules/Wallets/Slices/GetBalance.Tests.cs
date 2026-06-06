@@ -18,7 +18,9 @@ public class GetBalanceTests
     {
         await using var db = NewDb();
         var id = Guid.NewGuid();
-        db.Wallets.Add(new Wallet { Id = id, Balance = Money.From(42m).Value });
+        var wallet = Wallet.Open(id).Value;
+        wallet.Deposit(Money.From(42m).Value);
+        db.Wallets.Add(wallet);
         await db.SaveChangesAsync();
 
         var result = await GetBalance.Handle(new GetBalance.Input(id), db, default);
