@@ -96,7 +96,9 @@ public static class Deposit
   each a partial of one `Platform` class, composed explicitly (no discovery); a single-concern app is just one
   `Platform.cs`. It grows by adding a concern file, never by fattening `Program.cs`. **`AddModules`** is the
   registry above. A vendor or domain service belongs in the module that owns it (its `AddServices`), never the
-  platform.
+  platform. The doctor (`LZ0017`) keeps the index pure: any service registration, pipeline step, or endpoint
+  mapping that leaks into `Program.cs` is a build error, redirected to the platform or a module — so the index
+  can't rot back into a dumping ground.
 - **Co-located `<Module>.ctx.md`** carries the business "why" — the rules that are not in the
   control flow. One per module (not per slice). Shape + rationale in
   [The ctx.md schema](#the-ctxmd-schema); presence + spine are gated by `LZ0004`.
@@ -314,6 +316,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0014` | **Entity encapsulation + invariant funnel**: an `[Entity]` exposes no public constructor (born via a factory, rehydrated by EF via a private one) and no public setter, and declares a private `EnsureValid()` (or `Validate()`) returning `Result<T>` that every create/mutate path returns through | **shipped** | anemic domain — invariants must live on the entity, unbypassable (the sample's own `Wallet` was a setter bag) |
 | `LZ0015` | **Module shape**: a `[Module]` is a static class declaring a public static `AddServices(IServiceCollection, IConfiguration)` (its own DI) and a public static `Map(IEndpointRouteBuilder)` (its routes) — it owns both halves of its wiring | **shipped** | the composition root drifts into a dumping ground; a module's DI scatters across `Program.cs` |
 | `LZ0016` | **Module registered**: every `[Module]`'s `AddServices` and `Map` are actually called in the explicit registry (`AddModules` / `MapModules`) — a compile-time reachability check, no reflection | **shipped** | generating a module and forgetting to wire it — a silent 404 instead of a build error |
+| `LZ0017` | **Composition root is an index**: the top-level statements (`Program.cs`) wire only `AddLazuli` / `AddPlatform` / `AddModules` and the matching `UseLazuli` / `UsePlatform` / `MapModules`; any other service registration (`IServiceCollection`), pipeline step, or endpoint mapping (`Use*`/`Map*`) there is flagged and redirected to the platform or a module | **shipped** | the index rots into a dumping ground — infra creeps back into `Program.cs`, drifts, and bit-rots there unwatched |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
