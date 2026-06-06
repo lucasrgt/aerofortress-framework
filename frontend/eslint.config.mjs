@@ -2,6 +2,8 @@ import { createRequire } from "node:module";
 import tsParser from "@typescript-eslint/parser";
 import tanstackQuery from "@tanstack/eslint-plugin-query";
 import noSecrets from "eslint-plugin-no-secrets";
+import sonarjs from "eslint-plugin-sonarjs";
+import vitest from "@vitest/eslint-plugin";
 
 // Lint the canonical sample with the framework's harness PLUS a curated slice of community plugins (prior art:
 // pleiades-os / corbanx both standardize on the same kit). Two of those compose cleanly with the LZFE rules:
@@ -24,7 +26,7 @@ export default [
       sourceType: "module",
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
-    plugins: { lazuli, "no-secrets": noSecrets },
+    plugins: { lazuli, "no-secrets": noSecrets, sonarjs },
     rules: {
       "lazuli/view-purity": "error",
       "lazuli/data-door": "error",
@@ -39,6 +41,15 @@ export default [
       "lazuli/no-hardcoded-copy": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
+      "sonarjs/no-identical-functions": "warn",
+      "sonarjs/no-duplicated-branches": "warn",
+      "sonarjs/cognitive-complexity": ["warn", 25],
     },
+  },
+  // test hygiene — no .only/.skip leaking into the suite (the @vitest recommended set).
+  {
+    files: ["sample/**/*.test.{ts,tsx}"],
+    plugins: { vitest },
+    rules: { ...vitest.configs.recommended.rules },
   },
 ];
