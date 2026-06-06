@@ -8,7 +8,7 @@ namespace Lazuli.Doctor;
 
 /// <summary>
 /// <c>LZ0018</c> — an error code is a registry constant, not an inline literal. Every <c>code</c> passed to an
-/// <see cref="Error"/> factory, to <c>Validation.Check</c> / <c>Validation.Add</c>, or to a <c>FieldError</c>
+/// <c>Error</c> factory, to <c>Validation.Check</c> / <c>Validation.Add</c>, or to a <c>FieldError</c>
 /// must reference a <c>const</c> on a class whose name ends with <c>ErrorCodes</c> (e.g.
 /// <c>WalletsErrorCodes.NotFound</c>) — never a bare string.
 ///
@@ -28,7 +28,7 @@ public sealed class ErrorCodeAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
         title: "Error code must be a registry constant",
-        messageFormat: "An error code must reference a constant on an *ErrorCodes registry (e.g. WalletsErrorCodes.NotFound), not {0}",
+        messageFormat: "An error code must reference a constant on an *ErrorCodes registry, not {0}",
         category: "Lazuli.Convention",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
