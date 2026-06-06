@@ -150,19 +150,25 @@ const rules = {
     },
   },
 
-  // LZFE006 — the integration tier: every *.view.tsx has a co-located test that RENDERS the View (not just
-  // renderHook on the ViewModel). renderHook (LZFE005) proves the data door mounts; render(<XView/>) proves the
-  // View composes with its ViewModel + children + design system and mounts without crashing — the front-side of
-  // the backend's integration tests. Same anti-test-theater line as LZFE005: presence + that it renders the View
-  // is enforced, the assertions stay per-screen judgment. Start as "warn" in an app with a test backlog; promote
-  // to "error" once every screen has its render test.
+  // LZFE006 — the integration tier: every SCREEN (a *.view.tsx with a sibling *.viewModel.ts) has a co-located test
+  // that RENDERS the View (not just renderHook on the ViewModel). renderHook (LZFE005) proves the data door mounts;
+  // render(<XView/>) proves the View composes with its ViewModel + children + design system and mounts without
+  // crashing — the front-side of the backend's integration tests. Same anti-test-theater line as LZFE005: presence
+  // + that it renders the View is enforced, the assertions stay per-screen judgment. Start as "warn" in an app with
+  // a test backlog; promote to "error" once every screen has its render test.
+  //
+  // SCOPE — the screen unit, not every view file. A *.view.tsx with NO sibling *.viewModel.ts is a presentational
+  // FRAGMENT (a wizard step, a settings panel — props-in, no data door); it has no ViewModel to compose, so it is
+  // not a screen and is covered transitively when its shell renders. This mirrors the canonical View+ViewModel unit
+  // and the data-door architecture (a View with no ViewModel has nothing to test-mount in isolation). The gate is
+  // visible: the sibling-file check is the trigger, surfaced in the lint message and reproducible by `ls`.
   "view-integration-test": {
     meta: {
       type: "problem",
-      docs: { description: "Every *.view.tsx has a co-located *.test.tsx that render()s the View." },
+      docs: { description: "Every screen (a *.view.tsx with a sibling *.viewModel.ts) has a co-located *.test.tsx that render()s the View." },
       messages: {
         missing:
-          "LZFE006: a View needs a co-located integration test — create {{test}} that render()s <{{component}}> (prove the screen mounts + composes, not only the ViewModel).",
+          "LZFE006: a screen View needs a co-located integration test — create {{test}} that render()s <{{component}}> (prove the screen mounts + composes, not only the ViewModel).",
         inert:
           "LZFE006: {{test}} exists but doesn't render the View — it must import ./{{base}}.view and call render() (mount the View, not only renderHook the ViewModel).",
       },
@@ -170,9 +176,12 @@ const rules = {
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
       if (!isView(f)) return {};
+      const base = path.basename(context.filename).replace(/\.view\.tsx$/, "");
+      // Scope to the SCREEN unit: a View with no sibling ViewModel is a presentational fragment (covered via its
+      // shell), not an independently-gated screen. Skip it.
+      if (!fs.existsSync(path.join(path.dirname(context.filename), `${base}.viewModel.ts`))) return {};
       return {
         Program(node) {
-          const base = path.basename(context.filename).replace(/\.view\.tsx$/, "");
           const testPath = path.join(path.dirname(context.filename), `${base}.test.tsx`);
           if (!fs.existsSync(testPath)) {
             context.report({ node, messageId: "missing", data: { test: `${base}.test.tsx`, component: `${base}View` } });
