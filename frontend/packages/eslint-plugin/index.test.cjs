@@ -157,12 +157,20 @@ ruleTester.run("no-hardcoded-copy", plugin.rules["no-hardcoded-copy"], {
     // whitespace / non-letter text is ignored.
     { filename: "Foo.view.tsx", code: `const x = <Text> </Text>;` },
     { filename: "Foo.view.tsx", code: `const x = <Text>{count}</Text>;` },
+    // Phase 2 props: t() / variables on copy props are expressions, not literals — not flagged.
+    { filename: "Foo.view.tsx", code: `const x = <Input placeholder={t("k")} />;` },
+    { filename: "Foo.view.tsx", code: `const x = <Input placeholder={ph} />;` },
+    // non-copy props with literals are fine (name/testID/variant aren't copy).
+    { filename: "Foo.view.tsx", code: `const x = <Icon name="check" testID="x" variant="primary" />;` },
     // out of scope: not a *.view.tsx
     { filename: "Foo.tsx", code: `const x = <Text>Entrar</Text>;` },
   ],
   invalid: [
     { filename: "Foo.view.tsx", code: `const x = <Text>Entrar na conta</Text>;`, errors: [{ messageId: "hardcoded" }] },
     { filename: "Foo.view.tsx", code: `const x = <Button>Salvar</Button>;`, errors: [{ messageId: "hardcoded" }] },
+    // Phase 2: hardcoded copy in a copy-bearing prop.
+    { filename: "Foo.view.tsx", code: `const x = <Input placeholder="Seu e-mail" />;`, errors: [{ messageId: "hardcoded" }] },
+    { filename: "Foo.view.tsx", code: `const x = <EmptyState title="Nada aqui" />;`, errors: [{ messageId: "hardcoded" }] },
   ],
 });
 

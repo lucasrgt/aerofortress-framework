@@ -18,7 +18,7 @@ plugin and the app still builds; you only lose enforcement.
 | `i18n-completeness` | LZFE011 | Every locale catalog in a `*.i18n.ts` declares the same keys (a key in one but not its siblings is a silent untranslated string). |
 | `design-tokens` | LZFE012 | No inline hex color in production code — colors come from a token; only the `theme`/`tokens`/`palette` definition files may hold hex. |
 | `mutation-error-handled` | LZFE013 | A `*.viewModel.ts` mutation (`.mutate`/`.mutateAsync`) passes an `onError` — no silent failure (front-side of the backend's error_handling). |
-| `no-hardcoded-copy` | LZFE014 | A `*.view.tsx` has no hardcoded user-facing text — JSX text children (`>text<`) go through i18n `t()`. High-signal (JSXText only; `{t()}`/attrs never flagged). |
+| `no-hardcoded-copy` | LZFE014 | A `*.view.tsx` has no hardcoded user-facing text — JSX text children (`>text<`) **and** copy props (`placeholder`/`title`/`label`/…) go through i18n `t()`. High-signal (`{t()}`/non-copy attrs never flagged). |
 
 ## Self-proving
 

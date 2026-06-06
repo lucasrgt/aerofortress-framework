@@ -398,15 +398,32 @@ const rules = {
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
       if (!isView(f)) return {};
+      // Phase 2: props that carry user-facing copy. Only STRING-LITERAL values are flagged — `{t()}` and variables
+      // are JSXExpressionContainers, not literals, so they're never touched. `value`/`name`/`testID`/`variant`/
+      // `accessibilityRole` are deliberately NOT here (they're data/ids/enums, not copy).
+      const COPY_PROPS = new Set([
+        "placeholder", "label", "title", "subtitle", "heading", "description", "message",
+        "helperText", "caption", "errorMessage", "emptyTitle", "emptyDescription",
+        "accessibilityLabel", "accessibilityHint",
+      ]);
+      const flag = (node, raw) => {
+        const text = raw.trim();
+        if (!text || !/[a-zA-Z]/.test(text)) return; // whitespace / numbers / punctuation only
+        context.report({
+          node,
+          messageId: "hardcoded",
+          data: { text: text.length > 40 ? `${text.slice(0, 40)}…` : text },
+        });
+      };
       return {
         JSXText(node) {
-          const text = node.value.trim();
-          if (!text || !/[a-zA-Z]/.test(text)) return; // whitespace / numbers / punctuation only
-          context.report({
-            node,
-            messageId: "hardcoded",
-            data: { text: text.length > 40 ? `${text.slice(0, 40)}…` : text },
-          });
+          flag(node, node.value);
+        },
+        JSXAttribute(node) {
+          if (node.name.type !== "JSXIdentifier" || !COPY_PROPS.has(node.name.name)) return;
+          const v = node.value;
+          if (!v || v.type !== "Literal" || typeof v.value !== "string") return; // only literal copy
+          flag(v, v.value);
         },
       };
     },
