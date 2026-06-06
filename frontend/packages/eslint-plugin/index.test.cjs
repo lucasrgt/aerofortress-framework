@@ -128,13 +128,24 @@ ruleTester.run("design-tokens", plugin.rules["design-tokens"], {
   ],
 });
 
-// LZFE013 — a ViewModel's mutation must pass onError (no silent failure). Scoped to *.viewModel.ts.
+// LZFE013 — a ViewModel's mutation must surface its failure (no silent failure). Scoped to *.viewModel.ts. Four
+// legitimate surfaces are accepted: (A) inline onError, (B) a read `.isError` state, (C) mutateAsync in try/catch
+// or .catch(), (D) a returned/propagated mutateAsync. Each is a real surface; demanding a redundant onError on top
+// would be the very test-theater the rule exists to prevent.
 ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"], {
   valid: [
+    // A) inline onError (also via a spread that may carry it).
     { filename: "Foo.viewModel.ts", code: `m.mutate(data, { onSuccess: ok, onError: fail });` },
     { filename: "Foo.viewModel.ts", code: `m.mutateAsync(data, { onError: fail });` },
-    // A spread in the options may carry onError — don't false-positive.
     { filename: "Foo.viewModel.ts", code: `m.mutate(data, { ...handlers });` },
+    // B) the mutation handle's .isError is read elsewhere in the file (surfaced as state the View renders).
+    { filename: "Foo.viewModel.ts", code: `saveMut.mutate(data, { onSuccess: ok }); const e = saveMut.isError ? "x" : null;` },
+    // C) mutateAsync inside a try/catch, or chained with .catch().
+    { filename: "Foo.viewModel.ts", code: `async function f(){ try { await m.mutateAsync(data); } catch { setErr(); } }` },
+    { filename: "Foo.viewModel.ts", code: `m.mutateAsync(data).catch(() => undefined);` },
+    // D) a thin wrapper that returns the mutateAsync promise — propagates to the awaiting caller.
+    { filename: "Foo.viewModel.ts", code: `const run = () => m.mutateAsync(data);` },
+    { filename: "Foo.viewModel.ts", code: `function run(){ return m.mutateAsync(data); }` },
     // Out of scope: a .mutate outside a ViewModel isn't this rule's concern.
     { filename: "Foo.view.tsx", code: `m.mutate(data);` },
     // Not a react-query mutation call shape.
@@ -144,6 +155,10 @@ ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"],
     { filename: "Foo.viewModel.ts", code: `m.mutate(data);`, errors: [{ messageId: "unhandled" }] },
     { filename: "Foo.viewModel.ts", code: `m.mutate(data, { onSuccess: ok });`, errors: [{ messageId: "unhandled" }] },
     { filename: "Foo.viewModel.ts", code: `m.mutateAsync(data, {});`, errors: [{ messageId: "unhandled" }] },
+    // isPending read is not error handling — only isError/error/failureReason count.
+    { filename: "Foo.viewModel.ts", code: `m.mutate(data); const p = m.isPending;`, errors: [{ messageId: "unhandled" }] },
+    // a bare awaited mutateAsync (no try/catch, no .catch, not returned) is still a silent failure.
+    { filename: "Foo.viewModel.ts", code: `async function f(){ await m.mutateAsync(data); }`, errors: [{ messageId: "unhandled" }] },
   ],
 });
 
