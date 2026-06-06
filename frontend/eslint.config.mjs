@@ -29,6 +29,7 @@ export default [
       "lazuli/i18n-completeness": "error",
       "lazuli/design-tokens": "error",
       "lazuli/mutation-error-handled": "error",
+      "lazuli/no-hardcoded-copy": "error",
     },
   },
 ];

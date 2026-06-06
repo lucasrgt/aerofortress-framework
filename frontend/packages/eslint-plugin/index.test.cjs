@@ -147,5 +147,24 @@ ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"],
   ],
 });
 
+// LZFE014 — no hardcoded user-facing copy in a View (JSX text children must go through t()).
+ruleTester.run("no-hardcoded-copy", plugin.rules["no-hardcoded-copy"], {
+  valid: [
+    // t() result is an expression, not text — never flagged.
+    { filename: "Foo.view.tsx", code: `const x = <Text>{t("k")}</Text>;` },
+    // attributes (className/testID) are not text children.
+    { filename: "Foo.view.tsx", code: `const x = <View className="flex-1" testID="x" />;` },
+    // whitespace / non-letter text is ignored.
+    { filename: "Foo.view.tsx", code: `const x = <Text> </Text>;` },
+    { filename: "Foo.view.tsx", code: `const x = <Text>{count}</Text>;` },
+    // out of scope: not a *.view.tsx
+    { filename: "Foo.tsx", code: `const x = <Text>Entrar</Text>;` },
+  ],
+  invalid: [
+    { filename: "Foo.view.tsx", code: `const x = <Text>Entrar na conta</Text>;`, errors: [{ messageId: "hardcoded" }] },
+    { filename: "Foo.view.tsx", code: `const x = <Button>Salvar</Button>;`, errors: [{ messageId: "hardcoded" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
