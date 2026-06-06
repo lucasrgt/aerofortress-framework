@@ -1,12 +1,11 @@
 using Lazuli.AspNetCore;
-using Microsoft.EntityFrameworkCore;
 using Sample.Api;
 using Sample.Api.Modules;
 using Sample.Api.Modules.Wallets;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<AppDb>(o => o.UseInMemoryDatabase("sample"));
 builder.Services.AddLazuli();                        // framework conventions: slice-aware OpenAPI + enum-as-name JSON
+builder.Services.AddPlatform(builder.Configuration); // the app's cross-cutting infra (here: the demo store)
 builder.Services.AddModules(builder.Configuration);  // each module's own services (the explicit registry)
 
 var app = builder.Build();

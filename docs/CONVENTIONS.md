@@ -91,8 +91,12 @@ public static class Deposit
   enum-as-name JSON), shipped by Lazuli.AspNetCore. **`AddPlatform` / `UsePlatform`** is the app's own
   cross-cutting infrastructure — its `DbContext`, auth, CORS, the framework ports it shares: app-owned (the
   framework can't know your store or your vendors), a *conventional name* so every Lazuli backend reads the
-  same, and simply absent when there is nothing cross-cutting to share. **`AddModules`** is the registry above.
-  A vendor or domain service belongs in the module that owns it (its `AddServices`), never the platform.
+  same, and simply absent when there is nothing cross-cutting to share. It splits **by concern** — one
+  `Platform/<Concern>.cs` per concern (recommended vocabulary: Persistence, Security, Observability, Web),
+  each a partial of one `Platform` class, composed explicitly (no discovery); a single-concern app is just one
+  `Platform.cs`. It grows by adding a concern file, never by fattening `Program.cs`. **`AddModules`** is the
+  registry above. A vendor or domain service belongs in the module that owns it (its `AddServices`), never the
+  platform.
 - **Co-located `<Module>.ctx.md`** carries the business "why" — the rules that are not in the
   control flow. One per module (not per slice). Shape + rationale in
   [The ctx.md schema](#the-ctxmd-schema); presence + spine are gated by `LZ0004`.
@@ -148,7 +152,8 @@ src/<App>.Api/
   Program.cs                       # composition root, a thin index: AddLazuli + AddPlatform + AddModules (+ the matching Use*/Map*)
   GlobalUsings.cs
   AppDb.cs                         # one DbContext for every module — the modular monolith's store
-  Platform.cs                      # the app's cross-cutting infra (db, auth, cors, shared ports): AddPlatform / UsePlatform — optional
+  Platform.cs                      # the app's cross-cutting infra: AddPlatform / UsePlatform — app-owned, optional
+  Platform/<Concern>.cs            #   ...or a folder, one concern per file (Persistence/Security/Observability/Web): partials of Platform
   Modules/Modules.cs               # the module registry: AddModules + MapModules wire each [Module] (explicit)
   Modules/<Module>/                # a logical bounded context (owns + writes only its own entities)
     <Module>Module.cs             #   the module's wiring root ([Module]): AddServices (its DI) + Map (its routes)
