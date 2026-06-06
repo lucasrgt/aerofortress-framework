@@ -17,6 +17,15 @@ E2E is flow-level and expensive, so it is **not** enforced per component — `ch
 checklist*: humans declare the critical flows in `e2e/flows.json`, the doctor proves each has a spec. See the
 Hostpoint dogfood's `scripts/lzfe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
 
+## The fullstack loop (journey parity)
+
+`journey-parity.mjs` (`checkJourneyParity`) closes the loop at the **journey grain**: the backend declares critical
+journeys (its `Journeys/*.Tests.cs`), the frontend declares them in `flows.json` (linked explicitly via a
+`backendJourney` field) — and the doctor proves the two sets agree (no backend journey uncovered on the front, no
+front flow pointing at a journey the back lacks). The *endpoint* grain is already closed: `tsc` for front→back (you
+can't call a missing endpoint) and **LZFE008** for back→front (every endpoint is consumed by a ViewModel). So:
+endpoints by type + coverage, journeys by parity — the same critical path proven on both sides.
+
 ## Scaffold a feature unit
 
 ```
