@@ -24,8 +24,13 @@ frontends/
   hostpoint-barcos/ core/ mobile/ web/     # (when it lands)
   shared/          kernel/  ui-web/  ui-mobile/   # cross-product, promoted by evidence (≥2 products)
   website/         # Astro (SEO/marketing), standalone
-pnpm-workspace.yaml  turbo.json     # generated from / validated against Lazuli.toml
+package.json (npm workspaces)  turbo.json     # generated from / validated against Lazuli.toml
 ```
+
+**Package manager: npm workspaces + turbo (not pnpm).** The frontend contains an Expo app, and Expo/Metro + pnpm
+needs `node-linker=hoisted` and is fragile (Metro's symlink resolution); npm workspaces is the well-trodden Expo
+monorepo path and the app already uses npm. Turbo runs identically over npm workspaces. (The doc previously said
+pnpm — corrected after gauging the real Expo setup.)
 
 npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@hostpoint/os-web`, `@hostpoint/kernel`, …).
 
@@ -46,9 +51,11 @@ npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@h
    web impls in `web`/`os`), wired at the shell, **never imported into a ViewModel**. This is what makes `core`
    genuinely platform-agnostic (the package boundary enforces it structurally; LZFE009 lints it).
 
-4. **`Lazuli.toml` is the single source of truth.** It **generates** `pnpm-workspace.yaml` + the turbo pipeline,
-   and a **`lazuli doctor` check validates** that the declared topology (products, cores, deps) matches the real
-   `package.json` workspace deps + folders. No hand-maintained parallel; drift = a build error.
+4. **`Lazuli.toml` is the single source of truth.** It **generates** the npm-workspaces config (root `package.json`
+   `workspaces`) + the turbo pipeline, and a **`lazuli doctor` check validates** that the declared topology
+   (products, cores, deps) matches the real `package.json` workspace deps + folders. No hand-maintained parallel;
+   drift = a build error. *(Shipped first as a validator — `Lazuli.toml` + `scripts/lazuli-doctor.mjs` in hostpoint;
+   generation of the workspace config follows once the packages physically exist.)*
 
 5. **`core` per product; `shared/` by evidence.** A product's `core` = its integration+logic (its orval client +
    ViewModels + i18n + ports). Cross-product code is promoted to `shared/` **only when ≥2 products need it** (a
@@ -110,17 +117,44 @@ The `lazuli` CLI is the conductor (`lazuli build/test/new/doctor/gen:client`); i
 
 ## Migration sequence (big-bang, but in green-verified milestones)
 
-1. **(this doc)** capture — done.
-2. **lazuli-net**: evolve `LZFE005/006` to import-based detection (+ self-tests). *Prereq for the split to stay enforced.*
-3. **hostpoint**: introduce `Lazuli.toml` + `backends/` + `frontends/` + `pnpm-workspace.yaml` + `turbo.json`;
-   verify the .NET 374 tests + the front still build/lint/test.
+1. **(this doc)** capture — **done** (lazuli-net `d9ac8cf`).
+2. **lazuli-net**: evolve `LZFE006` to import-based detection (+ self-tests) — **done** (`716378b`). *Prereq.*
+3. **hostpoint**: `Lazuli.toml` + `lazuli doctor` (topology single-source + drift validator) — **done** (hostpoint
+   `f30ab3b`). The `backends/`/`frontends/` *folder* rename is deferred: with one backend it is cosmetic + YAGNI
+   (decision F); the manifest points at `src/` + `clients/` today and moves with the split.
 4. **front**: extract `@hostpoint/app-core` (ViewModels + `client.gen` + i18n + model); rewire the app to consume it.
 5. **front**: extract `@hostpoint/kernel` (auth/session/spine/ports interfaces); convert `expo-*` direct imports to
    ports + wire impls in the shell. (RN-web for web; Astro stays.)
-6. **`Lazuli.toml` doctor**: validate topology == real deps (and/or generate the workspace config from it).
+6. **`Lazuli.toml` generation**: generate the npm-workspaces config from the manifest (once the packages exist).
 7. **lazuli-net canon**: rewrite the identity (meta-framework, no language) + fold this doc into the convention set.
 
 `hostpoint-os` and `hostpoint-barcos` are **convention, applied when those products are real** — no empty scaffolds.
 
 Each milestone is a commit; each commit is green (build + tests + lint). A stop at any milestone is a clean,
 resumable checkpoint — the value is never lost.
+
+## Extraction playbook (milestones 4–5) — and why it lands native-verified
+
+The split into real npm packages (not just folders) is what gives decision #6 its teeth: `@hostpoint/app-core` has
+**no** `react-native` dependency, so platform-agnosticism is structural, not lint-deep. That power is also why it
+**touches the Metro bundler** and must be confirmed with a native run. Division of labor: the JS layer
+(`tsc --noEmit` + `vitest`) is verifiable in CI/here; the **Metro/Expo bundle is the native verify the operator runs**
+(`npx expo start` / `npx expo export`). Don't call the migration done until that bundle is green.
+
+Turnkey steps:
+
+1. **Workspace**: root `package.json` with `"workspaces": ["frontends/hostpoint-app/*", "clients/website", ...]` +
+   `turbo.json`. Move the Expo app to `frontends/hostpoint-app/mobile`; create `frontends/hostpoint-app/core`
+   (`name: "@hostpoint/app-core"`, deps: react-query/axios/zod/i18next — **no** react-native/expo).
+2. **Move into core** (it is already platform-agnostic — LZFE009 is green, so this is a *physical* move, not a
+   decoupling): `client.gen/` (the 507 orval files), every `*.viewModel.ts` (+ its co-located `*.test.tsx` /
+   `*.i18n.ts`), the model/`cells`. Point `orval.config.ts` output at `core/src/client.gen`.
+3. **Rewire**: View imports of `./X.viewModel` → `@hostpoint/app-core`. The import-based `LZFE006` (milestone 2)
+   already handles the cross-package link; flip the hostpoint mirror to the import form now and write each screen's
+   co-located render test as it lands in `mobile/` (fills the 32-screen backlog in place).
+4. **Metro monorepo config** (`mobile/metro.config.js`): `watchFolders = [workspaceRoot]`,
+   `resolver.nodeModulesPaths = [project/node_modules, workspaceRoot/node_modules]`. Mirror the alias in
+   `vitest.config.ts` (`@hostpoint/app-core` → `../core/src`) + `tsconfig` `paths`.
+5. **Verify**: `tsc --noEmit` + `vitest` (JS layer, here) → then **operator runs `npx expo export` / native build**.
+6. **kernel + ports**: lift auth/session/guards/spine + the `core/ports/` interfaces (`IStorage`, `INavigator`,
+   `IPush`, `IFilePicker`, `ILinking`, `IMaps`) into `@hostpoint/kernel`; wire the RN impls in `mobile`. Re-verify.
