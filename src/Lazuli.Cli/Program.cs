@@ -6,6 +6,8 @@ return args switch
     ["g", "module", var name] => ModuleGenerator.Generate(Directory.GetCurrentDirectory(), name),
     ["g", "slice", var module, var name] => SliceGenerator.Generate(Directory.GetCurrentDirectory(), module, name),
     ["g", "slice", var module, var name, "--critical"] => SliceGenerator.Generate(Directory.GetCurrentDirectory(), module, name, critical: true),
+    ["g", "entity", var module, var name] => EntityGenerator.Generate(Directory.GetCurrentDirectory(), module, name),
+    ["g", "vo", var name] => ValueObjectGenerator.Generate(Directory.GetCurrentDirectory(), name),
     ["g", "crud", var module, var entity] => CrudGenerator.Generate(Directory.GetCurrentDirectory(), module, entity),
     ["g", "hub", var module, var name] => HubGenerator.Generate(Directory.GetCurrentDirectory(), module, name),
     ["g", "auth", .. var flags] => AuthGenerator.Generate(Directory.GetCurrentDirectory(), skipTenancy: flags.Contains("--skip-tenancy"), skipCookies: flags.Contains("--skip-cookies")),
@@ -71,7 +73,9 @@ static int Usage()
           lazuli new <Name>                 scaffold a new Lazuli project (dotnet new lazuli)
           lazuli g module <Name>            generate a module + wire it into Program.cs
           lazuli g slice <Module> <Name> [--critical]   generate a slice + tests (+ journeys if critical)
-          lazuli g crud <Module> <Entity>   generate CRUD slices (list/lookup/create/update/delete +me) for an entity
+          lazuli g entity <Module> <Name>   generate a rich [Entity] — encapsulated, with an EnsureValid invariant funnel
+          lazuli g vo <Name>                generate an always-valid [ValueObject] in BuildingBlocks
+          lazuli g crud <Module> <Entity>   generate CRUD slices (list/lookup/create/update/delete +me) for a data-bag entity
           lazuli g hub <Module> <Name>      generate a SignalR hub (real-time: typing/presence/live fan-out)
           lazuli g auth [--skip-tenancy] [--skip-cookies]   generate the auth module (register/login/refresh/logout/me)
           lazuli g auth:otp                 augment auth with phone verification by SMS code
