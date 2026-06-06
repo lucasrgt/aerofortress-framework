@@ -334,6 +334,50 @@ const rules = {
       };
     },
   },
+
+  // LZFE013 — every mutation surfaces its error. A react-query `.mutate(...)` / `.mutateAsync(...)` whose options
+  // object has no `onError` is a SILENT failure: the command fails and the user sees nothing. The front-side of the
+  // backend's error_handling discipline — there, a Result's sad path is forced; here, a mutation must route its
+  // error somewhere (a toast, a saveError state, a banner). Scoped to *.viewModel.ts (the data door owns commands).
+  // It enforces PRESENCE of onError, not what it does (anti-test-theater): wiring the error out is the bar, the
+  // UX of it stays per-screen judgment.
+  "mutation-error-handled": {
+    meta: {
+      type: "problem",
+      docs: { description: "A useMutation .mutate()/.mutateAsync() passes an onError handler (no silent failure)." },
+      messages: {
+        unhandled:
+          "LZFE013: a mutation must surface its error — pass an onError handler to .{{method}}(args, { onError }) (no silent failure; the front-side of the backend's error_handling).",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isViewModel(f)) return {};
+      const hasKey = (obj, name) =>
+        obj &&
+        obj.type === "ObjectExpression" &&
+        obj.properties.some(
+          (p) =>
+            (p.type === "Property" || p.type === "SpreadElement") &&
+            (p.type === "SpreadElement" || // a spread may carry onError — don't false-positive
+              (!p.computed &&
+                ((p.key.type === "Identifier" && p.key.name === name) ||
+                  (p.key.type === "Literal" && p.key.value === name)))),
+        );
+      return {
+        CallExpression(node) {
+          const callee = node.callee;
+          if (callee.type !== "MemberExpression" || callee.computed) return;
+          if (callee.property.type !== "Identifier") return;
+          const method = callee.property.name;
+          if (method !== "mutate" && method !== "mutateAsync") return;
+          if (!hasKey(node.arguments[1], "onError")) {
+            context.report({ node, messageId: "unhandled", data: { method } });
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {

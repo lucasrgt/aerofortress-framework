@@ -128,5 +128,24 @@ ruleTester.run("design-tokens", plugin.rules["design-tokens"], {
   ],
 });
 
+// LZFE013 — a ViewModel's mutation must pass onError (no silent failure). Scoped to *.viewModel.ts.
+ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"], {
+  valid: [
+    { filename: "Foo.viewModel.ts", code: `m.mutate(data, { onSuccess: ok, onError: fail });` },
+    { filename: "Foo.viewModel.ts", code: `m.mutateAsync(data, { onError: fail });` },
+    // A spread in the options may carry onError — don't false-positive.
+    { filename: "Foo.viewModel.ts", code: `m.mutate(data, { ...handlers });` },
+    // Out of scope: a .mutate outside a ViewModel isn't this rule's concern.
+    { filename: "Foo.view.tsx", code: `m.mutate(data);` },
+    // Not a react-query mutation call shape.
+    { filename: "Foo.viewModel.ts", code: `arr.map(x => x);` },
+  ],
+  invalid: [
+    { filename: "Foo.viewModel.ts", code: `m.mutate(data);`, errors: [{ messageId: "unhandled" }] },
+    { filename: "Foo.viewModel.ts", code: `m.mutate(data, { onSuccess: ok });`, errors: [{ messageId: "unhandled" }] },
+    { filename: "Foo.viewModel.ts", code: `m.mutateAsync(data, {});`, errors: [{ messageId: "unhandled" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
