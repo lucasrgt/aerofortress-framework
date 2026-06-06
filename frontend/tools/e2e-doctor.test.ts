@@ -62,16 +62,31 @@ describe("checkE2e", () => {
     }
   });
 
-  it("is runner-agnostic — a Maestro flow (.maestro/ + .yaml spec) is clean too", () => {
+  it("is runner-agnostic — a target:native Maestro flow (.maestro/ + .yaml) is clean too", () => {
     const dir = tmp();
     try {
       mkdirSync(join(dir, ".maestro"));
       mkdirSync(join(dir, "e2e"));
-      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{ name: "login", spec: "e2e/login.yaml" }]));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{ name: "login", target: "native", spec: "e2e/login.yaml" }]));
       writeFileSync(join(dir, "e2e", "login.yaml"), "appId: com.example\n- launchApp\n");
       const r = checkE2e(dir);
-      expect(r.runner).toBe("maestro");
+      expect(r.runners).toContain("maestro");
       expect(r.gaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("is target-aware — a target:native flow with only a web runner is a gap", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n"); // web runner only
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{ name: "cold start", target: "native", spec: "e2e/cold.yaml" }]));
+      writeFileSync(join(dir, "e2e", "cold.yaml"), "appId: com.example\n- launchApp\n");
+      const r = checkE2e(dir);
+      expect(r.gaps).toBe(1);
+      expect(r.messages.join(" ")).toContain("native runner");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
