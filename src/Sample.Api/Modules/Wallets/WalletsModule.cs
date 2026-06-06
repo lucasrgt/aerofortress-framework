@@ -16,6 +16,17 @@ public static class WalletsModule
     public static IServiceCollection AddServices(IServiceCollection services, IConfiguration configuration) =>
         services;
 
+    /// <summary>Seed a demo wallet so the sample reads non-empty on first run. Seed <em>content</em> belongs to the
+    /// module that owns the data (it writes only its own entities); the composition root only orchestrates the
+    /// scope and order (see <c>Program.cs</c>). Idempotent — a populated store is left untouched.</summary>
+    public static void Seed(AppDb db)
+    {
+        if (db.Wallets.Any())
+            return;
+        db.Wallets.Add(Wallet.Open(Guid.Parse("11111111-1111-1111-1111-111111111111")).Value);
+        db.SaveChanges();
+    }
+
     public static void Map(IEndpointRouteBuilder app)
     {
         var wallets = app.MapGroup("/wallets");

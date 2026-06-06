@@ -14,13 +14,10 @@ var app = builder.Build();
 app.UseLazuli();    // serve the OpenAPI contract at /openapi/v1.json
 app.MapModules();   // each module's routes (the explicit registry)
 
-// Seed a wallet so the sample has something to read on first run.
+// Boot: seed demo data so the sample reads non-empty on first run. The composition root only orchestrates the
+// scope + order; the seed content lives in the module that owns it (WalletsModule.Seed).
 using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDb>();
-    db.Wallets.Add(Wallet.Open(Guid.Parse("11111111-1111-1111-1111-111111111111")).Value);
-    db.SaveChanges();
-}
+    WalletsModule.Seed(scope.ServiceProvider.GetRequiredService<AppDb>());
 
 app.Run();
 
