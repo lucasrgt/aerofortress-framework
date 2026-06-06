@@ -32,7 +32,7 @@ the target.
 ## Repository layout
 
 ```
-src/Lazuli.Abstractions/      The thin wire: Result<T>, Error, [Slice]. A normal dependency.
+src/Lazuli.Abstractions/      The thin wire: Result<T>, Error, [Slice], [ValueObject], [Entity]. A normal dependency.
 analyzers/Lazuli.Doctor/      SHIPPED harness. LZ* rules — run on the USER's code.
 analyzers/Lazuli.SelfHarness/ FRAMEWORK-DEV ONLY. LZSELF* rules — run on OUR code. Never shipped.
 src/Sample.Api/               The reference app + canonical slice. The template source.

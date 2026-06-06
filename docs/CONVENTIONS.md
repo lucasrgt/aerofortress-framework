@@ -79,7 +79,8 @@ public static class Deposit
 - **Handlers are HTTP-agnostic.** They return `Result<T>`; the API boundary maps it to a
   status code (`ResultHttpExtensions.ToHttp`). This keeps them unit-testable without a host.
 - **Rich types carry the semantics.** Prefer `Money`, `Cpf`, `Email` over `decimal`,
-  `string`. The type *is* the rule — the AI understands it without reading a validator.
+  `string`, and let entities own their invariants (see **The domain** below). The type *is*
+  the rule — the AI understands it without reading a validator.
 - **Endpoint registration is one explicit line** in `Program.cs`. No reflection, no
   discovery.
 - **Co-located `<Module>.ctx.md`** carries the business "why" — the rules that are not in the
@@ -92,6 +93,41 @@ public static class Deposit
   inline validation ever feels too large, the fix is to push rules into value objects (where the
   rule belongs), never to extract a `Validate` method. Validation's complexity lives in the
   types, so the inline part stays a short list — there is nothing big to extract.
+
+---
+
+## The domain — entities & value objects
+
+A slice is the *operation*; the **entity** and its **value objects** are the *domain* it operates on. Lazuli
+keeps the tactical-DDD half that earns its keep — rich, self-validating types — and leaves the apparatus
+(repositories, a base class you inherit, an event bus for internal decoupling) out, because each fails one of
+the two laws. The result is plain C# that happens to be hard to misuse.
+
+- **Value objects (`[ValueObject]`) are always-valid by construction.** An identity-less domain value
+  (`Money`, `Cpf`, `Email`) is immutable, has no public constructor, and is built only through a static smart
+  constructor returning `Result<T>` — the `Money.From` shape. Because an invalid instance can never come to
+  exist, there is no "validate afterwards" step to forget: any `Money` in the system is already valid. `LZ0013`
+  enforces the shape. Value objects live in `BuildingBlocks/` when generic, inside the module when specific.
+
+- **Entities (`[Entity]`) encapsulate state and guard invariants.** An entity has identity and a lifecycle. It
+  exposes no public constructor (it is born through a static factory like `Wallet.Open`, and EF rehydrates it
+  through a private parameterless one), no public setter (state changes only through intention-revealing
+  methods like `Deposit` / `Withdraw`), and a single private invariant funnel — `EnsureValid` returning
+  `Result<T>` — that every create and mutate path returns through. So the entity can never be observed or
+  persisted broken, and the invariant cannot be bypassed by a slice that forgets to check. `LZ0014` enforces
+  the shape. The required private parameterless constructor is exactly the one EF Core materialises through —
+  the convention and the ORM ask for the same thing, so encapsulation costs nothing at the storage boundary.
+
+- **Where behaviour lives — the split with the slice.** The slice owns *orchestration* and *input validation*
+  (inline at the top of `Handle`); the entity and its value objects own *invariants* and *state transitions*.
+  A change that cannot fail stays a `void` method (`Wallet.Deposit` — `Money` already guarantees a non-negative
+  amount); a change that can violate a rule returns `Result<T>` and funnels through `EnsureValid`
+  (`Wallet.Withdraw` refusing an overdraw). This is the validation LAW carried from value objects to entities —
+  *push the rule into the type where it belongs* — and none of it is hidden: the entity sits at the module
+  root, one read from the slice, in plain C#.
+
+The markers are **pure markers** (like `[Slice]`): no base class, nothing to inherit, no EF semantics. Delete
+the doctor and they become inert decoration — the domain still compiles and runs (Law 2).
 
 ---
 
@@ -257,6 +293,8 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0010` | A `[Journey]` covers a `[Critical]` slice — the inverse of `LZ0008`. A journey on a non-critical slice (inert metadata) is flagged: mark it `[Critical]` or use a plain `[E2E]` | **shipped** | journeys were silently inert off a critical slice |
 | `LZ0011` | **Tests live in `src/`**: a test method (`[Fact]`/`[Theory]`/`[Unit]`/`[Integration]`/`[E2E]`/`[Journey]`) authored outside a `src/` directory is flagged. The `tests/<App>.Tests` project is infrastructure only (WebApplicationFactory, DB harness, shared bootstrap); unit tests sit next to their slice, journeys under `src/.../Journeys` | **shipped** | keeps tests co-located + doctor-visible; the runner project stays pure infra |
 | `LZ0012` | **Endpoint named after the slice**: a `[Slice]`'s `Map` must call `.WithName("<SliceName>")` (or `nameof`). That name is the OpenAPI `operationId` the typed client generates its hook from (`use<SliceName>`), keeping backend↔frontend 1:1. A missing `Map` is LZ0001's concern, not this rule's | **shipped** | the back→front naming seam — a forgotten name drifts the generated client |
+| `LZ0013` | **Value object always-valid**: a `[ValueObject]` is immutable, exposes no public constructor and no public setter, and is built only through a static smart constructor returning `Result<T>` (the `Money.From` shape) — so an invalid instance can never exist | **shipped** | anemic domain — a value must be unconstructable when invalid, not validated after the fact |
+| `LZ0014` | **Entity encapsulation + invariant funnel**: an `[Entity]` exposes no public constructor (born via a factory, rehydrated by EF via a private one) and no public setter, and declares a private `EnsureValid()` (or `Validate()`) returning `Result<T>` that every create/mutate path returns through | **shipped** | anemic domain — invariants must live on the entity, unbypassable (the sample's own `Wallet` was a setter bag) |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
@@ -289,8 +327,8 @@ user project.
 ## Scope — and non-goals
 
 **In:** the standard project shape, the doctor, the ai-context discipline, the thin wire
-(`Result<T>`, `[Slice]`), a slice scaffold (`rails g`-style, planned), a knowledge-graph
-dump for the LLM (planned).
+(`Result<T>`, `[Slice]`, `[ValueObject]`, `[Entity]`), a slice scaffold (`rails g`-style,
+planned), a knowledge-graph dump for the LLM (planned).
 
 **Out (non-goals), by decision:**
 - **No source-gen of behavior.** Plumbing only, if ever — and not in v0. (It is a
