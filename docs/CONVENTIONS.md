@@ -81,8 +81,12 @@ public static class Deposit
 - **Rich types carry the semantics.** Prefer `Money`, `Cpf`, `Email` over `decimal`,
   `string`, and let entities own their invariants (see **The domain** below). The type *is*
   the rule — the AI understands it without reading a validator.
-- **Endpoint registration is one explicit line** in `Program.cs`. No reflection, no
-  discovery.
+- **A module owns both halves of its wiring** — `AddServices(IServiceCollection, IConfiguration)` (its own DI)
+  and `Map(IEndpointRouteBuilder)` (its routes) — and is marked `[Module]`. An explicit registry (`Modules.cs`,
+  with `AddModules` / `MapModules`) lists every module on both sides, so `Program.cs` stays a thin index
+  (`builder.Services.AddLazuli()` + `AddModules` / `app.UseLazuli()` + `MapModules`). No reflection, no
+  discovery: the registry is plain code, and the doctor (`LZ0015` / `LZ0016`) checks the shape and that every
+  `[Module]` is registered.
 - **Co-located `<Module>.ctx.md`** carries the business "why" — the rules that are not in the
   control flow. One per module (not per slice). Shape + rationale in
   [The ctx.md schema](#the-ctxmd-schema); presence + spine are gated by `LZ0004`.
@@ -135,11 +139,12 @@ the doctor and they become inert decoration — the domain still compiles and ru
 
 ```
 src/<App>.Api/
-  Program.cs                       # composition root: wire DI, map modules, seed, run. Zero logic.
+  Program.cs                       # composition root, a thin index: AddLazuli + AddModules / UseLazuli + MapModules
   GlobalUsings.cs
   AppDb.cs                         # one DbContext for every module — the modular monolith's store
+  Modules/Modules.cs               # the module registry: AddModules + MapModules wire each [Module] (explicit)
   Modules/<Module>/                # a logical bounded context (owns + writes only its own entities)
-    <Module>Module.cs             #   groups the module's slices under one route prefix
+    <Module>Module.cs             #   the module's wiring root ([Module]): AddServices (its DI) + Map (its routes)
     <Module>.ctx.md               #   the module's "why" — Boundaries + Design notes (see schema)
     <Entity>.cs                   #   entities live at the module root — domain, not operations
     Slices/<Name>.cs              #   one slice = one operation (Input/Output/Handle/Map)
@@ -295,6 +300,8 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0012` | **Endpoint named after the slice**: a `[Slice]`'s `Map` must call `.WithName("<SliceName>")` (or `nameof`). That name is the OpenAPI `operationId` the typed client generates its hook from (`use<SliceName>`), keeping backend↔frontend 1:1. A missing `Map` is LZ0001's concern, not this rule's | **shipped** | the back→front naming seam — a forgotten name drifts the generated client |
 | `LZ0013` | **Value object always-valid**: a `[ValueObject]` is immutable, exposes no public constructor and no public setter, and is built only through a static smart constructor returning `Result<T>` (the `Money.From` shape) — so an invalid instance can never exist | **shipped** | anemic domain — a value must be unconstructable when invalid, not validated after the fact |
 | `LZ0014` | **Entity encapsulation + invariant funnel**: an `[Entity]` exposes no public constructor (born via a factory, rehydrated by EF via a private one) and no public setter, and declares a private `EnsureValid()` (or `Validate()`) returning `Result<T>` that every create/mutate path returns through | **shipped** | anemic domain — invariants must live on the entity, unbypassable (the sample's own `Wallet` was a setter bag) |
+| `LZ0015` | **Module shape**: a `[Module]` is a static class declaring a public static `AddServices(IServiceCollection, IConfiguration)` (its own DI) and a public static `Map(IEndpointRouteBuilder)` (its routes) — it owns both halves of its wiring | **shipped** | the composition root drifts into a dumping ground; a module's DI scatters across `Program.cs` |
+| `LZ0016` | **Module registered**: every `[Module]`'s `AddServices` and `Map` are actually called in the explicit registry (`AddModules` / `MapModules`) — a compile-time reachability check, no reflection | **shipped** | generating a module and forgetting to wire it — a silent 404 instead of a build error |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.

@@ -1,11 +1,13 @@
-using Lazuli.Starter.Api.Modules.Health;
+using Lazuli.Starter.Api.Modules;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddLazuli();                        // framework conventions: slice-aware OpenAPI + enum-as-name JSON
+builder.Services.AddModules(builder.Configuration);  // each module's own services (the explicit registry)
 
 var app = builder.Build();
 
-// Composition root: each module registers its own routes. Add modules as you generate them.
-HealthModule.Map(app);
+app.UseLazuli();    // serve the OpenAPI contract at /openapi/v1.json
+app.MapModules();   // each module's routes (the explicit registry)
 
 app.Run();
 
