@@ -30,16 +30,27 @@ export function detectRunners(root) {
 }
 
 /**
- * Inspect a project's e2e tier. Returns `{ bootstrap, runners, flows, gaps, messages }`:
+ * Inspect a project's e2e tier. Returns `{ bootstrap, runners, flows, gaps, critical, messages }`:
  *   - bootstrap: true when e2e/flows.json doesn't exist yet (nothing to enforce — the pillar isn't set up)
  *   - runners: detected runners; flows: count of curated flows; gaps: enforceable problems; messages: lines
- * Each flow: `{ name, area?, target?: "web"|"native", spec }` where spec is a path from root to its impl file.
+ *   - critical: `{ total, covered, gaps }` — flows flagged `critical: true` are a HARD requirement: a critical flow
+ *     missing its spec or its target's runner counts in `critical.gaps`. A consumer SHOULD fail the build on
+ *     `critical.gaps > 0` while treating plain `gaps` (non-critical) as a warning. This is how "mark a flow critical"
+ *     gets teeth: you cannot flag a flow critical and leave it unimplemented.
+ * Each flow: `{ name, area?, target?: "web"|"native", spec, critical?: boolean }`; spec is a path from root to its impl.
  * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
  */
 export function checkE2e(root) {
   const flowsFile = join(root, "e2e", "flows.json");
   if (!existsSync(flowsFile)) {
-    return { bootstrap: true, runners: detectRunners(root), flows: 0, gaps: 0, messages: ["no e2e/flows.json yet (bootstrap)"] };
+    return {
+      bootstrap: true,
+      runners: detectRunners(root),
+      flows: 0,
+      gaps: 0,
+      critical: { total: 0, covered: 0, gaps: 0 },
+      messages: ["no e2e/flows.json yet (bootstrap)"],
+    };
   }
 
   const messages = [];
@@ -57,24 +68,50 @@ export function checkE2e(root) {
     flows = JSON.parse(readFileSync(flowsFile, "utf8"));
     if (!Array.isArray(flows)) throw new Error("flows.json must be an array");
   } catch (e) {
-    return { bootstrap: false, runners, flows: 0, gaps: gaps + 1, messages: [...messages, `flows.json invalid — ${e.message}`] };
+    return {
+      bootstrap: false,
+      runners,
+      flows: 0,
+      gaps: gaps + 1,
+      critical: { total: 0, covered: 0, gaps: 0 },
+      messages: [...messages, `flows.json invalid — ${e.message}`],
+    };
   }
 
+  let criticalTotal = 0;
+  let criticalCovered = 0;
+  let criticalGaps = 0;
   for (const flow of flows) {
+    const isCritical = flow.critical === true;
+    if (isCritical) criticalTotal++;
+    const tag = isCritical ? "CRITICAL flow" : "curated flow";
     const spec = String(flow.spec ?? "");
+    let ok = true;
     if (!spec || !existsSync(join(root, spec))) {
-      messages.push(`curated flow "${flow.name ?? "(unnamed)"}" has no spec (${flow.spec ?? "missing"})`);
+      messages.push(`${tag} "${flow.name ?? "(unnamed)"}" has no spec (${flow.spec ?? "missing"})`);
       gaps++;
-      continue;
-    }
-    if (flow.target === "native" && !hasNative) {
-      messages.push(`flow "${flow.name}" is target:native but no native runner (.maestro/ or detox) is configured`);
+      ok = false;
+    } else if (flow.target === "native" && !hasNative) {
+      messages.push(`${tag} "${flow.name}" is target:native but no native runner (.maestro/ or detox) is configured`);
       gaps++;
+      ok = false;
     } else if (flow.target === "web" && !hasWeb) {
-      messages.push(`flow "${flow.name}" is target:web but no web runner (playwright) is configured`);
+      messages.push(`${tag} "${flow.name}" is target:web but no web runner (playwright) is configured`);
       gaps++;
+      ok = false;
+    }
+    if (isCritical) {
+      if (ok) criticalCovered++;
+      else criticalGaps++;
     }
   }
 
-  return { bootstrap: false, runners, flows: flows.length, gaps, messages };
+  return {
+    bootstrap: false,
+    runners,
+    flows: flows.length,
+    gaps,
+    critical: { total: criticalTotal, covered: criticalCovered, gaps: criticalGaps },
+    messages,
+  };
 }
