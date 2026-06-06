@@ -91,45 +91,4 @@ describe("checkE2e", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-
-  // `critical: true` gives a flow teeth — a missing critical spec is a HARD gap a consumer fails the build on,
-  // while a missing non-critical spec stays a warning. This is what "mark the negotiation flow critical" enforces.
-  it("counts a missing critical flow's spec as a critical gap (non-critical stays a plain gap)", () => {
-    const dir = tmp();
-    try {
-      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
-      mkdirSync(join(dir, "e2e"));
-      writeFileSync(
-        join(dir, "e2e", "flows.json"),
-        JSON.stringify([
-          { name: "core negotiation", critical: true, target: "web", spec: "e2e/negotiation.spec.ts" },
-          { name: "nice to have", target: "web", spec: "e2e/extra.spec.ts" },
-        ]),
-      );
-      const r = checkE2e(dir); // neither spec file exists
-      expect(r.gaps).toBe(2);
-      expect(r.critical).toEqual({ total: 1, covered: 0, gaps: 1 });
-      expect(r.messages.join(" ")).toContain('CRITICAL flow "core negotiation"');
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it("counts a fully-covered critical flow as covered with zero critical gaps", () => {
-    const dir = tmp();
-    try {
-      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
-      mkdirSync(join(dir, "e2e"));
-      writeFileSync(
-        join(dir, "e2e", "flows.json"),
-        JSON.stringify([{ name: "core", critical: true, target: "web", spec: "e2e/core.spec.ts" }]),
-      );
-      writeFileSync(join(dir, "e2e", "core.spec.ts"), "// spec\n");
-      const r = checkE2e(dir);
-      expect(r.critical).toEqual({ total: 1, covered: 1, gaps: 0 });
-      expect(r.gaps).toBe(0);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
 });
