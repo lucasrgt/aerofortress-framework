@@ -26,6 +26,16 @@ front flow pointing at a journey the back lacks). The *endpoint* grain is alread
 can't call a missing endpoint) and **LZFE008** for back→front (every endpoint is consumed by a ViewModel). So:
 endpoints by type + coverage, journeys by parity — the same critical path proven on both sides.
 
+## One report — the unified doctor
+
+`doctor.mjs` (`aggregateReport`) is the single front-door that captures the **whole crew** in one pass: `eslint
+--format json` (every rule — the LZFE architecture rules, the community kit, expo's set — bucketed) plus the three
+script-doctors above (endpoint coverage, e2e, journey parity). The core is pure (feed it the eslint results, each
+rule's configured level, and the loop summaries); a consumer CLI does the I/O. It surfaces the **LZFE roster
+including clean (0-hit) rules** so a `warn`→`error` promotion is an evidence-backed move — you see, in one place,
+which rules gate, which are a revealed backlog, and which are already clean. See the Hostpoint dogfood's
+`scripts/lzfe-doctor.mjs` (`npm run doctor` / `doctor:json`) — a thin CLI over this core.
+
 ## Scaffold a feature unit
 
 ```
