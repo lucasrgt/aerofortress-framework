@@ -102,6 +102,10 @@ public static class CrudGenerator
         EmitSlice(ctx, slicesDir, $"Update{entity}", emitted);
         EmitSlice(ctx, slicesDir, $"Delete{entity}", emitted);
 
+        // The Lookup/Update/Delete slices return NotFound via a registry constant (LZ0018) — ensure it exists.
+        ErrorCodeScaffold.EnsureModuleCode(moduleDir, appNamespace, module,
+            $"{entity}NotFound", $"{Hyphenate(entity)}.not_found", $"No {entity} exists for the given id.");
+
         AugmentModule(moduleFile, ctx, hasUserId);
 
         Summarize(ctx, emitted, hasUserId);

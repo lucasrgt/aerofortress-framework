@@ -15,7 +15,7 @@ public static class LookupMy__ENTITY__
     public static async Task<Result<Output>> Handle(Input input, AppDb db, ICurrentUser current, CancellationToken ct)
     {
         var item = await db.__PLURAL__.FirstOrDefaultAsync(e => e.UserId == current.UserId, ct);
-        return item is null ? Error.NotFound("__ENTITY_LOWER__.not_found", "__ENTITY_LOWER__ not found") : new Output(item);
+        return item is null ? Error.NotFound(__MODULE__ErrorCodes.__ENTITY__NotFound, "__ENTITY_LOWER__ not found") : new Output(item);
     }
 
     public static void Map(IEndpointRouteBuilder app) =>

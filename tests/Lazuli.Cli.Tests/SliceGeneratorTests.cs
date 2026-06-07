@@ -21,6 +21,11 @@ public class SliceGeneratorTests
         Assert.Contains("Task<Result<Output>> Handle", slice);
         Assert.Contains("void Map(", slice);
 
+        // The scaffolded validation uses a registry constant (LZ0018), and the module's registry is created with it.
+        Assert.Contains("OrdersErrorCodes.IdRequired", slice);
+        var registry = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "OrdersErrorCodes.cs"));
+        Assert.Contains("public const string IdRequired = \"id.required\";", registry);
+
         // Canonical order: Input → Output → Handle → Map, the same order LZ0001 enforces.
         Assert.True(slice.IndexOf("record Input", StringComparison.Ordinal)
                   < slice.IndexOf("record Output", StringComparison.Ordinal));

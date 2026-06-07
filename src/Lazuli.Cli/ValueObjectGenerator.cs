@@ -42,6 +42,14 @@ public static class ValueObjectGenerator
     private static string ValueObject(string appNamespace, string name) => $$"""
         namespace {{appNamespace}}.BuildingBlocks;
 
+        /// <summary>Error codes for the {{name}} value object — stable, namespaced i18n keys the frontend localizes
+        /// from. Codes are registry constants (LZ0018), so the set stays discoverable for the OpenAPI contract.</summary>
+        public static class {{name}}ErrorCodes
+        {
+            /// <summary>The value is missing or fails the {{name}} invariant.</summary>
+            public const string Required = "{{name.ToLowerInvariant()}}.required";
+        }
+
         /// <summary>
         /// {{name}} — an always-valid value object: the type <em>is</em> the rule. There is no public way to
         /// construct an invalid {{name}}, so any {{name}} in the system is already valid. Fill in the
@@ -59,7 +67,7 @@ public static class ValueObjectGenerator
             public static Result<{{name}}> From(string value) =>
                 !string.IsNullOrWhiteSpace(value)
                     ? Result<{{name}}>.Ok(new {{name}}(value))
-                    : Error.Validation("{{name.ToLowerInvariant()}}.required", "{{name.ToLowerInvariant()}} is required");
+                    : Error.Validation({{name}}ErrorCodes.Required, "{{name.ToLowerInvariant()}} is required");
 
             /// <inheritdoc />
             public override string ToString() => Value;

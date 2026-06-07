@@ -37,6 +37,10 @@ public static class EntityGenerator
         Directory.CreateDirectory(moduleDir);
         File.WriteAllText(path, Entity(appNamespace, module, name));
         Console.WriteLine($"created {path}");
+
+        // The scaffolded invariant references a registry constant (LZ0018) — ensure the module's registry has it.
+        ErrorCodeScaffold.EnsureModuleCode(moduleDir, appNamespace, module,
+            "IdRequired", "id.required", "The id is required (entity invariant).");
         Console.WriteLine($"note: register it in AppDb.cs — add `public DbSet<{name}> {name}s => Set<{name}>();` — "
             + $"then grow {name} with intention-revealing methods that funnel through EnsureValid.");
         return 0;
@@ -73,7 +77,7 @@ public static class EntityGenerator
             private Result<{{name}}> EnsureValid()
             {
                 var validation = new Validation()
-                    .Check(Id != Guid.Empty, "id", "id.required", "is required");
+                    .Check(Id != Guid.Empty, "id", {{module}}ErrorCodes.IdRequired, "is required");
                 if (validation.Failed)
                     return validation.ToError();
                 return this;

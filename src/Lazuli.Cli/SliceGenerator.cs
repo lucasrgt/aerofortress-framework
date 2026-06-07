@@ -46,6 +46,10 @@ public static class SliceGenerator
         Console.WriteLine($"created {slicePath}");
         Console.WriteLine($"created {testPath}");
 
+        // The scaffolded validation references a registry constant (LZ0018) — ensure the module's registry has it.
+        ErrorCodeScaffold.EnsureModuleCode(Path.Combine(root, "Modules", module), appNamespace, module,
+            "IdRequired", "id.required", "The id input is required.");
+
         if (critical)
         {
             var journeys = Path.Combine(root, "Journeys");
@@ -74,7 +78,7 @@ public static class SliceGenerator
                 public static Task<Result<Output>> Handle(Input input, CancellationToken ct)
                 {
                     if (input.Id == Guid.Empty)
-                        return Task.FromResult<Result<Output>>(Error.Validation("id.required", "id is required"));
+                        return Task.FromResult<Result<Output>>(Error.Validation({{module}}ErrorCodes.IdRequired, "id is required"));
 
                     return Task.FromResult<Result<Output>>(new Output(input.Id));
                 }
