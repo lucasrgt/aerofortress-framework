@@ -75,3 +75,16 @@ reads them directly and enforces the same invariant (every locale object in a ca
 in one but not its siblings is a silent untranslated string), locale-agnostic like the rule. **Use the rule when
 catalogs are in lint scope, the tool when they're cross-package** — same convention, the mechanism follows the
 layout. (The Hostpoint dogfood runs the tool: its catalogs live in `@hostpoint/app-core`, out of the app's scope.)
+
+## Error-code coverage — every code has copy
+
+```
+node tools/error-code-coverage.mjs <catalog.i18n.ts> <errorBody.ts>
+# e.g.  node tools/error-code-coverage.mjs ../app-core/src/i18n/api-errors.i18n.ts ../app-core/src/client.gen/model/errorBody.ts
+```
+
+The backend ships every error as a stable code (the registry constants behind `LZ0018`/`LZ0019`), enumerated into the
+OpenAPI `ErrorBody.code`. This proves every code in the generated union has a catalog entry — so no error reaches a
+user untranslated. It's the **coverage** half (code → copy); `i18n-parity.mjs` is the **parity** half (copy → every
+language). It reads the orval-generated `errorBody.ts` union directly, and is a **notice until the client is
+regenerated** against the enum-bearing contract, a hard gate after — so it never blocks before the codegen has run.
