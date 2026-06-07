@@ -41,6 +41,29 @@ public class ErrorCodeAnalyzerTests
             Unrelated.Log("anything");
             """));
 
+    [Fact]
+    public Task An_unused_error_code_constant_is_flagged() =>
+        Harness<ErrorCodeAnalyzer>.Verify("""
+            public static class WidgetsErrorCodes
+            {
+                public const string {|LZ0019:NotFound|} = "widgets.not_found";
+            }
+            """);
+
+    [Fact]
+    public Task A_referenced_error_code_constant_is_not_flagged() =>
+        Harness<ErrorCodeAnalyzer>.Verify("""
+            public static class WidgetsErrorCodes
+            {
+                public const string NotFound = "widgets.not_found";
+            }
+
+            public static class Use
+            {
+                public static readonly string Ref = WidgetsErrorCodes.NotFound;
+            }
+            """);
+
     // Stubs mirror the real shapes: Error factories + Validation.Check/Add + the FieldError record each declare a
     // 'code' parameter; Collect and the aggregate Error.Validation(fields) do not, so they are left alone. A code
     // is conformant only when it references a const on a class whose name ends with ErrorCodes.
@@ -49,6 +72,9 @@ public class ErrorCodeAnalyzerTests
 
         public static class Subject
         {
+            // Keeps WalletsErrorCodes.NotFound referenced so LZ0019 (dead-code) never fires in the LZ0018 cases.
+            public static readonly string KeepAlive = WalletsErrorCodes.NotFound;
+
             public static void M()
             {
                 {{body}}
