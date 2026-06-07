@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +30,35 @@ public static class LazuliExtensions
     public static WebApplication UseLazuli(this WebApplication app)
     {
         app.MapOpenApi();
+        return app;
+    }
+
+    /// <summary>
+    /// <see langword="true"/> when the process is the build-time OpenAPI document generator
+    /// (<c>GetDocument.Insider</c>, run by <c>dotnet build</c>) rather than a real server boot. The generator
+    /// builds the host and runs <c>Program.cs</c> through to <c>app.Run()</c>, so any unguarded migrate/seed would
+    /// otherwise demand a database the build does not have. Guard such startup side effects with this flag — or use
+    /// <see cref="OnStartup"/> — so the contract emits at build time with no running database.
+    /// </summary>
+    public static bool IsGeneratingOpenApiDocument =>
+        Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
+
+    /// <summary>
+    /// Run a startup side effect — a database migration, data seeding — inside a fresh service scope, but skip it
+    /// when the process is only generating the OpenAPI document at build time
+    /// (<see cref="IsGeneratingOpenApiDocument"/>). This is what lets <c>dotnet build</c> emit the contract with no
+    /// database while a real boot still migrates and seeds. The persistence types stay in the app: the framework
+    /// owns the doc-gen awareness and the scope, the caller's <paramref name="task"/> owns what actually runs.
+    /// </summary>
+    /// <param name="app">The built application.</param>
+    /// <param name="task">The side effect to run on a real boot, given a scoped <see cref="IServiceProvider"/>.</param>
+    public static WebApplication OnStartup(this WebApplication app, Action<IServiceProvider> task)
+    {
+        if (!IsGeneratingOpenApiDocument)
+        {
+            using var scope = app.Services.CreateScope();
+            task(scope.ServiceProvider);
+        }
         return app;
     }
 }

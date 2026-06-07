@@ -10,6 +10,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.8" />
+    <!-- Build-time OpenAPI: emits the contract at `dotnet build` via the GetDocument tool (no running server). It
+         lives in the app, not the framework — the tool needs this project's entry assembly. The framework supplies
+         the doc-gen awareness (Lazuli's OnStartup / IsGeneratingOpenApiDocument), so the build needs no database. -->
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.0" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +32,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- The sample app is not shipped. -->
     <IsPackable>false</IsPackable>
+    <!-- Build-time OpenAPI: `dotnet build` emits the contract here via the GetDocument tool (brought transitively by
+         Lazuli.AspNetCore). DB-free — Program.cs guards seeding with OnStartup, so the build needs no database. This
+         is what the typed client generates from, and what CI diffs to catch a stale contract. -->
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/contract</OpenApiDocumentsDirectory>
   </PropertyGroup>
 
 </Project>

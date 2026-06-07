@@ -13,10 +13,10 @@ var app = builder.Build();
 app.UseLazuli();    // serve the OpenAPI contract at /openapi/v1.json
 app.MapModules();   // each module's routes (the explicit registry)
 
-// Boot: seed demo data so the sample reads non-empty on first run. The composition root only orchestrates the
-// scope + order; the seed content lives in the module that owns it (WalletsModule.Seed).
-using (var scope = app.Services.CreateScope())
-    WalletsModule.Seed(scope.ServiceProvider.GetRequiredService<AppDb>());
+// Boot: seed demo data so the sample reads non-empty on first run. `OnStartup` runs it in a scope on a real boot
+// but skips it when `dotnet build` is only emitting the OpenAPI contract — so the build needs no database. The
+// seed content lives in the module that owns it (WalletsModule.Seed).
+app.OnStartup(sp => WalletsModule.Seed(sp.GetRequiredService<AppDb>()));
 
 app.Run();
 

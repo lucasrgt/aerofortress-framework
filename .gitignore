@@ -1,6 +1,10 @@
 ## Build output
 bin/
 obj/
+
+## Build-time OpenAPI contract emitted by `dotnet build` (the GetDocument tool). A demo artifact in the sample;
+## a consuming app commits its own where the typed client generates from.
+examples/sample-app/backend/Sample.Api/contract/
 [Dd]ebug/
 [Rr]elease/
 x64/
