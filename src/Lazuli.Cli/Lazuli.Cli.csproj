@@ -19,4 +19,9 @@
     <None Include="Templates\**\*.cstmpl" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="tools\Templates" />
   </ItemGroup>
 
+  <!-- The CLI's internal scaffolding helpers (e.g. ErrorCodeScaffold) are unit-tested. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lazuli.Cli.Tests" />
+  </ItemGroup>
+
 </Project>

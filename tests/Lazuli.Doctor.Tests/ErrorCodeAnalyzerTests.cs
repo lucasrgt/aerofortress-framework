@@ -29,6 +29,18 @@ public class ErrorCodeAnalyzerTests
             var _ = new FieldError("amount", {|LZ0018:"amount.required"|}, "is required");
             """));
 
+    [Fact]
+    public Task A_constant_not_on_an_ErrorCodes_registry_is_flagged() =>
+        Harness<ErrorCodeAnalyzer>.Verify(Code("""
+            Error.NotFound({|LZ0018:Other.NotFound|}, "not found");
+            """));
+
+    [Fact]
+    public Task A_code_parameter_on_an_unrelated_type_is_left_alone() =>
+        Harness<ErrorCodeAnalyzer>.Verify(Code("""
+            Unrelated.Log("anything");
+            """));
+
     // Stubs mirror the real shapes: Error factories + Validation.Check/Add + the FieldError record each declare a
     // 'code' parameter; Collect and the aggregate Error.Validation(fields) do not, so they are left alone. A code
     // is conformant only when it references a const on a class whose name ends with ErrorCodes.
@@ -44,6 +56,12 @@ public class ErrorCodeAnalyzerTests
         }
 
         public static class WalletsErrorCodes { public const string NotFound = "wallets.not_found"; }
+
+        // A const that is NOT on an *ErrorCodes class — referencing it must still be flagged.
+        public static class Other { public const string NotFound = "other.not_found"; }
+
+        // An unrelated type with a 'code' parameter — the rule is scoped to Error/Validation/FieldError, so this is left alone.
+        public static class Unrelated { public static void Log(string code) { } }
 
         public sealed class Error
         {

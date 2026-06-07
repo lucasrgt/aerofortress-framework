@@ -40,7 +40,8 @@ public class DepositTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorKind.Validation, result.Error.Kind);
-        Assert.Contains(result.Error.Fields!, f => f.Field == "amount");
+        // Collect inherits the value object's own code (Money's), so the field error is localizable end-to-end.
+        Assert.Contains(result.Error.Fields!, f => f.Field == "amount" && f.Code == MoneyErrorCodes.Negative);
     }
 
     [Unit]
