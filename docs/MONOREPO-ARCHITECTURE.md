@@ -221,3 +221,26 @@ Refinements learned for the VM move (4b-ii), which is now de-risked but is its o
 - Transitive deps to move with the VMs: `@/i18n` (33 importers), `lib/async/async-state` (the spine),
   `theme/tokens/reference` (color constants), `cells/messaging/ChatExperience`, `lib/session/*`. All agnostic.
 - Then rewire the **105** `*.viewModel` importers (relative → `@hostpoint/app-core`).
+
+### Core-split progress — end of 2026-06-06 session (branch `refactor/front-core-split`)
+
+The agnostic FOUNDATION is fully in `@hostpoint/app-core` and **30 of 33 ViewModels** moved — all verified green
+(hostpoint-app `tsc` 0, app-core `tsc` 0, vitest 73/73, lint pristine) across these committed checkpoints:
+`4a` apiUrl inject · `4b-i` client+mutator (+ workspace/Metro/single-react, **Metro-proven web+iOS+Android**) ·
+`4b-ii(a)` i18n + catalogs · `4b-ii(b)` session + async + tokens · `4b-ii(c)` the 30 clean VMs + 99 importer rewires.
+The core now holds: client.gen + mutator + i18n + session + the AsyncState spine + design tokens + 30 VMs, with
+**no react-native dependency** — platform-agnosticism is now structural, not lint-deep.
+
+**The final 3 VMs (`ChatInbox`, `MessagingChat`, `HostServiceEdit`) are NOT a mechanical move — they need an
+app-level refactor first**, because they import types that are UI-coupled or duplicated, which is a presentation
+leak into the VM:
+- `HostServiceEdit.viewModel` imports `CategoryAccent` (whose `icon: IconName` field ties to `@/ui` `keyof typeof
+  ICONS` — a UI type), plus `ServiceOption`/`DaySchedule` that reference `PricingUnit`/`TimeRange` — types
+  **already duplicated** in the moved `HostServiceCreate.viewModel` (core). Fix: make the VM-facing type use a
+  plain `string` icon name (the View resolves it to the icon), and dedupe `PricingUnit`/`TimeRange` to one core home.
+- `ChatInbox`/`MessagingChat` import `ChatListItem`/`ChatVm`/`ChatPerson`/`PresenceKind` from the `ChatExperience`
+  component (shell), embedded in a ~15-type graph. Fix: extract that chat type-contract into a core `chat-types.ts`
+  that both the component and the VMs import.
+
+These are deliberate type-ownership decisions (where a type canonically lives; whether a VM may name an icon), not
+find-and-replace — so they were left for a focused pass rather than rushed. Everything done is committed + pushed.
