@@ -197,3 +197,27 @@ Two **rule evolutions** the move forces (same shape as the LZFE006 import-based 
   client source, not just the `client.gen/` path regex — else cross-package client imports go unpoliced.
 - flip the **hostpoint** `LZFE006` mirror to the import form (canon already is) + write each screen's co-located
   render test as it lands in `mobile/` (closes the 32-screen backlog in place).
+
+### 4b-i SHIPPED (branch `refactor/front-core-split`, commit `5fe3910`) + refined VM-move shape
+
+`@hostpoint/app-core` now exists as a real npm-workspace package holding the agnostic data layer (`client.gen` +
+the mutator). The hard workspace plumbing is **done + verified green** (hostpoint-app `tsc` 0, app-core `tsc` 0,
+vitest 73/73, lint pristine, `lazuli doctor` green): npm workspaces + turbo, the Metro monorepo config
+(`watchFolders` + `nodeModulesPaths`), a **single react/react-dom via root `overrides`** (the hoist had created a
+second react → null hooks dispatcher; `npm dedupe` collapsed it to 19.2.3), cross-package tsc/vitest aliases, orval
+retargeted, and the LZFE008 coverage doctor + `Lazuli.toml` updated. **Operator verify: `npx expo export`.**
+
+Refinements learned for the VM move (4b-ii), which is now de-risked but is its own intricate pass:
+
+- **No session/refresh-token port is needed yet.** `lib/session/refresh-token.ts` (native) is currently an
+  *in-memory* fallback and `.web.ts` is a no-op — neither imports expo today (secure-store is a future TODO). So
+  `session.ts`/`useSession.ts` are already agnostic and move to core (or kernel) without a port. Add the port only
+  when expo-secure-store lands (else it leaks expo into core — LZFE009 won't catch it, it's not a `.viewModel`).
+- **The real work is splitting the tests.** Each screen's `*.test.tsx` currently holds BOTH the VM renderHook
+  tests AND the View render test (LZFE006) in one file. The split (VM→core, View→shell) forces splitting those
+  ~33 files into ~66 (VM-unit test beside the VM in core; View-render test beside the View in the shell), plus
+  evolving `LZFE005` to the import form (like `LZFE006`), plus a core-side test harness (a QueryClient wrapper) so
+  the moved renderHook tests don't depend on the shell's `@test/render`.
+- Transitive deps to move with the VMs: `@/i18n` (33 importers), `lib/async/async-state` (the spine),
+  `theme/tokens/reference` (color constants), `cells/messaging/ChatExperience`, `lib/session/*`. All agnostic.
+- Then rewire the **105** `*.viewModel` importers (relative → `@hostpoint/app-core`).
