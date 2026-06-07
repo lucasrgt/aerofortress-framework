@@ -1,0 +1,20 @@
+# Git hooks via lefthook — one config across the framework (.NET via Lazuli.slnx + the frontend-sdk workspace). The
+# doctor runs locally before code is shared. pre-commit runs the LZFE plugin self-test when SDK files change;
+# pre-push runs the backend doctor (the LZ*/LZSELF* analyzers in the build) and the SDK typecheck. Glob-gated so a
+# backend-only change skips the SDK checks and vice versa. Wired by `npx lefthook install` via the `prepare` script.
+pre-commit:
+  parallel: true
+  commands:
+    sdk-doctor: # the LZFE rule self-test — every rule must fire on its violation and pass on what it allows
+      glob: "frontend-sdk/**/*.{cjs,mjs,ts,tsx}"
+      run: npm --prefix frontend-sdk run lint
+
+pre-push:
+  parallel: true
+  commands:
+    backend-doctor: # LZ* (doctor) + LZSELF* (self-harness) analyzers run inside the build
+      glob: "**/*.cs"
+      run: dotnet build Lazuli.slnx -v q -nologo
+    sdk-typecheck:
+      glob: "frontend-sdk/**/*.{ts,tsx}"
+      run: npm --prefix frontend-sdk run typecheck
