@@ -58,4 +58,20 @@ npm run assemble-i18n -- <featuresDir> <outFile>
 
 Discovers every `*.i18n.ts`, derives each namespace from the filename, and emits a generated module that imports the
 locale catalogs and composes `resources` (locale → namespace) — what an app otherwise wires by hand. The output
-typechecks, so a renamed/removed catalog fails the build; pair it with LZFE011 (key parity *within* each catalog).
+typechecks, so a renamed/removed catalog fails the build; pair it with LZFE011 (key parity *within* each catalog) —
+the `lazuli/i18n-completeness` rule in-scope, or `i18n-parity.mjs` below when the catalogs are cross-package.
+
+## i18n parity — cross-package catalogs (LZFE011, the other half)
+
+```
+node tools/i18n-parity.mjs <catalogsDir> [...moreDirs]
+# e.g.  node tools/i18n-parity.mjs ../examples/sample-app/frontend/core/src
+```
+
+LZFE011 has two mechanisms for two layouts. When the catalogs live *inside* the linted source, the
+`lazuli/i18n-completeness` eslint rule pins parity per file at lint time — done. But in a **core-split** layout the
+catalogs sit in a SEPARATE package, outside the app's eslint scope, so the rule never sees them. `i18n-parity.mjs`
+reads them directly and enforces the same invariant (every locale object in a catalog declares the same keys; a key
+in one but not its siblings is a silent untranslated string), locale-agnostic like the rule. **Use the rule when
+catalogs are in lint scope, the tool when they're cross-package** — same convention, the mechanism follows the
+layout. (The Hostpoint dogfood runs the tool: its catalogs live in `@hostpoint/app-core`, out of the app's scope.)
