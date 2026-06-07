@@ -263,10 +263,16 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE003` | **No mock in production code** — no import from `**/__mocks__`/`**/fixtures`/MSW outside `*.test.*` | **shipped** | hostpoint: `WAR-*` storybook fixtures shipped as data |
 | `LZFE004` | ViewModel is render-agnostic — a `*.viewModel.ts` imports no JSX/`react-dom` | planned | keeps the ViewModel unit-testable without rendering |
 | `LZFE005` | **Co-located test that exercises the ViewModel** — every `*.viewModel.ts` has a sibling `*.test.tsx` that imports it and calls `renderHook()`. Existence alone is not enough: mounting `useXModel()` compiles the ViewModel against the real generated client and proves the hook is callable. Behavior assertions stay per-screen judgment (no test-theater) | **shipped** | mirror of `LZ0003` — the triple's third leg; "renders + has a data door but no test" is not done |
-| `LZFE006` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done |
+| `LZFE006` | **Co-located integration test for every screen** — a `*.view.tsx` with a sibling `*.viewModel.ts` has a `*.test.tsx` that `render()`s it through the shared Providers harness. Presentational fragments (no viewModel) are out of scope — covered via their shell | **shipped** | the integration tier — "renders but untested" is not done |
 | `LZFE007` | Mandatory states — a ViewModel exposing server data exposes `loading` + `error` + `empty` | planned | the sad-path discipline of `[Critical]` slices |
 | `LZFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 ViewModel; an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | **shipped** (fs pass in `npm run lint`) | back→front completeness — catches "backend done, UI not wired" |
 | `LZFE009` | **ViewModel is platform-agnostic** — a `*.viewModel.ts` imports no `react-native`/`expo-*` (value *or* type); platform capabilities are injected ports | **shipped** | keeps the ViewModel + core shareable web↔mobile and Vitest-testable |
+| `LZFE010` | **State completeness** — a `*.view.tsx` routes loading/error/empty through `<Resource>` (the spine), not raw `isPending`/`isError` | **shipped** | every async state handled by construction, not a hand-rolled branch that forgets one |
+| `LZFE011` | **i18n parity** — every locale object in a `*.i18n.ts` declares the same keys; a key in one language but not its siblings is a silent untranslated string. Two mechanisms by layout: the `i18n-completeness` eslint rule when catalogs are in lint scope, `tools/i18n-parity.mjs` when they are cross-package | **shipped** | no string ships untranslated in any language |
+| `LZFE012` | **Design tokens** — no inline hex color outside the token/theme/palette files; color comes from the theme | **shipped** | one palette; theming (dark mode, white-label) survives |
+| `LZFE013` | **Mutation surfaces its error** — a react-query `.mutate(...)`/`.mutateAsync(...)` in a ViewModel routes its failure somewhere (inline `onError`, a read `.isError` state, a try/catch or `.catch()` on `mutateAsync`, or a propagated return) | **shipped** | the front-side of the backend's `error_handling` — no silent failure, no `onError` theater |
+| `LZFE014` | **No hardcoded copy** — user-facing JSX text + copy props (`placeholder`, `label`, `accessibilityLabel`…) in a View go through i18n (`t()`), not literals | **shipped** | feeds the catalog that `LZFE011` then keeps complete |
+| `LZFE015` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done (held `LZFE006` before the integration-test rule took that slot) |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
@@ -304,6 +310,13 @@ copy (nav, generic actions) lives in the `common` namespace. A View reads `const
 useTranslation("<feat>")` and renders `t("some.key")`. Adding a locale is a second key in `resources`
 + a language switch — the feature namespaces don't change. (Like styling, i18n is the app's choice, not
 a framework mechanism; this is Hostpoint's.)
+
+**Error codes — translated in every language, enforced.** The backend ships every error as a stable code
+(`ErrorBody.code`, the registry constants behind `LZ0018`/`LZ0019`); the front owns the copy. Two gates guarantee no
+error reaches a user untranslated: **coverage** — every code in the generated `ErrorBody.code` union has an
+`api-errors` catalog entry (`lzfe-error-codes`; a notice until the client is regenerated against the enum-bearing
+OpenAPI, a hard gate after) — and **parity** (`LZFE011`) — that entry exists in every locale. Composed: code → copy
+→ in every language. This is the front end of the same full-stack discipline `LZ0018`/`LZ0019` enforce on the back.
 
 ## Accessibility — enforced, ecosystem-specific
 
