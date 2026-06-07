@@ -222,10 +222,25 @@ Refinements learned for the VM move (4b-ii), which is now de-risked but is its o
   `theme/tokens/reference` (color constants), `cells/messaging/ChatExperience`, `lib/session/*`. All agnostic.
 - Then rewire the **105** `*.viewModel` importers (relative → `@hostpoint/app-core`).
 
-### Core-split progress — end of 2026-06-06 session (branch `refactor/front-core-split`)
+### Core-split COMPLETE — 2026-06-06 (branch `refactor/front-core-split`)
 
-The agnostic FOUNDATION is fully in `@hostpoint/app-core` and **30 of 33 ViewModels** moved — all verified green
-(hostpoint-app `tsc` 0, app-core `tsc` 0, vitest 73/73, lint pristine) across these committed checkpoints:
+**All 33 ViewModels + the full agnostic foundation now live in `@hostpoint/app-core`** — the MVVM core extraction
+is done. The package has no `react-native` dependency, so platform-agnosticism is structural. Verified green at
+every step (hostpoint-app `tsc` 0, app-core `tsc` 0, vitest 73/73, lint pristine) and **Metro-proven
+web+iOS+Android** through the 30-VM checkpoint (re-verify the final 3 with `npx expo export`). The final 3 were
+the app-refactor described below: the type contracts (`service-types.ts`, `chat-types.ts`) moved to core with their
+UI-coupled `icon` fields widened to `string`, and the View/cell casts to `IconName` at the render site — so the
+ViewModels name an icon as data and the platform layer owns the UI type.
+
+**Remaining (follow-up):** the hostpoint `LZFE006` mirror is still sibling-based, so now that every View's
+ViewModel is cross-package it sees no sibling and treats Views as fragments — i.e. LZFE006 is effectively
+*under-enforcing* in hostpoint (lint is green but not gating screen render-tests). Flip the mirror to the
+import-based form (canon already is) — that re-gates the screens and surfaces the render-test backlog to fill.
+
+---
+
+Historical (the move, in checkpoints): the agnostic FOUNDATION + **30 of 33 ViewModels** moved first — all verified
+green (hostpoint-app `tsc` 0, app-core `tsc` 0, vitest 73/73, lint pristine) across these committed checkpoints:
 `4a` apiUrl inject · `4b-i` client+mutator (+ workspace/Metro/single-react, **Metro-proven web+iOS+Android**) ·
 `4b-ii(a)` i18n + catalogs · `4b-ii(b)` session + async + tokens · `4b-ii(c)` the 30 clean VMs + 99 importer rewires.
 The core now holds: client.gen + mutator + i18n + session + the AsyncState spine + design tokens + 30 VMs, with
