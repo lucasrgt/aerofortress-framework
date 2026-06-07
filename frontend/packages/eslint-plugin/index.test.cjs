@@ -199,6 +199,8 @@ ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
     { filename: "Lzfe006Frag.view.tsx", code: `import { View } from "react-native"; export const X = () => <View />;` },
     // out of scope: not a *.view.tsx (even though it names a model hook).
     { filename: "Lzfe006Probe.tsx", code: `import { useLzfe006ProbeModel } from "@scope/app-core";` },
+    // props-in fragment: imports only a TYPE from a *.viewModel (a shared PanelProps), no data-door hook -> skipped.
+    { filename: "Lzfe006Panel.view.tsx", code: `import type { PanelProps } from "./HostEdit.viewModel"; export const X = (_p: PanelProps) => null;` },
   ],
   invalid: [
     // cross-package: imports a use<Name>Model data-door hook from a core package -> a screen, needs the render test.

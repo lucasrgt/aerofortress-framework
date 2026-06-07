@@ -157,13 +157,14 @@ const rules = {
   // + that it renders the View is enforced, the assertions stay per-screen judgment. Start as "warn" in an app with
   // a test backlog; promote to "error" once every screen has its render test.
   //
-  // SCOPE — the screen unit, detected by IMPORT, not by a sibling file. With the monorepo split the ViewModel lives
-  // in a `core` package while the View lives in the platform shell (mobile/web) — they are no longer siblings. So a
-  // *.view.tsx is a SCREEN when it CONSUMES a ViewModel: it imports a `*.viewModel` module (co-located) OR a
-  // `use<Name>Model` data-door hook (cross-package, e.g. from `@scope/app-core`). A View that imports no ViewModel
-  // is a presentational FRAGMENT (a wizard step, a settings panel — props-in, no data door); it has nothing to
-  // test-mount in isolation and is covered transitively when its shell renders, so it is skipped. The trigger is
-  // visible: it reads off the View's own import statements, surfaced in the lint message and inspectable in source.
+  // SCOPE — the screen unit, detected by the data-door HOOK it imports, not by a sibling file. With the monorepo
+  // split the ViewModel lives in a `core` package while the View lives in the platform shell — no longer siblings.
+  // A *.view.tsx is a SCREEN when it imports a `use<Name>Model` hook (co-located OR cross-package, e.g. from
+  // `@scope/app-core`) — that hook IS the data door. A View that imports no such hook is a presentational FRAGMENT
+  // (a wizard step / settings panel that takes its data + form `control` as PROPS from a parent shell); it is
+  // covered transitively when its shell renders, so it is skipped. Note: importing only a TYPE from a *.viewModel
+  // module (e.g. a shared `PanelProps`) does NOT gate a View — that is props-in, not a data door. The trigger reads
+  // off the View's own import statements, surfaced in the lint message and inspectable in source.
   "view-integration-test": {
     meta: {
       type: "problem",
@@ -185,8 +186,10 @@ const rules = {
       let consumesViewModel = false;
       return {
         ImportDeclaration(node) {
-          const spec = node.source.value;
-          if (typeof spec === "string" && /\.viewModel$/.test(spec)) consumesViewModel = true;
+          // Key on the data-door HOOK specifier (`use<Name>Model`), not the module path. A View that imports a
+          // use<Name>Model hook consumes a data door => it is a screen. A View that imports only a TYPE from a
+          // *.viewModel module (e.g. a shared `PanelProps`) is props-in (its data arrives from a parent shell) =>
+          // a presentational fragment, NOT gated. Keying on the path would wrongly gate those type-only importers.
           for (const s of node.specifiers || []) {
             const name = s.imported?.name ?? s.local?.name ?? "";
             if (/^use[A-Z]\w*Model$/.test(name)) consumesViewModel = true;
