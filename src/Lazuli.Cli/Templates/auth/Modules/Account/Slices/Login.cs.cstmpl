@@ -21,7 +21,7 @@ public static class Login
     {
         var email = Email.From(input.Email);
         if (email.IsFailure)
-            return Error.Unauthorized("auth.invalid_credentials", "invalid email or password");
+            return Error.Unauthorized(AccountErrorCodes.InvalidCredentials, "invalid email or password");
 
         var user = await db.Users
             //<lz:tenancy>
@@ -31,7 +31,7 @@ public static class Login
             //</lz:tenancy>
             .FirstOrDefaultAsync(u => u.Email == email.Value, ct);
         if (user is null || !user.PasswordHash.Verify(input.Password))
-            return Error.Unauthorized("auth.invalid_credentials", "invalid email or password");
+            return Error.Unauthorized(AccountErrorCodes.InvalidCredentials, "invalid email or password");
 
         var now = clock.GetUtcNow().UtcDateTime;
         var family = Guid.NewGuid();   // the session id (sid) the access token carries

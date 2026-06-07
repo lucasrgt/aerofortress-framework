@@ -18,7 +18,7 @@ public static class RequestEmailVerification
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == current.UserId, ct);
         if (user is null)
-            return Error.NotFound("account.user_not_found", "user not found");
+            return Error.NotFound(AccountErrorCodes.UserNotFound, "user not found");
 
         var now = clock.GetUtcNow().UtcDateTime;
         var (raw, hash) = SessionToken.Issue();

@@ -65,6 +65,7 @@ public static class AuthFlowGenerator
         var spec = Spec(flow);
 
         EmitTemplates(spec, root, appName, appLower);
+        AugmentErrorCodes(root, appNamespace, spec);
         AugmentUser(userFile, spec);
         AugmentAppDb(Path.Combine(root, "AppDb.cs"), spec);
         AugmentAccountModule(accountModule, spec);
@@ -96,6 +97,15 @@ public static class AuthFlowGenerator
             File.WriteAllText(destination, body);
             Console.WriteLine($"created {destination}");
         }
+    }
+
+    // Append the flow's error codes to the Account module's registry (AccountErrorCodes), idempotently — the
+    // flow's slice templates reference these constants (LZ0018), and the base codes were placed by `g auth`.
+    private static void AugmentErrorCodes(string root, string appNamespace, FlowSpec spec)
+    {
+        var accountDir = Path.Combine(root, "Modules", "Account");
+        foreach (var (constName, value, summary) in spec.ErrorCodes)
+            ErrorCodeScaffold.EnsureModuleCode(accountDir, appNamespace, "Account", constName, value, summary);
     }
 
     // Add the flow's user fields, idempotently, just before the line that declares CreatedAt (so they sit
@@ -368,6 +378,7 @@ public static class AuthFlowGenerator
         IReadOnlyList<(string Property, string Declaration)> DbSets,
         IReadOnlyList<string> Indexes,
         IReadOnlyList<string> MapLines,
+        IReadOnlyList<(string Const, string Value, string Summary)> ErrorCodes,
         string Summary);
 
     private static FlowSpec Spec(AuthFlow flow) => flow switch
@@ -395,6 +406,11 @@ public static class AuthFlowGenerator
                 "        ResendPhoneCode.Map(account);",
                 "        VerifyPhone.Map(account);",
             ],
+            ErrorCodes:
+            [
+                ("NoActiveCode", "auth.no_active_code", "The phone has no active OTP code."),
+                ("InvalidCode", "auth.invalid_code", "The submitted OTP code is wrong."),
+            ],
             Summary: "auth:otp generated — phone verification by SMS code (ConsoleSmsSender in dev). "
                 + "Run `lazuli doctor` then `lazuli test`."),
 
@@ -413,6 +429,11 @@ public static class AuthFlowGenerator
             [
                 "        RegisterWithGoogle.Map(account);",
                 "        LoginWithGoogle.Map(account);",
+            ],
+            ErrorCodes:
+            [
+                ("InvalidToken", "auth.invalid_token", "The external identity token is invalid."),
+                ("NoAccount", "auth.no_account", "No account exists for this external identity."),
             ],
             Summary: "auth:oauth generated — Google sign-up/sign-in (FakeExternalIdentity in dev). "
                 + "Run `lazuli doctor` then `lazuli test`."),
@@ -442,6 +463,11 @@ public static class AuthFlowGenerator
                 "        VerifyEmail.Map(account);",
                 "        RequestPasswordReset.Map(account);",
                 "        ResetPassword.Map(account);",
+            ],
+            ErrorCodes:
+            [
+                ("InvalidToken", "auth.invalid_token", "The verification token is invalid or expired."),
+                ("ResetTokenInvalid", "auth.invalid_reset_token", "The password-reset token is invalid or expired."),
             ],
             Summary: "auth:email generated — email verification + password reset by emailed token "
                 + "(ConsoleEmailSender in dev). Run `lazuli doctor` then `lazuli test`."),

@@ -23,7 +23,7 @@ public static class Refresh
         var hash = SessionToken.Hash(input.RefreshToken);
         var session = await db.UserSessions.FirstOrDefaultAsync(s => s.TokenHash == hash, ct);
         if (session is null)
-            return Error.Unauthorized("auth.invalid_session", "invalid or expired session");
+            return Error.Unauthorized(AccountErrorCodes.InvalidSession, "invalid or expired session");
 
         var now = clock.GetUtcNow().UtcDateTime;
 
@@ -33,11 +33,11 @@ public static class Refresh
         if (session.UsedAt is not null)
         {
             await RevokeFamily(db, session.FamilyId, ct);
-            return Error.Unauthorized("auth.session_revoked", "session revoked");
+            return Error.Unauthorized(AccountErrorCodes.SessionRevoked, "session revoked");
         }
 
         if (session.ExpiresAt < now)
-            return Error.Unauthorized("auth.invalid_session", "invalid or expired session");
+            return Error.Unauthorized(AccountErrorCodes.InvalidSession, "invalid or expired session");
 
         var user = await db.Users
             //<lz:tenancy>
@@ -46,7 +46,7 @@ public static class Refresh
             //</lz:tenancy>
             .FirstOrDefaultAsync(u => u.Id == session.UserId, ct);
         if (user is null)
-            return Error.Unauthorized("auth.invalid_session", "invalid or expired session");
+            return Error.Unauthorized(AccountErrorCodes.InvalidSession, "invalid or expired session");
 
         session.UsedAt = now;
         var (refresh, refreshHash) = SessionToken.Issue();

@@ -25,11 +25,11 @@ public static class LoginWithGoogle
 
         var email = Email.From(identity.Value.Email);
         if (email.IsFailure)
-            return Error.Unauthorized("auth.invalid_token", "invalid google token");
+            return Error.Unauthorized(AccountErrorCodes.InvalidToken, "invalid google token");
 
         var user = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == email.Value, ct);
         if (user is null)
-            return Error.Unauthorized("auth.no_account", "no account for this google identity");
+            return Error.Unauthorized(AccountErrorCodes.NoAccount, "no account for this google identity");
 
         var now = clock.GetUtcNow().UtcDateTime;
         var (access, refresh) = await Sessions.Issue(db, tokens, user, now, ct);
