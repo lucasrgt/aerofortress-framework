@@ -4,6 +4,7 @@
     <Project Path="analyzers/Lazuli.SelfHarness/Lazuli.SelfHarness.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Lazuli/Lazuli.csproj" />
     <Project Path="src/Lazuli.Abstractions/Lazuli.Abstractions.csproj" />
     <Project Path="src/Lazuli.Auth/Lazuli.Auth.csproj" />
     <Project Path="src/Lazuli.Cli/Lazuli.Cli.csproj" />

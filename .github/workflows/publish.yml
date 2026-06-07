@@ -21,6 +21,7 @@ jobs:
       - name: pack
         run: |
           for proj in \
+            src/Lazuli/Lazuli.csproj \
             src/Lazuli.Abstractions/Lazuli.Abstractions.csproj \
             src/Lazuli.AspNetCore/Lazuli.AspNetCore.csproj \
             src/Lazuli.Auth/Lazuli.Auth.csproj \
