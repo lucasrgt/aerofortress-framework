@@ -16,7 +16,7 @@ The View is written **once** (agnostic) in `core`; only the `@/ui` implementatio
 ## Verification
 
 - **Backend** — `dotnet test examples/sample-app/backend/Sample.Tests` (21 tests, green).
-- **Frontend core + web** — the framework's vitest (run `npm run check` in `frontend/`) mounts the core's View
+- **Frontend core + web** — the framework's vitest (run `npm run check` in `frontend-sdk/`) mounts the core's View
   against the **web** `@/ui` in jsdom — wired, not mocked.
 - **Mobile** — built with the consumer's Expo/Metro toolchain (which provides `react-native`), like a real app's
   mobile target; it is not part of the framework's web-only check.

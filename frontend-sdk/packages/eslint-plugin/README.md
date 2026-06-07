@@ -29,5 +29,5 @@ framework applies to its own backend rules). CI runs this beside `dotnet build` 
 ## Consuming it in an app
 
 An app registers the plugin in its flat ESLint config and turns the rules on for its feature tree — see the
-`frontend/eslint.config.mjs` in this repo, which lints the canonical `sample/`. Until this package is published to
+`frontend-sdk/eslint.config.mjs` in this repo, which lints the canonical `sample/`. Until this package is published to
 npm, a consuming app (e.g. the Hostpoint dogfood) installs it from this repo; once published it is a normal devDep.

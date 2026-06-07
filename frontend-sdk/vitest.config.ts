@@ -14,8 +14,8 @@ export default defineConfig({
     root: r(".."),
     environment: "jsdom",
     include: [
-      "frontend/packages/**/*.test.{ts,tsx}",
-      "frontend/tools/**/*.test.{ts,tsx}",
+      "frontend-sdk/packages/**/*.test.{ts,tsx}",
+      "frontend-sdk/tools/**/*.test.{ts,tsx}",
       "examples/sample-app/frontend/core/**/*.test.{ts,tsx}",
     ],
   },

@@ -13,4 +13,4 @@ apps     = ["mobile", "web"]      # mobile = RN @/ui impl; web = react-dom @/ui 
 
 [harness]
 backend  = "../../Lazuli.slnx"                      # the framework's LZ* Roslyn analyzers
-frontend = "../../frontend/packages/eslint-plugin"  # the LZFE* ESLint rules
+frontend = "../../frontend-sdk/packages/eslint-plugin"  # the LZFE* ESLint rules
