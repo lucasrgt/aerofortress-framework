@@ -14,7 +14,7 @@
 
     <!-- Package metadata (the CLI doesn't import Lazuli.Library.props — that turns CS1591 into an error, and a
          tool isn't a documented library surface). Keep Version in step with the framework on each release. -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Lucas Tinoco</Authors>
     <Description>The Lazuli CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g lazuli-cli`; run as `lazuli`. The companion to the Lazuli framework packages.</Description>
     <PackageTags>lazuli;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>

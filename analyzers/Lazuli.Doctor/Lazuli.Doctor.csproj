@@ -26,8 +26,13 @@
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- Ship the analyzer so it flows TRANSITIVELY (e.g. via the Lazuli meta-package): the DLL + a buildTransitive
+       target that adds it to @(Analyzer) for every consumer, direct and transitive. The DLL goes in
+       buildTransitive/ (not analyzers/) so NuGet does not ALSO auto-apply it to direct refs — the target is the
+       single wiring, no double-add. See buildTransitive/Lazuli.Doctor.targets. -->
   <ItemGroup>
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="buildTransitive/Lazuli.Doctor.dll" Visible="false" />
+    <None Include="buildTransitive/Lazuli.Doctor.targets" Pack="true" PackagePath="buildTransitive/Lazuli.Doctor.targets" Visible="false" />
   </ItemGroup>
 
 </Project>
