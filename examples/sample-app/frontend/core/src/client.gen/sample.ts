@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Item } from "../../items/Items.viewModel";
+import type { Item } from "../items/Items.viewModel";
 
 // Harness stand-in for the orval-generated typed hook (`@/client.gen/sample`). It is a REAL wired react-query hook
 // over a stub fetch — so the sample's test mounts the data door against this exactly as it would a real client

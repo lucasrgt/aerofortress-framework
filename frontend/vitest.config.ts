@@ -1,23 +1,38 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Resolve the sample's `@/…` app aliases + the spine to source, so the canonical unit runs exactly as it would
-// inside a real lazuli-net app — wired, not mocked. The harness (sample/harness) stands in for the design system,
-// the i18n instance, and the generated client; everything else is the real code.
+// Verifies the framework's spine/tools AND the canonical example (examples/sample-app) — wired, not mocked. The
+// example's agnostic core (the ViewModel + the design-system-driven View) renders against the WEB `@/ui` impl in
+// jsdom; the spine + the generated client + i18n resolve to source. Root is the repo so the example (a sibling of
+// frontend/) is in scope; the include globs keep the run to the real test files.
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
   esbuild: { jsx: "automatic" },
+  server: { fs: { allow: [r("..")] } }, // allow loading the example (a sibling of frontend/) under the repo root
   test: {
+    root: r(".."),
     environment: "jsdom",
-    include: ["packages/**/*.test.{ts,tsx}", "sample/**/*.test.{ts,tsx}", "tools/**/*.test.{ts,tsx}"],
+    include: [
+      "frontend/packages/**/*.test.{ts,tsx}",
+      "frontend/tools/**/*.test.{ts,tsx}",
+      "examples/sample-app/frontend/core/**/*.test.{ts,tsx}",
+    ],
   },
   resolve: {
     alias: {
       "@lazuli/react": r("./packages/lazuli-react/src/index.ts"),
-      "@/client.gen/sample": r("./sample/harness/client.gen/sample.ts"),
-      "@/i18n": r("./sample/harness/i18n.ts"),
-      "@/ui": r("./sample/harness/ui.tsx"),
+      "@/client.gen/sample": r("../examples/sample-app/frontend/core/src/client.gen/sample.ts"),
+      "@/i18n": r("../examples/sample-app/frontend/core/src/i18n.ts"),
+      "@/ui": r("../examples/sample-app/frontend/web/src/ui.tsx"),
+      // The example lives at examples/ (a sibling of frontend/), so its direct bare imports can't reach
+      // frontend/node_modules by node resolution — alias them to the framework's installed copies (their transitive
+      // deps then resolve from there naturally). Boundary-matched, so "react" doesn't catch "react-i18next" etc.
+      react: r("./node_modules/react"),
+      "react-i18next": r("./node_modules/react-i18next"),
+      i18next: r("./node_modules/i18next"),
+      "@testing-library/react": r("./node_modules/@testing-library/react"),
+      "@tanstack/react-query": r("./node_modules/@tanstack/react-query"),
     },
   },
 });

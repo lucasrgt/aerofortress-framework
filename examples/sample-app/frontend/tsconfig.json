@@ -1,0 +1,14 @@
+{
+  "extends": "../../../frontend/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@lazuli/react": ["../../../frontend/packages/lazuli-react/src/index.ts"],
+      "@/client.gen/*": ["./core/src/client.gen/*"],
+      "@/i18n": ["./core/src/i18n.ts"],
+      "@/ui": ["./web/src/ui.tsx"]
+    }
+  },
+  "include": ["core/src", "web/src"]
+}

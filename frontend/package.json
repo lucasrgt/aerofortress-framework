@@ -3,13 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "The frontend side of lazuli-net — the spine (@lazuli/react), the canonical sample, and the harness.",
+  "description": "The frontend side of lazuli-net — the spine (@lazuli/react), the eslint-plugin (LZFE rules), and the tools. The canonical sample now lives at examples/sample-app (run via the repo-root vitest below).",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/lazuli-react/tsconfig.json && tsc --noEmit -p sample/tsconfig.json",
-    "lint": "eslint sample && node packages/eslint-plugin/index.test.cjs",
+    "typecheck": "tsc --noEmit -p packages/lazuli-react/tsconfig.json",
+    "lint": "node packages/eslint-plugin/index.test.cjs",
     "scaffold": "node tools/scaffold-feature.mjs",
     "assemble-i18n": "node tools/assemble-i18n.mjs",
     "test": "vitest run",

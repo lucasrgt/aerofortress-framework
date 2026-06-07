@@ -6,7 +6,12 @@ import noSecrets from "eslint-plugin-no-secrets";
 import sonarjs from "eslint-plugin-sonarjs";
 import vitest from "@vitest/eslint-plugin";
 
-// Lint the canonical sample with the framework's harness PLUS a curated slice of community plugins (prior art:
+// Lint config for the canonical example (examples/sample-app/frontend). The example now lives at the repo root
+// (a sibling of frontend/), so type-aware linting of it runs once lazuli-net adopts a root npm workspace (shared
+// node_modules + a project that spans both) — the same monorepo shape the example itself demonstrates. The LZFE
+// rules below are the contract it follows; `npm run lint` verifies the rules via the plugin self-test today.
+//
+// Curated community kit alongside the LZFE rules (prior art:
 // pleiades-os / corbanx both standardize on the same kit). Two of those compose cleanly with the LZFE rules:
 //   - @tanstack/eslint-plugin-query — react-query correctness (exhaustive deps, stable keys, no rest-destructure);
 //     the LZFE rules cover architecture, this covers RQ usage — complementary, not overlapping.
@@ -20,7 +25,7 @@ export default [
   // react-query correctness (parser comes from the sample block below, which these merge onto).
   ...tanstackQuery.configs["flat/recommended"],
   {
-    files: ["sample/**/*.{ts,tsx}"],
+    files: ["../examples/sample-app/frontend/{core,web}/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 2022,
@@ -52,7 +57,7 @@ export default [
   },
   // test hygiene — no .only/.skip leaking into the suite (the @vitest recommended set).
   {
-    files: ["sample/**/*.test.{ts,tsx}"],
+    files: ["../examples/sample-app/frontend/{core,web}/**/*.test.{ts,tsx}"],
     plugins: { vitest },
     rules: { ...vitest.configs.recommended.rules },
   },
