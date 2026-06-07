@@ -19,6 +19,14 @@ import vitest from "@vitest/eslint-plugin";
 // The LZFE plugin is CommonJS; load it via createRequire.
 const require = createRequire(import.meta.url);
 const lazuli = require("./packages/eslint-plugin/index.cjs");
+// Accessibility — the ecosystem-specific half of the harness, mirrored across targets: web uses jsx-a11y
+// (alt / aria / href on the DOM), mobile uses react-native-a11y (accessibilityRole / accessible / label on RN
+// primitives). Same intent, no shared parity, so each ecosystem gets its own block below. Warn-first — a revealed
+// backlog promoted to error per-rule once cleared. (rn-a11y caps its eslint peer at 8 but runs clean on 9.)
+const jsxA11y = require("eslint-plugin-jsx-a11y");
+const rnA11y = require("eslint-plugin-react-native-a11y");
+const toWarn = (rules) =>
+  Object.fromEntries(Object.entries(rules).map(([id, val]) => [id, Array.isArray(val) ? ["warn", ...val.slice(1)] : "warn"]));
 
 export default [
   { ignores: ["**/node_modules/**", "packages/eslint-plugin/**"] },
@@ -54,6 +62,21 @@ export default [
       "sonarjs/no-duplicated-branches": "warn",
       "sonarjs/cognitive-complexity": ["warn", 25],
     },
+  },
+  // a11y — web (DOM): jsx-a11y. Inherits the type-aware parse setup from the {core,web} block above.
+  {
+    files: ["../examples/sample-app/frontend/web/**/*.{ts,tsx}"],
+    plugins: { "jsx-a11y": jsxA11y },
+    rules: toWarn(jsxA11y.flatConfigs.recommended.rules),
+  },
+  // a11y — mobile (RN): react-native-a11y. The {core,web} block doesn't cover mobile, so this carries its own
+  // (type-free) parse setup; a11y rules are AST-based and need no type info. has-accessibility-hint is off
+  // (supplementary, not required — keeps the backlog high-signal), matching the hostpoint dogfood.
+  {
+    files: ["../examples/sample-app/frontend/mobile/**/*.{ts,tsx}"],
+    languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
+    plugins: { "react-native-a11y": rnA11y },
+    rules: { ...toWarn(rnA11y.configs.all.rules), "react-native-a11y/has-accessibility-hint": "off" },
   },
   // test hygiene — no .only/.skip leaking into the suite (the @vitest recommended set).
   {

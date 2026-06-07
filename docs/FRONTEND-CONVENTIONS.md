@@ -305,6 +305,23 @@ useTranslation("<feat>")` and renders `t("some.key")`. Adding a locale is a seco
 + a language switch — the feature namespaces don't change. (Like styling, i18n is the app's choice, not
 a framework mechanism; this is Hostpoint's.)
 
+## Accessibility — enforced, ecosystem-specific
+
+a11y is part of the harness, but unlike the architecture rules it has **no cross-ecosystem parity to
+share**: the web speaks DOM (`alt`, `aria-*`, `href`), React Native speaks accessibility props
+(`accessibilityRole`, `accessible`, `accessibilityLabel`). So it is a **mirrored exclusive** — same
+intent, one plugin per ecosystem, wired in the ESLint config (not the LZFE plugin, which owns
+architecture):
+
+- **web** → [`eslint-plugin-jsx-a11y`](https://www.npmjs.com/package/eslint-plugin-jsx-a11y) (the `flat/recommended` set).
+- **mobile (RN)** → [`eslint-plugin-react-native-a11y`](https://github.com/FormidableLabs/eslint-plugin-react-native-a11y) (the full set; runs clean on ESLint 9 despite its peer cap at 8).
+
+Both are **warn-first** — a revealed backlog promoted to error per-rule once cleared — with
+`has-accessibility-hint` **off**: a hint is supplementary (only for non-obvious actions), and on by
+default it buries the high-signal rules under noise. This is the same posture as the curated
+community kit (`sonarjs`, `no-secrets`, `@tanstack/query`): external rules wired *alongside* the LZFE
+plugin, never reinvented inside it.
+
 ## Scope — and non-goals
 
 **In:** the MVVM feature convention, the `LZFE*` harness, a `g view` scaffold, and `lazuli gen
