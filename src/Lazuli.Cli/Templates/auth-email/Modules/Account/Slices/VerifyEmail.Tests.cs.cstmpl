@@ -1,9 +1,9 @@
-using Hostpoint.Api;
-using Hostpoint.Api.Modules.Account;
-using Hostpoint.Api.Tenancy;
+using MyApp.Api;
+using MyApp.Api.Modules.Account;
+using MyApp.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Tests.Modules.Account;
+namespace MyApp.Tests.Modules.Account;
 
 public class VerifyEmailTests
 {

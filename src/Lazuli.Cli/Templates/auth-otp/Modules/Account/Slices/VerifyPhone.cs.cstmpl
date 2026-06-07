@@ -1,7 +1,7 @@
 using Lazuli.Auth;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Verify the caller's phone with the code from their latest active OTP. On success the phone is
 /// marked verified and registration completes; a wrong code bumps the attempt count, never reveals more.</summary>

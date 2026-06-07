@@ -1,7 +1,7 @@
 using Lazuli.Auth;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Authenticate with email + password; issue an access token (JWT) and a refresh token. The
 /// user is looked up by email — globally, one-human-one-account — and the identity is read off the

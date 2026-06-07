@@ -1,12 +1,12 @@
-using Hostpoint.Api;
+using MyApp.Api;
 using Lazuli.Auth;
-using Hostpoint.Api.Modules.Account;
+using MyApp.Api.Modules.Account;
 //<lz:tenancy>
-using Hostpoint.Api.Tenancy;
+using MyApp.Api.Tenancy;
 //</lz:tenancy>
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Tests.Modules.Account;
+namespace MyApp.Tests.Modules.Account;
 
 public class LogoutTests
 {
@@ -47,7 +47,7 @@ public class LogoutTests
     }
 
     private static IAccessTokens Tokens() =>
-        new AccessTokens("test-secret-for-jwt-signing-please-32+chars", "hostpoint", "hostpoint", TimeProvider.System);
+        new AccessTokens("test-secret-for-jwt-signing-please-32+chars", "myapp", "myapp", TimeProvider.System);
 
     //<lz:tenancy>
     private static AppDb NewDb(string? store = null) =>

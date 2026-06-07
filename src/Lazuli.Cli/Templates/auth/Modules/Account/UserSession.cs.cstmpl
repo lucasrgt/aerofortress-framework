@@ -1,4 +1,4 @@
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>A refresh-token slot in a rotating family. <b>Not</b> tenant-scoped: it is a global auth
 /// artifact keyed by an unguessable token hash, never part of an org's dataset — so it is looked up

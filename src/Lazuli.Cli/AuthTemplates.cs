@@ -11,7 +11,7 @@ namespace Lazuli.Cli;
 /// <c>//&lt;/lz:tenancy&gt;</c> and the <c>!</c> negations, likewise for <c>cookies</c>) keep or drop
 /// the enclosed lines per flag; the marker lines themselves always go. So one template carries both
 /// the tenancy-on and tenancy-off shape of a file and the generator picks one.</description></item>
-/// <item><description><b>Token replacement</b> — <c>Hostpoint</c> → the app name and <c>hostpoint</c>
+/// <item><description><b>Token replacement</b> — <c>MyApp</c> → the app name and <c>myapp</c>
 /// → its lowercase, applied to the content and the path alike (namespaces, the cookie name, the JWT
 /// audience, the dev secret all fall out of the same replace).</description></item>
 /// </list>
@@ -59,10 +59,10 @@ internal static class AuthTemplates
         return ReplaceTokens(resolved, appName, appLower);
     }
 
-    // Hostpoint → app name first, then hostpoint → app lower (order matters: the second must not
+    // MyApp → app name first, then myapp → app lower (order matters: the second must not
     // re-touch what the first produced, and it does not since the app name is mixed-case).
     private static string ReplaceTokens(string text, string appName, string appLower) =>
-        text.Replace("Hostpoint", appName).Replace("hostpoint", appLower);
+        text.Replace("MyApp", appName).Replace("myapp", appLower);
 
     // Walk the lines once, tracking whether the current line sits inside a region whose flag says
     // drop. Marker lines never survive. A line is kept unless some enclosing region vetoes it.

@@ -158,7 +158,7 @@ public static class CrudGenerator
     // ---- rendering --------------------------------------------------------------------------------
 
     // One pass over a template: the structural CRUD tokens first (entity/module/plural + the spliced
-    // field fragments), then the app-name tokens (Hostpoint → app), exactly as the auth blueprint does.
+    // field fragments), then the app-name tokens (MyApp → app), exactly as the auth blueprint does.
     private static string Render(string body, Ctx ctx)
     {
         var text = NormalizeNewlines(body);
@@ -175,7 +175,7 @@ public static class CrudGenerator
         text = text
             .Replace("__CREATE_INPUT_FIELDS__", CreateInputFields(ctx))
             .Replace("__CREATE_ASSIGNMENTS__", CreateAssignments(ctx))
-            .Replace("__AUTH_USING__", ctx.HasUserId ? "using Hostpoint.Api.Auth;\n" : "")
+            .Replace("__AUTH_USING__", ctx.HasUserId ? "using MyApp.Api.Auth;\n" : "")
             .Replace("__USERID_ASSIGNMENT__", ctx.HasUserId ? "            UserId = current.UserId,\n" : "")
             .Replace("__CURRENT_PARAM__", ctx.HasUserId ? "ICurrentUser current, " : "")
             .Replace("__CREATE_CURRENT_ARG__", ctx.HasUserId ? "new FakeUser(Guid.NewGuid(), org), " : "")
@@ -438,9 +438,9 @@ public static class CrudGenerator
 
     // ---- text helpers -----------------------------------------------------------------------------
 
-    // Hostpoint → app name, then hostpoint → app lower (the second cannot re-touch the first: app name is mixed-case).
+    // MyApp → app name, then myapp → app lower (the second cannot re-touch the first: app name is mixed-case).
     private static string ReplaceAppTokens(string text, string appName, string appLower) =>
-        text.Replace("Hostpoint", appName).Replace("hostpoint", appLower);
+        text.Replace("MyApp", appName).Replace("myapp", appLower);
 
     // PascalCase → kebab for a URL segment ("OrderLine" → "order-line").
     private static string Hyphenate(string pascal)

@@ -1,4 +1,4 @@
-namespace Hostpoint.Api.BuildingBlocks;
+namespace MyApp.Api.BuildingBlocks;
 
 /// <summary>Error codes for the <see cref="Email"/> value object — stable i18n keys (a registry constant, not an
 /// inline literal, so the set stays discoverable: LZ0018).</summary>

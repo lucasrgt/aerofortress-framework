@@ -1,11 +1,11 @@
-using Hostpoint.Api;
+using MyApp.Api;
 using Lazuli.Auth;
-using Hostpoint.Api.Modules.Account;
-using Hostpoint.Api.Tenancy;
+using MyApp.Api.Modules.Account;
+using MyApp.Api.Tenancy;
 using Lazuli.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Tests.Modules.Account;
+namespace MyApp.Tests.Modules.Account;
 
 public class LoginWithGoogleTests
 {

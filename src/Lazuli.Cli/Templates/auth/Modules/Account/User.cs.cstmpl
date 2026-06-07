@@ -1,8 +1,8 @@
 //<lz:tenancy>
-using Hostpoint.Api.Tenancy;
+using MyApp.Api.Tenancy;
 //</lz:tenancy>
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>A user account. The email is unique globally — one-human-one-account — so a user signs
 /// in by email regardless of org. Fields grow as the account slices are ported.</summary>

@@ -7,7 +7,7 @@ namespace Lazuli.Cli;
 /// Loads the <c>auth-&lt;flow&gt;/**</c> blueprint templates for an auth sub-flow (otp / oauth / email)
 /// and renders each for a concrete app. Unlike <see cref="AuthTemplates"/>, a flow ships a single
 /// variant — it only augments the default multi-tenant scaffold — so there are no flag regions to
-/// resolve. Rendering is one pass: <c>Hostpoint</c> → the app name, <c>hostpoint</c> → its lowercase,
+/// resolve. Rendering is one pass: <c>MyApp</c> → the app name, <c>myapp</c> → its lowercase,
 /// applied to content and path alike, exactly as the auth blueprint's token pass.
 /// </summary>
 internal static class FlowTemplates
@@ -50,10 +50,10 @@ internal static class FlowTemplates
     public static string Render(string body, string appName, string appLower) =>
         ReplaceTokens(NormalizeNewlines(body), appName, appLower);
 
-    // Hostpoint → app name first, then hostpoint → app lower (order matters: the second must not re-touch
+    // MyApp → app name first, then myapp → app lower (order matters: the second must not re-touch
     // what the first produced, and it does not since the app name is mixed-case).
     private static string ReplaceTokens(string text, string appName, string appLower) =>
-        text.Replace("Hostpoint", appName).Replace("hostpoint", appLower);
+        text.Replace("MyApp", appName).Replace("myapp", appLower);
 
     // Normalize CRLF/CR to LF so the written file is stable regardless of the template's on-disk endings.
     private static string NormalizeNewlines(string body) =>

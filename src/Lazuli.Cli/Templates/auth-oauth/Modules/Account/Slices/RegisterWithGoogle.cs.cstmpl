@@ -2,7 +2,7 @@ using Lazuli.Auth;
 using Lazuli.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Create an account from a Google identity. Google has already verified the email, so the new
 /// user is email-verified from the start and a session is issued immediately; phone is still pending.

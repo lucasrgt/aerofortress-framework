@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.__MODULE__;
+namespace MyApp.Api.Modules.__MODULE__;
 
 /// <summary>Look up one __ENTITY__ by id, scoped to the caller's tenant. An unknown id is a not-found,
 /// never a hint that the row exists in another org.</summary>

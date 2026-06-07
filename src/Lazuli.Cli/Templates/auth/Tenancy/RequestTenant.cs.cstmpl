@@ -1,6 +1,6 @@
 using Lazuli.Auth;
 
-namespace Hostpoint.Api.Tenancy;
+namespace MyApp.Api.Tenancy;
 
 /// <summary>Resolves the request's org. For an authenticated request the org comes from the access
 /// token (the JWT carries it, read via <see cref="ICurrentUser"/>), so the tenant and the caller agree by

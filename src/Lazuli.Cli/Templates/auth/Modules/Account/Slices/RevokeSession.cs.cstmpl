@@ -1,7 +1,7 @@
 using Lazuli.Auth;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Revoke one of the caller's sessions by its id (the refresh family). Only the owner can
 /// revoke it; an unknown or another user's id is a not-found, never a hint that it exists. Reuses the

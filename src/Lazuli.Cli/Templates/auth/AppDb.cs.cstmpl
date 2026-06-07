@@ -1,10 +1,10 @@
 //<lz:tenancy>
-using Hostpoint.Api.Tenancy;
+using MyApp.Api.Tenancy;
 //</lz:tenancy>
-using Hostpoint.Api.Modules.Account;
+using MyApp.Api.Modules.Account;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api;
+namespace MyApp.Api;
 
 /// <summary>The application's single database — one logical store for every module's tables. A module is a
 /// bounded context <em>by convention</em>: it writes only its own entities (LZ0009) and references another

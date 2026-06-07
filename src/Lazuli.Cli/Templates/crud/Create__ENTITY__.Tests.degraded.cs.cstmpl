@@ -1,7 +1,7 @@
-using Hostpoint.Api;
-using Hostpoint.Api.Modules.__MODULE__;
+using MyApp.Api;
+using MyApp.Api.Modules.__MODULE__;
 
-namespace Hostpoint.Tests.Modules.__MODULE__;
+namespace MyApp.Tests.Modules.__MODULE__;
 
 // __ENTITY__ has complex/VO fields the generator cannot construct, so an end-to-end create is left to
 // the owner: Create__ENTITY__.Handle persists the entity, which requires the VO/enum fields the generator

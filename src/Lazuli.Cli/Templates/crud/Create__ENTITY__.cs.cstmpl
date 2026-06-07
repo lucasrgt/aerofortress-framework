@@ -1,4 +1,4 @@
-__AUTH_USING__namespace Hostpoint.Api.Modules.__MODULE__;
+__AUTH_USING__namespace MyApp.Api.Modules.__MODULE__;
 
 /// <summary>Create a __ENTITY__ for the caller's tenant. The org is stamped by the DbContext; only the
 /// writable scalar fields are taken from the request.</summary>

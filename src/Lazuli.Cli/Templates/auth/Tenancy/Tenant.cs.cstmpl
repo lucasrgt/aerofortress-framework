@@ -1,4 +1,4 @@
-namespace Hostpoint.Api.Tenancy;
+namespace MyApp.Api.Tenancy;
 
 /// <summary>The request-scoped <see cref="ITenant"/>. Middleware sets <see cref="OrgId"/> once per
 /// request; tests set it directly.</summary>

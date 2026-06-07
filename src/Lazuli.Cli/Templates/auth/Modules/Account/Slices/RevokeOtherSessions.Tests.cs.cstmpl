@@ -1,12 +1,12 @@
-using Hostpoint.Api;
+using MyApp.Api;
 using Lazuli.Auth;
-using Hostpoint.Api.Modules.Account;
+using MyApp.Api.Modules.Account;
 //<lz:tenancy>
-using Hostpoint.Api.Tenancy;
+using MyApp.Api.Tenancy;
 //</lz:tenancy>
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Tests.Modules.Account;
+namespace MyApp.Tests.Modules.Account;
 
 public class RevokeOtherSessionsTests
 {

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.__MODULE__;
+namespace MyApp.Api.Modules.__MODULE__;
 
 /// <summary>List __ENTITY__ records for the caller's tenant, newest first. Authenticated; the tenant
 /// filter on the DbContext scopes the rows, so paging never crosses an org boundary.</summary>

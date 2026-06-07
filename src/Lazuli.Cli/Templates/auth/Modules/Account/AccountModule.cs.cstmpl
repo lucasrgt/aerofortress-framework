@@ -1,4 +1,4 @@
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>The Account module groups its slices under /account.</summary>
 public static class AccountModule

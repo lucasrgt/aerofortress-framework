@@ -1,4 +1,4 @@
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>The Account module's error codes — stable, namespaced i18n keys the frontend localizes from. Every
 /// Error/Check references a const here (LZ0018), so the full set stays discoverable: AddLazuliOpenApi enumerates

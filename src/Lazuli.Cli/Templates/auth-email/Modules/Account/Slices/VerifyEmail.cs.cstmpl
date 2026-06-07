@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Confirm an email from a verification link. Public — the link works while signed out. The
 /// token is consumed by its hash (looked up directly, no tenant filter) and the user is marked

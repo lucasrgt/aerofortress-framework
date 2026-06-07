@@ -1,7 +1,7 @@
 using Lazuli.Auth;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>"Sign out everywhere else" — revoke every session except the current one. The caller's own
 /// session (its sid) is kept; all the user's other families are dropped.</summary>

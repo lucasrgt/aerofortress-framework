@@ -2,7 +2,7 @@ using Lazuli.Auth;
 using Lazuli.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Sign in with a Google identity. Verifies the token, finds the user by the Google-verified
 /// email (global identity, so the lookup crosses the tenant filter), and issues a session.</summary>

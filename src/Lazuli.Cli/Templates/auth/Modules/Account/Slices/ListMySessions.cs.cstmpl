@@ -1,7 +1,7 @@
 using Lazuli.Auth;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>List the caller's active sessions — one per live refresh family — so they can see where
 /// they are signed in and revoke the rest. The session the request authenticated with is flagged via

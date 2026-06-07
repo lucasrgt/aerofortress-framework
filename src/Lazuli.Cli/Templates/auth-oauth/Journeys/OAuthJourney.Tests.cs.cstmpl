@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using Hostpoint.Api.Modules.Account;
+using MyApp.Api.Modules.Account;
 
-namespace Hostpoint.Tests.Journeys;
+namespace MyApp.Tests.Journeys;
 
 // Journeys for the [Critical] OAuth slices. The dev IExternalIdentity (FakeExternalIdentity) treats the
 // token as the email and rejects an empty one — so a non-empty token is a "verified" identity and an empty

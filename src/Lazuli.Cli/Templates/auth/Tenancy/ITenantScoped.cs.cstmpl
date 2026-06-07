@@ -1,4 +1,4 @@
-namespace Hostpoint.Api.Tenancy;
+namespace MyApp.Api.Tenancy;
 
 /// <summary>Marks an entity as belonging to one org. <see cref="TenantDbContext"/> applies a global
 /// read filter to every entity carrying this marker, and stamps <see cref="OrgId"/> on insert — so

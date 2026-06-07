@@ -1,10 +1,10 @@
-using Hostpoint.Api;
-using Hostpoint.Api.Auth;
-using Hostpoint.Api.Modules.__MODULE__;
-using Hostpoint.Api.Tenancy;
+using MyApp.Api;
+using MyApp.Api.Auth;
+using MyApp.Api.Modules.__MODULE__;
+using MyApp.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Tests.Modules.__MODULE__;
+namespace MyApp.Tests.Modules.__MODULE__;
 
 // __ENTITY__ has complex/VO fields the generator cannot construct, so a seeded found-case is left to the
 // owner. This degraded test proves the not-found path; add a found-case once you can build a valid __ENTITY__.

@@ -1,10 +1,10 @@
-using Hostpoint.Api;
-using Hostpoint.Api.Auth;
-using Hostpoint.Api.Modules.__MODULE__;
-using Hostpoint.Api.Tenancy;
+using MyApp.Api;
+using MyApp.Api.Auth;
+using MyApp.Api.Modules.__MODULE__;
+using MyApp.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Tests.Modules.__MODULE__;
+namespace MyApp.Tests.Modules.__MODULE__;
 
 public class LookupMy__ENTITY__Tests
 {

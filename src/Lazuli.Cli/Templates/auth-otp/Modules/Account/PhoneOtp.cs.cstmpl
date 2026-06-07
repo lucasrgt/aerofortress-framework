@@ -1,4 +1,4 @@
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>A one-time phone-verification code. <b>Not</b> <c>ITenantScoped</c>: like
 /// <see cref="UserSession"/>, it is a global auth artifact keyed by the user, looked up directly by

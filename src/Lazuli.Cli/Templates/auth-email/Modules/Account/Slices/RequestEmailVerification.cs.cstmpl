@@ -2,7 +2,7 @@ using Lazuli.Auth;
 using Lazuli.Mail;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Send the caller a fresh email-verification link. Authenticated. Mints a high-entropy token,
 /// stores only its hash (valid 24h), and emails the raw token. The send is best-effort: the token is

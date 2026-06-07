@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.__MODULE__;
+namespace MyApp.Api.Modules.__MODULE__;
 
 /// <summary>Update a __ENTITY__ by id, scoped to the caller's tenant. A partial update: only the
 /// non-null inputs overwrite their column. An unknown id is a not-found.</summary>

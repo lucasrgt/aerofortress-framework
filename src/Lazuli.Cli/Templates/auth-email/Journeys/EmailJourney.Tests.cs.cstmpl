@@ -1,12 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Hostpoint.Api.Modules.Account;
+using MyApp.Api.Modules.Account;
 using Lazuli.Mail;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Hostpoint.Tests.Journeys;
+namespace MyApp.Tests.Journeys;
 
 // Journeys for the [Critical] email-token slices (ResetPassword, VerifyEmail). Like the SMS code, the token
 // only leaves the system as an email — it is hashed in storage — so the test layers a capturing IEmailSender

@@ -1,10 +1,10 @@
 using Lazuli.Auth;
 //<lz:tenancy>
-using Hostpoint.Api.Tenancy;
+using MyApp.Api.Tenancy;
 //</lz:tenancy>
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Composition for the Account module: the database plus the framework-owned auth mechanism. One
 /// call — <c>AddJwtAccessTokens</c> — wires the token minter (<see cref="IAccessTokens"/>), the
@@ -17,16 +17,16 @@ public static class AccountSetup
     public static void AddAccount(this WebApplicationBuilder builder)
     {
         var jwtSecret = builder.Configuration["Jwt:Secret"]
-            ?? "hostpoint-dev-jwt-secret-change-in-production-please";
+            ?? "myapp-dev-jwt-secret-change-in-production-please";
 
-        builder.Services.AddDbContext<AppDb>(options => options.UseInMemoryDatabase("hostpoint"));
+        builder.Services.AddDbContext<AppDb>(options => options.UseInMemoryDatabase("myapp"));
         builder.Services.AddSingleton(TimeProvider.System);
         //<lz:tenancy>
         builder.Services.AddScoped<ITenant, RequestTenant>();
         //</lz:tenancy>
-        builder.Services.AddJwtAccessTokens(jwtSecret, issuer: "hostpoint", audience: "hostpoint");
+        builder.Services.AddJwtAccessTokens(jwtSecret, issuer: "myapp", audience: "myapp");
         //<lz:cookies>
-        builder.Services.AddRefreshCookie("hostpoint_refresh", path: "/account");
+        builder.Services.AddRefreshCookie("myapp_refresh", path: "/account");
         //</lz:cookies>
         builder.Services.AddAuthorization();
     }

@@ -1,7 +1,7 @@
 using Lazuli.Auth;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Return the signed-in user's own profile. Authenticated: the caller comes from the access
 /// token via <see cref="ICurrentUser"/>, so a user can only ever read themselves.</summary>

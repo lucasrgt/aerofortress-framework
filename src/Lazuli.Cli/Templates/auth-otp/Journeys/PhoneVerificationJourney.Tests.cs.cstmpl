@@ -1,12 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Hostpoint.Api.Modules.Account;
+using MyApp.Api.Modules.Account;
 using Lazuli.Sms;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Hostpoint.Tests.Journeys;
+namespace MyApp.Tests.Journeys;
 
 // Journey for the [Critical] VerifyPhone slice. Phone verification can't be driven purely over HTTP — the
 // OTP is hashed in storage and only leaves the system as an SMS — so the test layers a capturing ISmsSender
@@ -20,7 +20,7 @@ public class PhoneVerificationJourney
 
     private sealed record Tokens(string AccessToken, string RefreshToken);
 
-    // Reads the code out of the SMS body the slice sends ("Your Hostpoint code is 123456" → "123456").
+    // Reads the code out of the SMS body the slice sends ("Your MyApp code is 123456" → "123456").
     private sealed class CapturingSmsSender : ISmsSender
     {
         public string? LastCode { get; private set; }

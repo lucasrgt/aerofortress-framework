@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using Hostpoint.Api.Modules.Account;
+using MyApp.Api.Modules.Account;
 
-namespace Hostpoint.Tests.Journeys;
+namespace MyApp.Tests.Journeys;
 
 // Journeys for the [Critical] auth slices. They prove, end-to-end, the failures that a unit test on
 // Handle cannot: that a bad credential is denied (no token leaks) and that a replayed refresh token

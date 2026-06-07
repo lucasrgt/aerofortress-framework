@@ -1,6 +1,6 @@
 using Lazuli.Auth;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Issues a login session: opens a fresh refresh family and mints the access token (carrying the
 /// family as its sid) plus the refresh token. Shared by every slice that signs a user in — password

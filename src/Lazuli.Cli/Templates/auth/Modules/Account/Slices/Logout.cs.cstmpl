@@ -3,7 +3,7 @@ using Lazuli.Auth;
 //</lz:cookies>
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Revoke a refresh token's whole family — logging out kills that device's session lineage.
 /// The token hash is the credential and the session row is not tenant-scoped, so the lookup needs no

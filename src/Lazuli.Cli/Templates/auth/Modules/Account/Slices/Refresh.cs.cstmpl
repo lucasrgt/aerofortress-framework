@@ -1,7 +1,7 @@
 using Lazuli.Auth;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hostpoint.Api.Modules.Account;
+namespace MyApp.Api.Modules.Account;
 
 /// <summary>Exchange a valid refresh token for a fresh access + refresh pair, rotating the session.
 /// Reuse of an already-rotated token is treated as theft and burns the whole token family. The session
