@@ -22,14 +22,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Sample.Api\Sample.Api.csproj" />
-    <ProjectReference Include="..\..\src\Lazuli.Testing\Lazuli.Testing.csproj" />
-    <ProjectReference Include="..\..\src\Lazuli.Testing.InMemory\Lazuli.Testing.InMemory.csproj" />
+    <ProjectReference Include="..\Sample.Api\Sample.Api.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Lazuli.Testing\Lazuli.Testing.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Lazuli.Testing.InMemory\Lazuli.Testing.InMemory.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Co-located tests: the files live next to the slice in src/, compiled here. -->
-    <Compile Include="..\..\src\Sample.Api\**\*.Tests.cs" />
+    <Compile Include="..\Sample.Api\**\*.Tests.cs" />
   </ItemGroup>
 
 </Project>
