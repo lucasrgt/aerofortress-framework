@@ -232,10 +232,18 @@ the app-refactor described below: the type contracts (`service-types.ts`, `chat-
 UI-coupled `icon` fields widened to `string`, and the View/cell casts to `IconName` at the render site — so the
 ViewModels name an icon as data and the platform layer owns the UI type.
 
-**Remaining (follow-up):** the hostpoint `LZFE006` mirror is still sibling-based, so now that every View's
-ViewModel is cross-package it sees no sibling and treats Views as fragments — i.e. LZFE006 is effectively
-*under-enforcing* in hostpoint (lint is green but not gating screen render-tests). Flip the mirror to the
-import-based form (canon already is) — that re-gates the screens and surfaces the render-test backlog to fill.
+**LZFE006 re-enforced (done).** Flipped the hostpoint mirror to the import-based form. Doing so exposed an
+over-gating bug in the rule: keying on "imports anything from a `*.viewModel` module" wrongly flagged the
+property-edit/onboarding panels that import only a *type* (`PanelProps`) and take their data + form `control` as
+props from a parent shell (props-in fragments). Refined canon + mirror to gate on the **data-door hook**
+(`use<Name>Model`) instead — that dropped the false positives 32 → 12 genuine data-door screens (the settings
+panels that own a `use*Model`). Wrote the 12 co-located render tests; one (the traveler languages panel) surfaced a
+real crash — `CountryFlag` calling `.toLowerCase()` on an undefined `isoCode` in the loading state — now guarded.
+Verified green (tsc 0, vitest 85/85, lint pristine).
+
+**Remaining (follow-up):** (1) operator re-run `npx expo export` for the final-3 native bundle; (2) make
+`Lazuli.toml` *generate* the npm-workspaces config (today it's the source + the doctor validates — generation is the
+single-source upgrade); (3) the lazuli-net canon identity rewrite (retire the language vocabulary).
 
 ---
 
