@@ -244,3 +244,11 @@ leak into the VM:
 
 These are deliberate type-ownership decisions (where a type canonically lives; whether a VM may name an icon), not
 find-and-replace — so they were left for a focused pass rather than rushed. Everything done is committed + pushed.
+
+**Confirmed it's an app smell, not a type-location issue:** `HostServiceEdit.viewModel` has its OWN
+`buildCategoryAccents()` that *constructs* `CategoryAccent` objects WITH `icon` values (icon names) — i.e. it embeds
+presentation in the VM. Forcing `icon: string` would either break the View's `<Icon name={accent.icon}/>` (string ⊉
+`IconName`) or just relocate the smell. The right fix is an app refactor (the VM deals in `CategoryId`/semantic data;
+the View maps category → icon), which is why this is a follow-up task, not part of the mechanical migration. The
+mechanical migration is effectively concluded at 30/33 + the full foundation, **native-verified (Metro
+web+iOS+Android, twice)**.
