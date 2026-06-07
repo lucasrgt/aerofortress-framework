@@ -10,7 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Lazuli.Abstractions\Lazuli.Abstractions.csproj" />
     <ProjectReference Include="..\..\analyzers\Lazuli.SelfHarness\Lazuli.SelfHarness.csproj"
-                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

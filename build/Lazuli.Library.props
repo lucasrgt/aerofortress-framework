@@ -16,4 +16,28 @@
     <NoWarn>$(NoWarn);RS2008;CS8524</NoWarn>
   </PropertyGroup>
 
+  <!--
+    NuGet package metadata, shared. The framework ships to nuget.org as a set of small, focused packages (the
+    publish workflow packs them on a v* tag). Only the projects that pack use this; the rest ignore it. The
+    package id defaults to the assembly name (Lazuli.*); per-package Description can override the default below.
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>Lucas Tinoco</Authors>
+    <Company>Lazuli</Company>
+    <Product>Lazuli</Product>
+    <Description>Part of Lazuli — the opinionated .NET convention bundle: vertical-slice architecture, a build-time doctor, and an AI-context discipline. Plain, idiomatic C#; the harness is removable.</Description>
+    <PackageTags>lazuli;conventions;vertical-slice;architecture;analyzers;aspnetcore;result</PackageTags>
+    <PackageProjectUrl>https://github.com/lucasrgt/lazuli-net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/lucasrgt/lazuli-net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) Lucas Tinoco</Copyright>
+    <!-- Reproducible, debuggable packages: link the sources to the commit + ship a symbol package. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
 </Project>
