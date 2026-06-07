@@ -31,6 +31,7 @@ jobs:
             src/Lazuli.Storage/Lazuli.Storage.csproj \
             src/Lazuli.Testing/Lazuli.Testing.csproj \
             src/Lazuli.Testing.InMemory/Lazuli.Testing.InMemory.csproj \
+            src/Lazuli.Cli/Lazuli.Cli.csproj \
             analyzers/Lazuli.Doctor/Lazuli.Doctor.csproj ; do
             dotnet pack "$proj" -c Release -o nupkgs
           done
