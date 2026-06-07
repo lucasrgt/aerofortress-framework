@@ -158,3 +158,42 @@ Turnkey steps:
 5. **Verify**: `tsc --noEmit` + `vitest` (JS layer, here) → then **operator runs `npx expo export` / native build**.
 6. **kernel + ports**: lift auth/session/guards/spine + the `core/ports/` interfaces (`IStorage`, `INavigator`,
    `IPush`, `IFilePicker`, `ILinking`, `IMaps`) into `@hostpoint/kernel`; wire the RN impls in `mobile`. Re-verify.
+
+### Traced dependency map (2026-06-06, from the 4a checkpoint — hostpoint)
+
+The 4a checkpoint (branch `refactor/front-core-split`, commit `4a3a8cb`) already did the **one piece of real
+decoupling** the move needs: the orval mutator (`lib/lazuli-client.ts`) no longer imports `lib/config`
+(expo-constants); the base URL is injected via `configureClient(apiUrl)` from a new shell-side
+`lib/configure-client.ts` (imported by `_layout` before bootstrap), the same push-don't-pull seam as the bearer
+token. **So `lib/lazuli-client` + all of `client.gen` are now expo-free and move to core untouched.** Everything
+below is mechanical (verified: tsc 0, vitest 73/73, lint pristine).
+
+Concrete layer assignment + counts (hostpoint `clients/hostpoint-app/src`):
+
+- **→ `@hostpoint/app-core`** (agnostic): `client.gen/` (507 files, incl. `model/` = the orval schemas) +
+  `lib/lazuli-client.ts` (the mutator). The 33 `*.viewModel.ts` (+ their co-located `*.test.tsx`) follow — they
+  import `client.gen` via `@/client.gen/*` (give app-core its own `@/`→`src` alias so these stay unchanged).
+- **→ `@hostpoint/kernel`** (auth/session): `lib/session/session.ts` (`onAuthenticated`/`bootstrapSession`/
+  `clearSession`) + `lib/session/useSession.ts`. Its platform seam `lib/session/refresh-token.ts` +
+  `refresh-token.web.ts` is **already a port** (file-extension resolution, web-cookie vs native secure-store) — keep
+  that `.web` split; the RN impl rides in `mobile`, the web impl in `web`.
+- **stays in the shell**: `lib/config.ts` (expo-constants) + `lib/configure-client.ts`; the google-maps config has
+  3 view-layer importers (`LocationPinModal`, `TravelerHome.view`, `NearbyMap.web`) — all View layer, never move.
+
+Rewiring (deterministic, scriptable):
+
+- **48** files import `client.gen` via `@/client.gen/*` → `@hostpoint/app-core/client.gen/*`.
+- **105** files import a `*.viewModel` (relative, incl. shared parent VMs like `../TravelerSettings.viewModel`
+  imported by 8 panels, `../HostPropertyEdit.viewModel` by 9) → `@hostpoint/app-core/<resolved-path>` (resolve each
+  relative path against its importer, then map `src/`→`@hostpoint/app-core/`).
+- mutator token importers: `setAccessToken` in `session.ts` + 2 VMs (`ForgotPassword`, `GoogleCallback`).
+- **orval**: keep the mutator at `app-core/src/lib/lazuli-client.ts` so the generated `../lib/lazuli-client` import
+  stays valid (or update `orval.config.ts` `mutator.path` + `output.target`/`schemas` to the app-core paths and
+  regenerate — don't hand-edit generated files).
+
+Two **rule evolutions** the move forces (same shape as the LZFE006 import-based upgrade already shipped):
+
+- `LZFE002` (data-door) must recognize `@hostpoint/app-core` (or the package's client subpath) as the generated
+  client source, not just the `client.gen/` path regex — else cross-package client imports go unpoliced.
+- flip the **hostpoint** `LZFE006` mirror to the import form (canon already is) + write each screen's co-located
+  render test as it lands in `mobile/` (closes the 32-screen backlog in place).
