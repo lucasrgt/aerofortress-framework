@@ -28,9 +28,9 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
   typed client so an invented endpoint is a `tsc` error — but **orval is not even a dependency**, there
   is no `orval.config.ts`, no `lazuli gen client`. The LZFE rules police a client nothing generates.
   _FRAMEWORK-GAP._ (`docs/decisions/lazuli-net-frontend-harness.md` §3 vs `frontend-sdk/tools/generate.mjs:47`)
-- [ ] **`LZFE008` endpoint-coverage — claimed "shipped", absent.** Documented shipped at
-  `docs/FRONTEND-CONVENTIONS.md:268`; the implementation exists only in the pilot
-  (`hostpoint/clients/hostpoint-app/scripts/lzfe-coverage.mjs`). _FRAMEWORK-GAP (truthfulness)._
+- [x] **`LZFE008` endpoint-coverage — claimed "shipped", absent.** _Done:_ implemented as
+  `frontend-sdk/tools/endpoint-coverage.mjs` (pure `extractHooks` + `checkEndpointCoverage` core + CLI
+  tail) with a vitest twin; the doc claim now points at the real tool. _was FRAMEWORK-GAP (truthfulness)._
 - [x] **`LZFE015` no-router-replace-in-effect — real rule, not ported + ID collision.** _Done:_ ported
   to `frontend-sdk/packages/eslint-plugin/index.cjs` (+ self-test), claimed LZFE015 for the navigation
   rule, moved the planned "no orphan placeholder" to LZFE016 (`docs/FRONTEND-CONVENTIONS.md`). A
