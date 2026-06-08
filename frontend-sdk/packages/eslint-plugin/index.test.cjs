@@ -210,5 +210,24 @@ ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
   ],
 });
 
+// LZFE015 — no router.replace inside useEffect (a guard redirect must be declarative <Redirect>, not an effect that
+// loops on web). Only effect-driven `replace` is banned; user-action push/back and onPress replace stay allowed.
+ruleTester.run("no-router-replace-in-effect", plugin.rules["no-router-replace-in-effect"], {
+  valid: [
+    // Declarative redirect — the correct shape.
+    { filename: "Foo.view.tsx", code: `export const F = () => (done ? <Redirect href="/home" /> : null);` },
+    // Imperative replace on a user action (not in an effect) — a navigation completion, allowed.
+    { filename: "Foo.view.tsx", code: `export const F = () => { const onPress = () => router.replace("/home"); return null; };` },
+    // push/back inside an effect are not the banned call.
+    { filename: "Foo.view.tsx", code: `export const F = () => { useEffect(() => { router.push("/home"); }, []); };` },
+    // out of scope: not a View.
+    { filename: "Foo.viewModel.ts", code: `useEffect(() => { router.replace("/home"); }, []);` },
+  ],
+  invalid: [
+    { filename: "Foo.view.tsx", code: `export const F = () => { useEffect(() => { router.replace("/home"); }, []); };`, errors: [{ messageId: "effectReplace" }] },
+    { filename: "Foo.view.tsx", code: `export const F = () => { useLayoutEffect(() => { if (x) router.replace("/x"); }, [x]); };`, errors: [{ messageId: "effectReplace" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");

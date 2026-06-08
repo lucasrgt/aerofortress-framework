@@ -512,6 +512,57 @@ const rules = {
       };
     },
   },
+
+  // LZFE015 — no router.replace inside useEffect. A redirect-on-state belongs in a DECLARATIVE <Redirect>, never an
+  // effect: on web expo-router FREEZES the source screen instead of unmounting it, so an effect-driven replace
+  // re-fires on every frozen re-render -> remount the target -> refetch (e.g. a guard's my-X 404) -> re-render ->
+  // replace again -> an infinite navigation/refetch loop that crashes the screen. (This shipped twice in the pilot:
+  // via Splash, then ChooseRole + 5 screens; the fix is `if (terminal) return <Redirect href={…} />`.) Only
+  // effect-driven `replace` (a guard redirect) is banned; `push`/`back` for a user action stay allowed (imperative
+  // completions, not render loops). Scoped to *.view.tsx — the only layer that may navigate.
+  "no-router-replace-in-effect": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "No router.replace inside useEffect — redirect declaratively with <Redirect> (expo-router freezes the source screen on web, so an effect-driven replace loops).",
+      },
+      messages: {
+        effectReplace:
+          "LZFE015: no `router.replace(...)` inside useEffect — on web expo-router freezes the source screen, so the effect re-fires every render into an infinite navigation/refetch loop. Redirect declaratively instead: `if (<terminal state>) return <Redirect href={…} />;`.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isView(f)) return {};
+      return {
+        CallExpression(node) {
+          const callee = node.callee;
+          if (
+            callee.type !== "MemberExpression" ||
+            callee.computed ||
+            callee.object.type !== "Identifier" ||
+            callee.object.name !== "router" ||
+            callee.property.type !== "Identifier" ||
+            callee.property.name !== "replace"
+          )
+            return;
+          // Flag only when lexically inside a useEffect / useLayoutEffect callback. An onPress `router.replace(...)`
+          // is user-triggered, not a render loop, and stays allowed.
+          for (let p = node.parent; p; p = p.parent) {
+            if (
+              p.type === "CallExpression" &&
+              p.callee.type === "Identifier" &&
+              (p.callee.name === "useEffect" || p.callee.name === "useLayoutEffect")
+            ) {
+              context.report({ node, messageId: "effectReplace" });
+              return;
+            }
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {

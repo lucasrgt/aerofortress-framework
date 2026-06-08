@@ -31,7 +31,9 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
 - [ ] **`LZFE008` endpoint-coverage — claimed "shipped", absent.** Documented shipped at
   `docs/FRONTEND-CONVENTIONS.md:268`; the implementation exists only in the pilot
   (`hostpoint/clients/hostpoint-app/scripts/lzfe-coverage.mjs`). _FRAMEWORK-GAP (truthfulness)._
-- [ ] **`LZFE015` no-router-replace-in-effect — real rule, not ported + ID collision.** A
+- [x] **`LZFE015` no-router-replace-in-effect — real rule, not ported + ID collision.** _Done:_ ported
+  to `frontend-sdk/packages/eslint-plugin/index.cjs` (+ self-test), claimed LZFE015 for the navigation
+  rule, moved the planned "no orphan placeholder" to LZFE016 (`docs/FRONTEND-CONVENTIONS.md`). A
   battle-tested rule in the pilot (`hostpoint/clients/eslint-plugin-lazuli/index.cjs:438`, born from a
   shipped infinite-navigation bug) is absent from the framework plugin, and its ID collides with a
   *planned, different* LZFE015 ("no orphan placeholder") at `docs/FRONTEND-CONVENTIONS.md:275`.
