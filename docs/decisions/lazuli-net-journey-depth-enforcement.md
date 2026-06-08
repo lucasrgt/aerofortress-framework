@@ -1,7 +1,10 @@
 # Decision: journey enforcement must grade *depth*, not just *existence*
 
-**Status:** accepted; Tier A1 (`LZFE-JOURNEY-002`) implemented in `frontend-sdk/tools/e2e-doctor.mjs`
-(+ tests); Tiers A2/B/C pending. Self-graded **8.6 — PASS with notes** (see §Grading). Tracked in
+**Status:** accepted; Tier A1 (`LZFE-JOURNEY-002`, `frontend-sdk/tools/e2e-doctor.mjs`) and Tier B3
+(`LZ0020`, `analyzers/Lazuli.Doctor/JourneyAssertionAnalyzer.cs`) implemented (+ tests). Tier A2
+(`LZFE-E2E-SKIP-IN-GATE-001`) is pending behind the e2e-support harness home; Tier B4
+(`LZFE-JOURNEY-SEAM-001`) pending its feasibility spike; Tier C (mutation) deferred until a critical
+journey set exists. Self-graded **8.6 — PASS with notes** (see §Grading). Tracked in
 [`docs/PORTBACK-CHECKLIST.md`](../PORTBACK-CHECKLIST.md).
 **Date:** 2026-06-08.
 **Supersedes/extends:** `CriticalJourneyAnalyzer` (LZ0008) + `JourneyCoversCriticalAnalyzer`

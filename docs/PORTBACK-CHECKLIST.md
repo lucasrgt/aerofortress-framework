@@ -74,11 +74,16 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
 - [x] **Tier A1 `LZFE-JOURNEY-002`** — terminal-depth in `e2e-doctor.mjs` (+ tests). _done this session._
 - [ ] **Decision-doc fixes** — `LZ0011` collides with `TestInfraPurityAnalyzer` → renumber to `LZ0020`;
   refresh the stale "today" baseline (A1 is now implemented).
+- [x] **Tier B3 `LZ0020`** (was LZ0011) — _Done:_ `analyzers/Lazuli.Doctor/JourneyAssertionAnalyzer.cs`
+  flags a `[Journey]` whose body asserts nothing (warning-tier, textual over the journey AdditionalFiles,
+  lenient on custom asserters); 4 tests; `CONVENTIONS.md` lists it shipped.
 - [ ] **Tier A2 `LZFE-E2E-SKIP-IN-GATE-001`** — a skipped gate-class flow must fail in gate mode.
-- [ ] **Tier B3 `LZ0020`** (was LZ0011) — `[Journey]` body asserts its post-condition.
+  _Deferred:_ couples to the e2e-support harness home (requireBackend/requireSeed), which is frontend-
+  scaffold territory (the frontend generator is deferred). Cheap once that home exists.
 - [ ] **Tier B4 `LZFE-JOURNEY-SEAM-001`** — lifecycle-advancing `[Critical]` slice needs a frontend
-  flow proving the post-transition navigation. (spike feasibility first, per the grade)
-- [ ] **Tier C** — Stryker mutation-score lane (doctor consumes the artifact). _deferred — needs a
+  flow proving the post-transition navigation. _Deferred:_ the grade itself flagged this needs a
+  cross-artifact feasibility spike (does a frontend guard read a backend lifecycle?) before committing.
+- [ ] **Tier C** — Stryker mutation-score lane (doctor consumes the artifact). _Deferred — needs a
   `[Critical]` journey set to be meaningful._
 
 ## P3 / AMBIGUOUS — wait for ≥3-pilot evidence (per the framework's own rule)
