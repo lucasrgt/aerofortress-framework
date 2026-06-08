@@ -158,6 +158,14 @@ the two laws. The result is plain C# that happens to be hard to misuse.
 The markers are **pure markers** (like `[Slice]`): no base class, nothing to inherit, no EF semantics. Delete
 the doctor and they become inert decoration — the domain still compiles and runs (Law 2).
 
+- **The mark is not optional where the type is persisted or owned.** `LZ0013`/`LZ0014` grade a type that is
+  *already* marked — so leaving the mark off used to be a silent way to skip enforcement entirely (the pauta
+  port shipped an anemic `User` table this way). `LZ0021` closes that on-ramp from below: a type that is a
+  `DbSet<T>` (a table) must be `[Entity]`, and a complex member of an `[Entity]` must be `[ValueObject]` —
+  the two places where "what this is" is structurally certain. It does not guess beyond those two signals: a
+  DTO, an options bag, or a dead unused record is not forced to wear a mark. See
+  [the decision](decisions/lazuli-net-unmarked-domain-type.md).
+
 ---
 
 ## Project layout
@@ -333,6 +341,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0018` | **Error code is a registry constant**: the `code` passed to an `Error` factory / `Validation.Check` / `Validation.Add` / `FieldError` must reference a `const` on a class named `*ErrorCodes` (e.g. `WalletsErrorCodes.NotFound`), never an inline literal | **shipped** | a code invisible to reflection can't be enumerated into the OpenAPI contract — it would reach a user untranslated; the registry keeps the set discoverable + typed end-to-end |
 | `LZ0019` | **Error code constant is used**: every `const` on an `*ErrorCodes` registry must be referenced by an `Error`/`Validation` call somewhere in the compilation — the reverse of `LZ0018` | **shipped** | drop a flow and leave its code behind → a dead code still ships in the OpenAPI enum + the i18n catalog; this keeps the registry the exact, live set (no orphans) |
 | `LZ0020` | **A `[Journey]` asserts its post-condition**: the journey test body must contain an assertion (xUnit `Assert`, FluentAssertions `Should`, or a `Verify`/`Expect` helper) — the depth rung above `LZ0008` (which proves the journey exists). Warning-tier; textual over the journey AdditionalFiles | **shipped** | an assertion-free journey is theater — it runs the path and proves nothing |
+| `LZ0021` | **A persisted or entity-owned type declares its mark**: a `DbSet<T>` whose `T` is unmarked must be `[Entity]`; a complex member of an `[Entity]` (after one nullable/collection layer) that is neither `[ValueObject]`, `[Entity]`, nor an enum must be `[ValueObject]`. The rung *beneath* LZ0013/LZ0014, which only fire on already-marked types — so an unmarked domain type would otherwise escape every encapsulation check. Does not flag dead/unused types or framework types | **shipped** | the pauta port shipped an anemic `User` (a table, no `[Entity]`) past a green doctor — the omission of the mark was the evasion |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
