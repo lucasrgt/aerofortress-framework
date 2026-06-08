@@ -62,8 +62,9 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
   into the .NET CLI. _FRAMEWORK-GAP._
 - [ ] **`OrderedLifecycle<TState>` helper.** Step-ordered enum + `StepReached`/`AdvancePast`
   (no-skip/no-regress) is duplicated byte-for-byte across Traveler + Host in the pilot. _FRAMEWORK-GAP._
-- [ ] **`LZ0006` no-repository + `LZ0007` file ≤500 (user apps).** Both documented `planned` in
-  `docs/CONVENTIONS.md:321-322`, neither implemented. _FRAMEWORK-GAP (documented commitment)._
+- [x] **`LZ0006` no-repository + `LZ0007` file ≤500 (user apps).** _Done:_ both shipped as Roslyn
+  analyzers (`analyzers/Lazuli.Doctor/NoRepositoryAnalyzer.cs`, `FileSizeAnalyzer.cs`) with twin tests
+  (7 green); `docs/CONVENTIONS.md` flipped planned→shipped. _was FRAMEWORK-GAP (documented commitment)._
 
 ## Journey-depth (decision `lazuli-net-journey-depth-enforcement.md`)
 

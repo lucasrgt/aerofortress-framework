@@ -318,8 +318,8 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0003` | Every slice has a co-located `<Slice>.Tests.cs` | **shipped** | corbanx: "didn't write tests" |
 | `LZ0004` | Every module has a `<Module>.ctx.md` with the spine (`## Boundaries` + `## Design notes`, non-empty) | **shipped** | corbanx: "forgot to write ai.context" |
 | `LZ0005` | `.ctx.md` is fresh — a backticked identifier it cites resolves in source or a reference (not mtime) | **shipped** | corbanx: "ai.context drifted" |
-| `LZ0006` | No `IRepository` / unit-of-work abstraction in a slice | planned | clean-arch bloat cut |
-| `LZ0007` | File ≤ 500 LOC | planned | Rails-repo discipline |
+| `LZ0006` | No `IRepository` / unit-of-work abstraction in a slice | **shipped** | clean-arch bloat cut |
+| `LZ0007` | File ≤ 500 LOC | **shipped** | Rails-repo discipline |
 | `LZ0008` | A `[Critical]` slice has a happy **and** a sad journey covering it | **shipped** | high-stakes ops must prove failure E2E |
 | `LZ0009` | **Write-ownership**: a module writes only its own entities — a `DbSet` write (Add/Update/Remove/…) on another module's entity is flagged; reads/joins/calls across modules are free. `.Tests.cs` exempt | **shipped** | modular monolith — write-ownership keeps a context carvable later |
 | `LZ0010` | A `[Journey]` covers a `[Critical]` slice — the inverse of `LZ0008`. A journey on a non-critical slice (inert metadata) is flagged: mark it `[Critical]` or use a plain `[E2E]` | **shipped** | journeys were silently inert off a critical slice |
