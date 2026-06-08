@@ -23,6 +23,11 @@ public abstract class TenantDbContext(DbContextOptions options, ITenant tenant) 
     private static readonly MethodInfo ApplyFilter =
         typeof(TenantDbContext).GetMethod(nameof(ApplyTenantFilter), BindingFlags.Instance | BindingFlags.NonPublic)!;
 
+    /// <summary>The org this context is scoped to — the tenant every read filters by and every insert is stamped
+    /// with. Exposed for the rare write that must carry an org explicitly (e.g. a row owned by a resource's org,
+    /// not the caller's), rather than reaching into <see cref="ITenant"/> directly.</summary>
+    public Guid CurrentOrgId => tenant.OrgId;
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -42,9 +47,11 @@ public abstract class TenantDbContext(DbContextOptions options, ITenant tenant) 
     /// <inheritdoc />
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        // Stamp through EF's property metadata, not the CLR setter, so OrgId stays encapsulated on the entity
+        // ({ get; private set; }) — a slice cannot set it, so it cannot leak across tenants.
         foreach (var entry in ChangeTracker.Entries<ITenantScoped>())
             if (entry.State == EntityState.Added)
-                entry.Entity.OrgId = tenant.OrgId;
+                entry.Property(nameof(ITenantScoped.OrgId)).CurrentValue = tenant.OrgId;
 
         return base.SaveChangesAsync(cancellationToken);
     }

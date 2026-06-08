@@ -15,7 +15,7 @@ public class User
 {
     public Guid Id { get; set; }
     //<lz:tenancy>
-    public Guid OrgId { get; set; }
+    public Guid OrgId { get; private set; } // stamped by TenantDbContext via EF metadata — never set by a slice
     //</lz:tenancy>
     public Email Email { get; set; }
     public string Name { get; set; } = "";

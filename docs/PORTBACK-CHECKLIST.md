@@ -50,10 +50,13 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
   _FRAMEWORK-GAP (anti-drift)._ (blocked on `@lazuli/*` being consumable)
 - [ ] **Publish `@lazuli/react`.** Unpublished → the pilot forks `AsyncState`/`Resource` locally and
   they are drifting. _FRAMEWORK-GAP._ (npm publish is an outward release step — prepare, don't publish)
-- [ ] **Harden the tenancy scaffold (`lazuli g auth`).** The shipped template ships
-  `OrgId { get; set; }` + stamps via the CLR setter; the pilot already had to fix this (encapsulated
-  setter, stamp via EF metadata, skip non-tenant rows). _FRAMEWORK-GAP (correctness, no boundary move)._
-  (`src/Lazuli.Cli/Templates/auth/Tenancy/*.cstmpl` vs `hostpoint/.../Tenancy/TenantDbContext.cs`)
+- [x] **Harden the tenancy scaffold (`lazuli g auth`).** _Done:_ `ITenantScoped.OrgId` is now `{ get; }`
+  (read-only); `TenantDbContext` stamps via EF property metadata (`entry.Property(...).CurrentValue`),
+  not the CLR setter, + exposes `CurrentOrgId`; `User.OrgId` is `{ get; private set; }`. The shipped
+  `TenantIsolation.Tests` already assumed this (seeds without OrgId, asserts the stamp), so the change
+  aligns the entity/interface with the test. Did NOT port `IParticipation` (1-pilot, AMBIGUOUS).
+  _Follow-up:_ the `crud` test scaffold seeds `new() { OrgId = org }` (cross-org isolation), which needs
+  a settable OrgId — a seed-helper is required before crud entities can also go `private set`.
 - [ ] **`lazuli` CLI conductor + `lazuli g view` front-door.** `MONOREPO-ARCHITECTURE.md` promises
   `build`/`gen:client` reading `[tasks]`; the ViewModel scaffold exists as a `.mjs` but isn't wired
   into the .NET CLI. _FRAMEWORK-GAP._
