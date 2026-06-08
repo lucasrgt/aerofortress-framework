@@ -27,8 +27,17 @@ return args switch
 // both sides — so nothing is left loose in either direction.
 static int Doctor(string[] rest)
 {
+    // The manifest is the topology's source of truth — confirm the project has one and that the paths it
+    // declares exist before trusting the rest. A missing manifest is a notice; a broken one fails the doctor.
+    var manifest = LazuliManifest.Validate(Directory.GetCurrentDirectory());
+    Console.WriteLine("lazuli doctor — manifest (Lazuli.toml)...");
+    foreach (var message in manifest.Messages)
+        Console.Error.WriteLine($"  {message}");
+
     Console.WriteLine("lazuli doctor — backend conventions (build)...");
     var code = Tooling.Dotnet("build", rest);
+    if (manifest.Present && !manifest.Valid)
+        code = Math.Max(code, 1);
 
     foreach (var client in FrontendClients(Directory.GetCurrentDirectory()))
     {

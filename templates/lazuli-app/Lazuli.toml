@@ -1,0 +1,14 @@
+# Lazuli workspace manifest — the single source of truth for this app's topology. `lazuli doctor`
+# validates it; `lazuli build` / `lazuli gen client` read it. One Lazuli.toml per repo, at the root.
+
+[workspace]
+name = "Lazuli.Starter"
+
+[products.app]
+backend = "src/Lazuli.Starter.Api"   # .NET vertical slices — the LZ* analyzers gate this build
+# A Lazuli frontend client is added under clients/ when you scaffold one:
+# core = "clients/core"              # agnostic ViewModel (the data door) + design-system View + i18n + client
+# apps = ["mobile", "web"]           # platform shells over the shared core
+
+[harness]
+backend = "Lazuli.Starter.slnx"      # the framework's LZ* Roslyn analyzers run via the solution build

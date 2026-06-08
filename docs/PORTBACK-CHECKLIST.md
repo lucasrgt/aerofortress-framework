@@ -18,12 +18,13 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
 
 ## P1 — broken promise / claimed-but-absent
 
-- [ ] **Scaffold a real project + `Lazuli.toml`.** `lazuli new` emits a backend-only project with no
-  `Lazuli.toml`, no monorepo/frontend/workspaces/turbo/lefthook. The manifest is a phantom — the CLI
-  never reads, validates, or generates it; the only validator is a copy inside the pilot
-  (`hostpoint/scripts/lazuli-doctor.mjs`, whose header says canonical home = the CLI). _FRAMEWORK-GAP._
+- [~] **Scaffold a real project + `Lazuli.toml`.** _Done:_ `lazuli new` now scaffolds `Lazuli.toml`
+  (`templates/lazuli-app/Lazuli.toml`, substituted from the project name), and the CLI finally READS it —
+  `src/Lazuli.Cli/LazuliManifest.cs` validates `[workspace]`/name + that declared backend/core paths exist,
+  wired into `lazuli doctor` (missing = notice, broken = failure) with 4 tests. _Still pending (tied to the
+  deferred frontend generator):_ scaffolding the monorepo plumbing (`package.json` workspaces, `turbo.json`,
+  `lefthook.yml`, `clients/`) and making `Lazuli.toml` *generate* the workspace/turbo config.
   - hostpoint: `Lazuli.toml`, root `package.json`, `turbo.json`, `lefthook.yml`
-  - framework: only `examples/sample-app/Lazuli.toml`; `src/Lazuli.Cli/` has no manifest reader
 - [ ] **`lazuli gen client` (the "wired guarantee").** The frontend harness rests on a generated
   typed client so an invented endpoint is a `tsc` error — but **orval is not even a dependency**, there
   is no `orval.config.ts`, no `lazuli gen client`. The LZFE rules police a client nothing generates.
