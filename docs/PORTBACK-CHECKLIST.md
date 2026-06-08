@@ -14,6 +14,21 @@ guarantee"), and a few **claimed-but-absent** rules. The pilot is carrying the f
 
 Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMBIGUOUS / APP-SPECIFIC.
 
+## Progress — 2026-06-08 (branch `framework/portback-audit`)
+
+**Shipped + tested this session (9 gaps closed; full solution green — Doctor 67, Cli 22, SelfHarness 5,
+Abstractions 4, Sample 21, SDK tools 28, eslint plugin all):**
+LZFE015 (no-router-replace-in-effect, ported) · LZFE008 (endpoint-coverage tool, was claimed-but-absent) ·
+LZFE-JOURNEY-002 (e2e terminal-depth) · tenancy scaffold hardening (encapsulated OrgId + metadata stamp) ·
+LZ0006 (no-repository) · LZ0007 (file ≤500) · LZ0020 (journey asserts its post-condition) ·
+`OrderedLifecycle<TState>` helper · `Lazuli.toml` scaffolded by `lazuli new` + read/validated by the doctor.
+
+**Deferred follow-up (each blocked on a real dependency, not skipped):**
+the frontend generator (unblocks monorepo scaffold, `lazuli gen client`, the e2e-support harness home +
+Tier A2 skip-in-gate) · the Tier B4 seam-rule feasibility spike · `@lazuli/react` publish (needs a build
+pipeline + an outward npm/registry step) · Tier C mutation lane (needs a `[Critical]` journey set). The
+AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pilot rule.
+
 ---
 
 ## P1 — broken promise / claimed-but-absent
