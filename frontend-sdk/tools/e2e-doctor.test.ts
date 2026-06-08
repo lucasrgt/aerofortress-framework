@@ -91,4 +91,70 @@ describe("checkE2e", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  // Depth (LZFE-JOURNEY-002): a spec existing is not coverage — a linked flow must drive its journey to a declared
+  // terminal, and the spec must actually assert it. These are depthGaps (warn-tier), NOT hard existence gaps.
+  it("flags a linked flow that declares no terminal — as a depth gap, not an existence gap", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(
+        join(dir, "e2e", "flows.json"),
+        JSON.stringify([{ name: "onboarding", backendJourney: "OnboardingFlow", spec: "e2e/onboarding.spec.ts" }]),
+      );
+      writeFileSync(join(dir, "e2e", "onboarding.spec.ts"), 'await expect(page).toHaveURL(/\\/onboarding/);\n');
+      const r = checkE2e(dir);
+      expect(r.gaps).toBe(0); // spec exists + runner present — existence is fine
+      expect(r.depthGaps).toBe(1);
+      expect(r.messages.join(" ")).toContain("terminal");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("flags a flow whose spec never asserts its declared terminal (stops at entry)", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(
+        join(dir, "e2e", "flows.json"),
+        JSON.stringify([
+          { name: "onboarding", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
+        ]),
+      );
+      // The entry-only spec — asserts the wizard URL and stops; never references the /dashboard terminal.
+      writeFileSync(join(dir, "e2e", "onboarding.spec.ts"), 'await expect(page).toHaveURL(/\\/onboarding/);\n');
+      const r = checkE2e(dir);
+      expect(r.gaps).toBe(0);
+      expect(r.depthGaps).toBe(1);
+      expect(r.messages.join(" ")).toContain("/dashboard");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("is clean (no depth gap) when the spec asserts its declared terminal", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(
+        join(dir, "e2e", "flows.json"),
+        JSON.stringify([
+          { name: "onboarding", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
+        ]),
+      );
+      writeFileSync(
+        join(dir, "e2e", "onboarding.spec.ts"),
+        'await fillWizard(page);\nawait expect(page).toHaveURL("/dashboard");\n',
+      );
+      const r = checkE2e(dir);
+      expect(r.gaps).toBe(0);
+      expect(r.depthGaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

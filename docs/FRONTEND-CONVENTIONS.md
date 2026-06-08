@@ -284,6 +284,29 @@ bypass and surfaces the loose ends.
 
 ---
 
+## E2E journeys — `flows.json` + depth
+
+E2E is flow-level and expensive, so it is enforced at the **project** level, not per component: a
+project curates its journeys in `e2e/flows.json` and `tools/e2e-doctor.mjs` proves the list is
+covered. Each entry is `{ name, target?: "web"|"native", spec, backendJourney?, terminal? }`:
+
+- **Existence** (hard `gaps`): the `spec` file exists and a runner for its `target` is configured
+  (Playwright for web, Maestro/Detox for native).
+- **Set parity** (`tools/journey-parity.mjs`, LZFE-JOURNEY): a `backendJourney` (the
+  `Journeys/<key>.Tests.cs` twin) links the flow to its backend journey, checked both directions — so
+  no critical journey is half-built (tested on the back but never end-to-end on the front, or vice-versa).
+- **Depth** (`depthGaps`, warn-tier, **LZFE-JOURNEY-002**): a spec *existing* is not coverage — it can
+  stop at the door. A **linked** flow must declare `terminal` (the testID or route its spec asserts
+  *after* entry, to prove the journey reaches its end), and the spec must actually reference it; a spec
+  that asserts only the entry screen is flagged. *Why this exists:* a pilot's onboarding shipped a
+  "complete → back to step 0" bug under a green doctor because the backend journey proved the lifecycle
+  reached `Complete` while the frontend spec proved only entry — the bug lived in the **seam** between
+  them. `terminal` forces the traversal across that seam to be asserted. Warn-tier first; promotes to a
+  hard gate once flows declare their terminals. See
+  [`docs/decisions/lazuli-net-journey-depth-enforcement.md`](decisions/lazuli-net-journey-depth-enforcement.md).
+
+---
+
 ## Code comments — the code speaks for itself
 
 Comments are **English**, and they earn their place. The default is **no comment**: a well-named
