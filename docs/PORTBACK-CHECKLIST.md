@@ -60,8 +60,10 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
 - [ ] **`lazuli` CLI conductor + `lazuli g view` front-door.** `MONOREPO-ARCHITECTURE.md` promises
   `build`/`gen:client` reading `[tasks]`; the ViewModel scaffold exists as a `.mjs` but isn't wired
   into the .NET CLI. _FRAMEWORK-GAP._
-- [ ] **`OrderedLifecycle<TState>` helper.** Step-ordered enum + `StepReached`/`AdvancePast`
-  (no-skip/no-regress) is duplicated byte-for-byte across Traveler + Host in the pilot. _FRAMEWORK-GAP._
+- [x] **`OrderedLifecycle<TState>` helper.** _Done:_ `src/Lazuli.Abstractions/OrderedLifecycle.cs` —
+  `Reached` (cursor ≥ step) + `Advance` (no-skip/no-regress), generic over `TState : struct, Enum`, with a
+  new `tests/Lazuli.Abstractions.Tests` project (4 green, wired into `Lazuli.slnx`). Replaces the
+  byte-for-byte Host/Traveler duplication.
 - [x] **`LZ0006` no-repository + `LZ0007` file ≤500 (user apps).** _Done:_ both shipped as Roslyn
   analyzers (`analyzers/Lazuli.Doctor/NoRepositoryAnalyzer.cs`, `FileSizeAnalyzer.cs`) with twin tests
   (7 green); `docs/CONVENTIONS.md` flipped planned→shipped. _was FRAMEWORK-GAP (documented commitment)._
