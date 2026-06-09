@@ -45,7 +45,7 @@ export type ColorRole =
   | "primary" | "primaryHover" | "primaryActive" | "onPrimary"
   | "danger" | "dangerHover" | "onDanger" | "dangerSurface"
   | "success" | "successSurface" | "warning" | "warningSurface"
-  | "focusRing";
+  | "focusRing" | "scrim";
 export interface TextStyle { fontSize: number; lineHeight: number; fontWeight: 400 | 500 | 600 | 700; }
 export declare const space: Record<SpaceToken, number>;
 export declare const radius: Record<RadiusToken, number>;

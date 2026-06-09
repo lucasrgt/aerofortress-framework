@@ -14,7 +14,7 @@ export type ColorRole =
   | "primary" | "primaryHover" | "primaryActive" | "onPrimary"
   | "danger" | "dangerHover" | "onDanger" | "dangerSurface"
   | "success" | "successSurface" | "warning" | "warningSurface"
-  | "focusRing";
+  | "focusRing" | "scrim";
 
 export interface TextStyle {
   fontSize: number;
@@ -75,6 +75,7 @@ export const themes: { light: Record<ColorRole, string>; dark: Record<ColorRole,
     warning: "#d97706",
     warningSurface: "#fffbeb",
     focusRing: "#2563eb",
+    scrim: "rgba(15, 23, 42, 0.5)",
   },
   dark: {
     bg: "#0b1220",
@@ -98,6 +99,7 @@ export const themes: { light: Record<ColorRole, string>; dark: Record<ColorRole,
     warning: "#f59e0b",
     warningSurface: "#2a2012",
     focusRing: "#60a5fa",
+    scrim: "rgba(0, 0, 0, 0.6)",
   },
 };
 
