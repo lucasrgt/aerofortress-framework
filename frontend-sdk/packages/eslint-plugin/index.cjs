@@ -156,15 +156,30 @@ function aliasesOf(fn, base) {
 }
 
 /**
- * Whether an `if` test guarantees a redirect when some name in `names` is absent: a bare `!X`, or a `||`-chain
- * with `!X` as a disjunct (`!a || !b` redirects when either is missing). `&&` is rejected — `!X && y` does NOT
- * redirect on `X` alone, so it is not a sound presence guard.
+ * Whether an `if` test guarantees a redirect when some name in `names` is absent: a bare `!X`, a `||`-chain
+ * with `!X` as a disjunct (`!a || !b` redirects when either is missing), or the spine's union check
+ * (`X.status === "missing"` off `requiredParam(...)`). `&&` is rejected — `!X && y` does NOT redirect on `X`
+ * alone, so it is not a sound presence guard.
  */
 function testGuardsAny(test, names) {
   if (test.type === "UnaryExpression" && test.operator === "!" && test.argument.type === "Identifier")
     return names.has(test.argument.name);
   if (test.type === "LogicalExpression" && test.operator === "||")
     return testGuardsAny(test.left, names) || testGuardsAny(test.right, names);
+  // The spine's shape: `const id = requiredParam(param); if (id.status === "missing") return <Redirect/>`.
+  if (
+    test.type === "BinaryExpression" &&
+    test.operator === "===" &&
+    test.left.type === "MemberExpression" &&
+    !test.left.computed &&
+    test.left.object.type === "Identifier" &&
+    names.has(test.left.object.name) &&
+    test.left.property.type === "Identifier" &&
+    test.left.property.name === "status" &&
+    test.right.type === "Literal" &&
+    test.right.value === "missing"
+  )
+    return true;
   return false;
 }
 

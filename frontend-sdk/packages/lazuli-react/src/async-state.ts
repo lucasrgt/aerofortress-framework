@@ -38,3 +38,33 @@ export function toAsyncState<T>(
   if (opts.isEmpty?.(query.data)) return { status: "empty" };
   return { status: "ready", data: query.data };
 }
+
+/**
+ * Combine several AsyncStates into one, for the screen that renders only when all its queries are in — the
+ * composition every multi-query screen otherwise hand-rolls (and gets the precedence wrong). Precedence:
+ * `error` > `loading` > `empty` > `ready` — an error is terminal (waiting on the other queries can't un-fail
+ * it, so it surfaces immediately), loading defers, any empty empties the whole, and `ready` carries the data
+ * tuple in argument order. The combined retry retries every errored source at once.
+ */
+export function combineAsyncStates<T extends readonly AsyncState<unknown>[]>(
+  ...states: T
+): AsyncState<{ [K in keyof T]: T[K] extends AsyncState<infer U> ? U : never }> {
+  const errors = states.filter(
+    (s): s is { status: "error"; message: string; retry?: () => void } => s.status === "error",
+  );
+  const first = errors[0];
+  if (first !== undefined) {
+    const retries = errors.map((s) => s.retry).filter((r): r is () => void => r !== undefined);
+    return {
+      status: "error",
+      message: first.message,
+      retry: retries.length > 0 ? () => retries.forEach((r) => r()) : undefined,
+    };
+  }
+  if (states.some((s) => s.status === "loading")) return { status: "loading" };
+  if (states.some((s) => s.status === "empty")) return { status: "empty" };
+  return {
+    status: "ready",
+    data: states.map((s) => (s as { status: "ready"; data: unknown }).data) as never,
+  };
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { toAsyncState } from "./async-state";
+import { type AsyncState, combineAsyncStates, toAsyncState } from "./async-state";
 
 // The projection is the spine's load-bearing logic: every screen's state flows through it. Pin each branch — a
 // regression here silently breaks loading/error/empty/ready across every feature at once.
@@ -46,5 +46,44 @@ describe("toAsyncState", () => {
       isEmpty: (d) => d.length === 0,
     });
     expect(s).toEqual({ status: "ready", data: [1, 2] });
+  });
+});
+
+// The multi-query composition — precedence is the part screens hand-roll wrong, so each rung is pinned.
+describe("combineAsyncStates", () => {
+  const ready = <T,>(data: T): AsyncState<T> => ({ status: "ready", data });
+
+  it("is ready with the data tuple in argument order when all are ready", () => {
+    expect(combineAsyncStates(ready(1), ready("a"))).toEqual({ status: "ready", data: [1, "a"] });
+  });
+
+  it("an error outranks a loading sibling — waiting can't un-fail it", () => {
+    const s = combineAsyncStates<[AsyncState<number>, AsyncState<string>]>(
+      { status: "error", message: "boom" },
+      { status: "loading" },
+    );
+    expect(s.status).toBe("error");
+    if (s.status === "error") expect(s.message).toBe("boom");
+  });
+
+  it("loading outranks empty — the whole isn't known to be empty until every source settles", () => {
+    expect(combineAsyncStates({ status: "loading" }, { status: "empty" }).status).toBe("loading");
+  });
+
+  it("any empty empties the whole once everything settles", () => {
+    expect(combineAsyncStates(ready(1), { status: "empty" }).status).toBe("empty");
+  });
+
+  it("the combined retry retries every errored source at once", () => {
+    const a = vi.fn();
+    const b = vi.fn();
+    const s = combineAsyncStates<[AsyncState<number>, AsyncState<number>, AsyncState<number>]>(
+      { status: "error", message: "a", retry: a },
+      { status: "error", message: "b", retry: b },
+      ready(1),
+    );
+    if (s.status === "error") s.retry?.();
+    expect(a).toHaveBeenCalledOnce();
+    expect(b).toHaveBeenCalledOnce();
   });
 });

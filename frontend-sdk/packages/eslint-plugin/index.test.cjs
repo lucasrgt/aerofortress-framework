@@ -282,6 +282,8 @@ ruleTester.run("route-param-guard", plugin.rules["route-param-guard"], {
     { filename: "src/app/y.tsx", code: `function R() { const { id } = useLocalSearchParams(); const propertyId = id; if (!propertyId) return <Redirect href="/" />; return <V propertyId={propertyId} />; }` },
     // Two required params guarded together by a `||`-chain — both covered (redirects if either is missing).
     { filename: "src/app/z.tsx", code: `function R() { const { id, propertyId } = useLocalSearchParams(); if (!id || !propertyId) return <Redirect href="/" />; return <V id={id} propertyId={propertyId} />; }` },
+    // The spine's union shape: requiredParam() + a status === "missing" branch guards the param.
+    { filename: "src/app/chat.tsx", code: `function R() { const { chatId } = useLocalSearchParams(); const id = requiredParam(chatId); if (id.status === "missing") return <Redirect href="/messaging" />; return <Chat chatId={id.value} />; }` },
     // A non-id param (an optional filter) does not ghost — not required.
     { filename: "src/app/list.tsx", code: `function R() { const { tab } = useLocalSearchParams(); return <List tab={tab} />; }` },
     // out of scope: not a route file.
