@@ -169,6 +169,46 @@ app adopting the spine unions themselves (blocked on `@lazuli/react` publish, tr
   prevent). Both are symptoms of the tracked "@lazuli/react publish" gap; flagged so the next pilot
   sync rebases the mirror + adopts the spine unions.
 
+## Design dogfood 2026-06-09 — pauta (the Design SDK wave, `.specs/` 0007)
+
+The design layer (tokens + closed kit + LZFE024–026) wired into `pauta-web/frontend` (Next 15 +
+Tailwind, aerocoding-generated, zero prior Lazuli wiring). Mirror at 0.6.0, band warn-first globally,
+error on `src/ui/**` + the relifted exemplar (`billing-type-edit`, the form recipe instantiated on a
+real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 errors, 456 tests green
+(98 files, 8 new). Per-rule verdicts:
+
+- [ ] **The band is blind to Tailwind utility classes.** _portback, HIGH._ Baseline: **0 findings over
+  533 files** — yet the visual rot is everywhere, living in `className` utilities (`bg-red-100`,
+  `text-blue-600`, `border-red-400`). LZFE026 checks style-object keys + string literals; LZFE025's
+  only className leg is the arbitrary-value `[Npx]` regex (never fired — aerocoding used stock classes).
+  A Tailwind-classes web app — the most common web stack — escapes the band almost entirely. Needed:
+  a className leg for LZFE026 (flag `(bg|text|border|ring|fill|stroke)-(red|blue|…)-N` palette-family
+  utilities outside `ui/` once tokens exist) and a decision on whether stock-scale spacing utilities are
+  conformant (they are A scale — arguably fine) vs palette utilities (never fine).
+- [x] **`scrim` color role.** _portback — shipped inline (inner loop)._ The Dialog's backdrop had no
+  semantic role; raw `rgba()` in `ui/` would trip LZFE026. Added to the taxonomy + default themes
+  (lazuli-net commit `37785aa`), re-scaffolded into both token instances.
+- [ ] **`'use client'` banners on the hooky kit primitives.** _portback, MEDIUM._ Next App Router needs
+  them on Button/Input/Field (useState); added app-side in pauta. Harmless on non-Next — candidate for
+  the `renderUiKitWeb` template (+ Dialog when it graduates).
+- [ ] **`Input` has no date/datetime kind.** _portback, LOW._ The generated forms used
+  `type="datetime-local"`; the kit's closed `kind` union stops at text/email/password/number. Wait for a
+  second real need before widening the union.
+- [ ] **Dialog — kit-v2 candidate evidence, pilot #1.** Built app-side per the constitution (scrim +
+  overlay tokens, focus in/return, Esc/backdrop, sentinel trap; 4 tests). A second pilot needing it =
+  graduate into the scaffold.
+- **LZFE024 inertia outside the blessed naming.** _observation, wave-order._ ui-door anchors on
+  `*.view.tsx`; pauta's screens are `page.tsx` + `components/*Form.tsx`, so the rule only bites surfaces
+  as they adopt the blessed shape (the relift exemplar does). Adoption order: naming first, then the
+  rule has teeth — the full-harness wave's concern, not the band's.
+- **Audit fields as editable form inputs.** _app-owned._ The generated forms expose
+  `deletedAt`/`deletedBy`/`createdBy`/`updatedBy` as text inputs; the relift drops them (the partial
+  update schema makes the narrower payload legal). A relift-pattern note in pauta's worklist, not a
+  framework mechanism.
+- **Relift fan-out is staged, not done.** "Todas as telas" = the next wave: per-feature cells dispatched
+  from `pauta-web/frontend/docs/design-relift-worklist.md` (3 generated patterns × ~36 entity pairs),
+  now that the pattern is proven on the worst offender.
+
 ## P3 / AMBIGUOUS — wait for ≥3-pilot evidence (per the framework's own rule)
 
 - [ ] _(hold)_ `IUserScoped` (global user-owned data) — generic in shape, 1-pilot evidence.

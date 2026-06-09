@@ -9,13 +9,20 @@ Determinism comes from removing decision space, not from adding instructions.
 
 | id   | slug                  | status | depends_on       | parallel_safe | test_gate |
 |------|-----------------------|--------|------------------|---------------|-----------|
-| 0001 | design-constitution   | ready  | —                | true          | maker approves taxonomy (one-time, explicit) |
-| 0002 | token-contract        | ready  | 0001             | true          | `npm --prefix frontend-sdk run check` |
-| 0003 | ui-kit-primitives     | ready  | 0001, 0002       | true          | `npm --prefix frontend-sdk run check` |
-| 0004 | lzfe-design-band      | ready  | 0001             | true          | `npm --prefix frontend-sdk run check` |
-| 0005 | canonical-screens     | ready  | 0003, 0004       | true          | `npm --prefix frontend-sdk run check` |
-| 0006 | design-skill          | ready  | 0005             | true          | skill files exist + byte-identical (see spec) |
-| 0007 | pauta-design-dogfood  | ready  | 0003, 0004, 0005 | true (pauta repo) | pauta `pnpm lint && pnpm test` + harvest report |
+| 0001 | design-constitution   | done¹  | —                | true          | maker approves taxonomy (one-time, explicit) |
+| 0002 | token-contract        | done   | 0001             | true          | `npm --prefix frontend-sdk run check` ✓ |
+| 0003 | ui-kit-primitives     | done   | 0001, 0002       | true          | `npm --prefix frontend-sdk run check` ✓ |
+| 0004 | lzfe-design-band      | done   | 0001             | true          | `npm --prefix frontend-sdk run check` ✓ + 0 findings on sample |
+| 0005 | canonical-screens     | done   | 0003, 0004       | true          | `npm --prefix frontend-sdk run check` ✓ (band + web jsx-a11y at error, 0 findings) |
+| 0006 | design-skill          | done   | 0005             | true          | files exist + byte-identical ✓ |
+| 0007 | pauta-design-dogfood  | done¹  | 0003, 0004, 0005 | true (pauta repo) | pauta lint 0 errors + 456 tests ✓ + harvest in PORTBACK-CHECKLIST.md |
+
+¹ executed 2026-06-09 (all automated gates green); the maker's one-time visual check is pending:
+0001 — read the taxonomy + kit API once; 0007 — eyeball the relifted screen + Dialog. Archive
+(`changes/ → archive/` + As-Built) after that nod. Notable as-built deltas: the form recipe is
+`deposit/` (mirrors the real backend slice; `itemForm` had no backend), `Text` gained `alert?:
+boolean` (C2 superseded — the command-error surface), `ColorRole` gained `scrim` (pauta Dialog
+harvest, inner loop), and renderUiKitWeb lives in `tools/ui-kit-web.mjs` (not generate.mjs).
 
 ## Dependency graph
 
