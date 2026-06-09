@@ -68,6 +68,11 @@ export default [
       // never becomes a navigation target without an allowlist. Error-tier (correctness, same bar as routing).
       "lazuli/no-raw-html": "error",
       "lazuli/no-open-redirect": "error",
+      // The design band (LZFE024–026, DESIGN-CONVENTIONS.md) — views render @/ui only, spacing/typography from the
+      // scale, color by semantic role. Warn-first (the house posture); the canonical-screens stage promotes to error.
+      "lazuli/ui-door": "warn",
+      "lazuli/scale-only": "warn",
+      "lazuli/semantic-colors": "warn",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",

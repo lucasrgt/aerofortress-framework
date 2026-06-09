@@ -30,6 +30,9 @@ export const LZFE_CODES = {
   "lazuli/no-hardcoded-base-url": "LZFE020",
   "lazuli/no-raw-html": "LZFE021",
   "lazuli/no-open-redirect": "LZFE022",
+  "lazuli/ui-door": "LZFE024",
+  "lazuli/scale-only": "LZFE025",
+  "lazuli/semantic-colors": "LZFE026",
 };
 
 /**

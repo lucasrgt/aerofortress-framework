@@ -22,6 +22,11 @@ const isGenerated = (f) => GENERATED_CLIENT.test(f.replace(/\\/g, "/"));
 // principled allowance, not a general escape hatch. (This is the cross-cutting infra Angular puts behind
 // CanActivate / an AuthService — framework primitives the app composes, not a DSL.)
 const isInfraDataDoor = (f) => /(^|\/)lib\/(session|guards)(\.|\/)/.test(f.replace(/\\/g, "/"));
+// The design band's exemption boundaries (LZFE024-026, DESIGN-CONVENTIONS.md): the app's ui/ kit implements the
+// design vocabulary (it touches host elements and pixel values BY JOB), and the token files define the raw values
+// (the same filename pattern LZFE012 exempts). Everything else speaks roles and scales only.
+const isUiKit = (f) => /(^|\/)ui(\/|\.)/.test(f.replace(/\\/g, "/"));
+const TOKEN_FILES = /(^|\/|\.)(theme|tokens|palette|colors)(\/|\.|$)/i;
 
 // A type-only import (`import type { X }`) is erased at runtime — it is the shared contract vocabulary, not
 // data access. A View taking `kind: LegalDocKind` is wired correctly; only a *value* import (a hook, the
@@ -1084,9 +1089,169 @@ const rules = {
       };
     },
   },
+
+  // LZFE024 — the ui-door: a View renders no host element and carries no style/className. The LZFE002 one-door
+  // pattern applied to paint: everything visual reaches a screen through the app's `@/ui` kit, whose props are
+  // token unions — so a `<div>` or a free-form class in a View is a visual decision escaping the design system.
+  // The sample's pre-kit ui.tsx leaked exactly this (a className passthrough) and one hatch reopened every
+  // decision. The kit itself (ui/) is the door's inside — out of scope; so are tests.
+  "ui-door": {
+    meta: {
+      type: "problem",
+      docs: {
+        description: "A View renders no host element and no style/className — everything visual comes from @/ui.",
+      },
+      messages: {
+        host: "LZFE024: a View renders no host element (`<{{tag}}>`) — compose `@/ui` primitives; if one is missing, extend the kit (ui/ is yours), never inline the paint.",
+        attr: "LZFE024: no `{{attr}}` in a View — visual decisions live in `@/ui` props (token unions), not free-form styling.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isView(f) || isTest(f)) return {};
+      return {
+        JSXOpeningElement(node) {
+          if (node.name.type === "JSXIdentifier" && /^[a-z]/.test(node.name.name)) {
+            context.report({ node, messageId: "host", data: { tag: node.name.name } });
+          }
+        },
+        JSXAttribute(node) {
+          if (node.name.type === "JSXIdentifier" && (node.name.name === "style" || node.name.name === "className")) {
+            context.report({ node, messageId: "attr", data: { attr: node.name.name } });
+          }
+        },
+      };
+    },
+  },
+
+  // LZFE025 — spacing/typography only from the scale. An off-scale literal (`padding: 13`, `p-[13px]`) is how
+  // rhythm dies one screen at a time: the eighth spacing step is a design decision, not a pixel. Scoped to style
+  // contexts (a JSX `style` bag, `StyleSheet.create`) and Tailwind arbitrary values in `className`; the kit (ui/)
+  // and the token files are the two places that legitimately speak pixels.
+  "scale-only": {
+    meta: {
+      type: "problem",
+      docs: {
+        description: "No off-scale spacing/typography literals outside ui/ and the token files — values come from the space/text tokens.",
+      },
+      messages: {
+        offscale:
+          "LZFE025: `{{key}}: {{value}}` is off-scale — spacing/typography come from the tokens (`space`/`text` in design/tokens.ts), reached through `@/ui` props.",
+        arbitrary:
+          "LZFE025: Tailwind arbitrary value in `{{value}}` — spacing/typography come from the token scale mapped into the Tailwind theme, never `[Npx]`.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (isTest(f) || isUiKit(f) || TOKEN_FILES.test(f) || !/\.(ts|tsx)$/.test(f)) return {};
+      const SPACING_KEYS = /^((padding|margin)([A-Z][a-zA-Z]*)?|gap|rowGap|columnGap|borderRadius|fontSize|lineHeight)$/;
+      const PX_STRING = /^\d+(\.\d+)?(px|rem|em)$/;
+      const ARBITRARY = /\[\d+(\.\d+)?(px|rem|em|%)\]/;
+
+      // A Property is a style declaration when its nearest JSX attribute is `style` or its nearest call is
+      // `StyleSheet.create` — plain data objects (a config, a payload) are none of lint's business.
+      function inStyleContext(node) {
+        for (let p = node.parent; p; p = p.parent) {
+          if (p.type === "JSXAttribute") return p.name.type === "JSXIdentifier" && p.name.name === "style";
+          if (p.type === "CallExpression")
+            return (
+              p.callee.type === "MemberExpression" &&
+              !p.callee.computed &&
+              p.callee.object.type === "Identifier" &&
+              p.callee.object.name === "StyleSheet" &&
+              p.callee.property.type === "Identifier" &&
+              p.callee.property.name === "create"
+            );
+        }
+        return false;
+      }
+
+      return {
+        Property(node) {
+          if (node.computed) return;
+          const key =
+            node.key.type === "Identifier" ? node.key.name : node.key.type === "Literal" ? String(node.key.value) : "";
+          if (!SPACING_KEYS.test(key)) return;
+          const v = node.value;
+          const offScaleNumber = v.type === "Literal" && typeof v.value === "number" && v.value !== 0;
+          const offScalePx = v.type === "Literal" && typeof v.value === "string" && PX_STRING.test(v.value);
+          if ((offScaleNumber || offScalePx) && inStyleContext(node)) {
+            context.report({ node, messageId: "offscale", data: { key, value: String(v.value) } });
+          }
+        },
+        JSXAttribute(node) {
+          if (node.name.type !== "JSXIdentifier" || node.name.name !== "className" || !node.value) return;
+          if (node.value.type === "Literal" && typeof node.value.value === "string" && ARBITRARY.test(node.value.value)) {
+            context.report({ node, messageId: "arbitrary", data: { value: node.value.value } });
+            return;
+          }
+          if (node.value.type === "JSXExpressionContainer" && node.value.expression.type === "TemplateLiteral") {
+            for (const q of node.value.expression.quasis) {
+              if (ARBITRARY.test(q.value.raw)) {
+                context.report({ node, messageId: "arbitrary", data: { value: q.value.raw } });
+                return;
+              }
+            }
+          }
+        },
+      };
+    },
+  },
+
+  // LZFE026 — color is a semantic role, or it does not ship. LZFE012 catches the hex spelling; this closes the
+  // rest of the leak: rgb()/hsl()/oklch() literals, CSS named colors in color-ish style keys, and a value-import
+  // of the raw palette outside the kit. A raw color in a screen forks the palette and defeats theming silently —
+  // hex was only one spelling of it.
+  "semantic-colors": {
+    meta: {
+      type: "problem",
+      docs: {
+        description: "No raw color outside the token files — rgb()/hsl()/named colors and the raw palette stay behind the color.* roles.",
+      },
+      messages: {
+        fn: "LZFE026: raw color (`{{value}}`) — color is a semantic role (`color.*` in design/tokens.ts); raw values live only in the token file. (Hex is LZFE012's half of this pair.)",
+        named: "LZFE026: named color (`{{value}}`) in `{{key}}` — use a semantic role (`color.*`), not a CSS color name.",
+        palette: "LZFE026: the raw palette is private to the token file — components touch `color.*` roles; only ui/ reaches deeper.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (isTest(f) || TOKEN_FILES.test(f) || !/\.(ts|tsx)$/.test(f)) return {};
+      const COLOR_FN = /^(rgb|rgba|hsl|hsla|oklch|oklab)\(/i;
+      const NAMED =
+        /^(red|blue|green|white|black|gray|grey|orange|purple|pink|yellow|teal|cyan|magenta|silver|maroon|navy|olive|lime|aqua|fuchsia)$/i;
+      const COLOR_KEY = /(^color$|Color$)/;
+      return {
+        Literal(node) {
+          if (typeof node.value !== "string") return;
+          const value = node.value.trim();
+          if (COLOR_FN.test(value)) {
+            context.report({ node, messageId: "fn", data: { value } });
+            return;
+          }
+          // A named color only counts inside a color-ish style key — the word "red" in copy is not a color.
+          if (NAMED.test(value)) {
+            const p = node.parent;
+            if (p && p.type === "Property" && !p.computed && p.value === node && p.key.type === "Identifier" && COLOR_KEY.test(p.key.name)) {
+              context.report({ node, messageId: "named", data: { value, key: p.key.name } });
+            }
+          }
+        },
+        ImportDeclaration(node) {
+          if (isUiKit(f) || isTypeOnly(node)) return;
+          if (!TOKEN_FILES.test(node.source.value)) return;
+          for (const s of node.specifiers) {
+            if (s.type === "ImportSpecifier" && s.importKind !== "type" && s.imported.name === "palette") {
+              context.report({ node: s, messageId: "palette" });
+            }
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {
-  meta: { name: "eslint-plugin-lazuli", version: "0.4.0" },
+  meta: { name: "eslint-plugin-lazuli", version: "0.5.0" },
   rules,
 };

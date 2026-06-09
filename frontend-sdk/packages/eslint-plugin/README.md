@@ -27,6 +27,9 @@ plugin and the app still builds; you only lose enforcement.
 | `no-hardcoded-base-url` | LZFE020 | The API base URL comes from **configuration** (env `VITE_API_URL`/`EXPO_PUBLIC_API_URL`, a relative base, or an injected default), never a hardcoded host baked into `axios.create({ baseURL: "http://…" })` — a baked literal silently 404s when the backend runs on a different port. |
 | `no-raw-html` | LZFE021 | No `dangerouslySetInnerHTML` outside the **one audited seam** (`lib/html`) — JSX escapes by construction; raw HTML is the XSS door, and if the app renders rich HTML the sanitizer lives in that seam, reviewable. |
 | `no-open-redirect` | LZFE022 | Never navigate to a value that **arrived in the URL** (`router.replace(returnTo)` / `location.href = next` off `useLocalSearchParams`/`useSearch`) — the open-redirect phishing primitive. Map the param through an **allowlist** of known routes first. |
+| `ui-door` | LZFE024 | A `*.view.tsx` renders **no host element** and carries **no `style`/`className`** — everything visual comes from `@/ui` (the app-owned kit, token-typed props). The `data-door` pattern applied to paint; a missing primitive is extended in `ui/`, never inlined. |
+| `scale-only` | LZFE025 | No off-scale spacing/typography literal (`padding: 13`, `fontSize: "13px"`, Tailwind `p-[13px]`) outside `ui/`, the token files, and tests — rhythm comes from the `space`/`text` scales (DESIGN-CONVENTIONS.md). |
+| `semantic-colors` | LZFE026 | No `rgb()/hsl()/oklch()` literal, no CSS named color in a color-ish style key, no value-import of the raw `palette` outside `ui/` — color is a semantic role (`color.*`). Completes `design-tokens` (LZFE012, the hex half). |
 
 ### Routing rules — both routers, one shape
 

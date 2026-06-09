@@ -34,6 +34,11 @@ const lintConfig = [
       "lazuli/state-completeness": "error",
       "lazuli/i18n-completeness": "error",
       "lazuli/design-tokens": "error",
+      // The design band (LZFE024–026): the emitted View composes @/ui only — no host elements, no
+      // free-form styling, no raw color. The emitter and the enforcer agree here too.
+      "lazuli/ui-door": "error",
+      "lazuli/scale-only": "error",
+      "lazuli/semantic-colors": "error",
     },
   },
 ];

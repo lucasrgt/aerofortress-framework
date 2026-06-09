@@ -428,5 +428,85 @@ ruleTester.run("i18n-completeness", plugin.rules["i18n-completeness"], {
   ],
 });
 
+// LZFE024 — the ui-door: a View renders no host element and carries no style/className; paint reaches a screen
+// through @/ui only (the LZFE002 one-door pattern applied to paint).
+ruleTester.run("ui-door", plugin.rules["ui-door"], {
+  valid: [
+    {
+      filename: "Foo.view.tsx",
+      code: `import { Screen, Text } from "@/ui"; export const V = () => <Screen><Text>ok</Text></Screen>;`,
+    },
+    // The spine's <Resource> and any capitalized component are fine — only host elements are the leak.
+    {
+      filename: "Foo.view.tsx",
+      code: `export const V = () => <Resource state={s}>{(d) => <Thing d={d} />}</Resource>;`,
+    },
+    // The kit is the door's inside; non-views are other rules' territory.
+    { filename: "web/src/ui/Button.tsx", code: `export const B = () => <button className="x" style={{ padding: 4 }} />;` },
+    { filename: "Foo.tsx", code: `export const X = () => <div className="x" />;` },
+  ],
+  invalid: [
+    { filename: "Foo.view.tsx", code: `export const V = () => <div>raw</div>;`, errors: [{ messageId: "host" }] },
+    {
+      filename: "Foo.view.tsx",
+      code: `import { Card } from "@/ui"; export const V = () => <Card className="p-2">x</Card>;`,
+      errors: [{ messageId: "attr" }],
+    },
+    {
+      filename: "Foo.view.tsx",
+      code: `import { Card } from "@/ui"; export const V = () => <Card style={{ padding: 13 }}>x</Card>;`,
+      errors: [{ messageId: "attr" }],
+    },
+  ],
+});
+
+// LZFE025 — spacing/typography only from the scale: off-scale literals in style contexts and Tailwind arbitrary
+// values are the rhythm leak; ui/, the token files, and tests legitimately speak pixels.
+ruleTester.run("scale-only", plugin.rules["scale-only"], {
+  valid: [
+    { filename: "Foo.tsx", code: `export const X = () => <div style={{ padding: 0 }} />;` },
+    { filename: "Foo.tsx", code: `import { space } from "@/design/tokens"; export const X = () => <div style={{ padding: space.md }} />;` },
+    { filename: "web/src/ui/Button.tsx", code: `export const B = () => <button style={{ padding: 13 }} />;` },
+    { filename: "core/src/design/tokens.ts", code: `export const space = { md: 12 };` },
+    { filename: "Foo.test.tsx", code: `render(<div style={{ padding: 13 }} />);` },
+    // Non-spacing numerics (layout, stacking) and plain data objects are none of this rule's business.
+    { filename: "Foo.tsx", code: `export const X = () => <div style={{ width: 320, zIndex: 2, flex: 1 }} />;` },
+    { filename: "Foo.tsx", code: `const payload = { gap: 7, fontSize: 13 };` },
+  ],
+  invalid: [
+    {
+      filename: "Foo.view.tsx",
+      code: `import { Card } from "@/ui"; export const V = () => <Card style={{ padding: 13 }} />;`,
+      errors: [{ messageId: "offscale" }],
+    },
+    { filename: "Foo.tsx", code: `const styles = StyleSheet.create({ card: { marginTop: 7 } });`, errors: [{ messageId: "offscale" }] },
+    { filename: "Foo.tsx", code: `export const X = () => <div style={{ fontSize: "13px" }} />;`, errors: [{ messageId: "offscale" }] },
+    { filename: "Foo.tsx", code: `export const X = () => <div className="p-[13px]" />;`, errors: [{ messageId: "arbitrary" }] },
+  ],
+});
+
+// LZFE026 — color is a semantic role: no rgb()/hsl()/oklch() literals, no named colors in color-ish keys, no
+// value-import of the raw palette outside ui/. Hex is LZFE012's half of the same pair.
+ruleTester.run("semantic-colors", plugin.rules["semantic-colors"], {
+  valid: [
+    { filename: "core/src/design/tokens.ts", code: `export const shadow = { raised: "0 1px 3px rgba(0,0,0,0.12)" };` },
+    { filename: "Foo.tsx", code: `import { color } from "@/design/tokens"; const c = color.primary;` },
+    // The word "red" in copy or a non-color key is not a color.
+    { filename: "Foo.tsx", code: `const label = "red carpet"; const status = { state: "red" };` },
+    { filename: "web/src/ui/Button.tsx", code: `import { palette } from "@/design/tokens";` },
+    { filename: "Foo.test.tsx", code: `const c = "rgb(1,2,3)";` },
+  ],
+  invalid: [
+    { filename: "Foo.tsx", code: `const c = "rgb(34, 197, 94)";`, errors: [{ messageId: "fn" }] },
+    { filename: "Foo.tsx", code: `const s = { color: "hsl(220, 90%, 50%)" };`, errors: [{ messageId: "fn" }] },
+    {
+      filename: "Foo.tsx",
+      code: `export const X = () => <div style={{ backgroundColor: "red" }} />;`,
+      errors: [{ messageId: "named" }],
+    },
+    { filename: "Foo.tsx", code: `import { palette } from "@/design/tokens";`, errors: [{ messageId: "palette" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
