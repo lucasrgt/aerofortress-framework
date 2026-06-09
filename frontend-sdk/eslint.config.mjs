@@ -63,6 +63,7 @@ export default [
       "lazuli/guard-tristate": "error",
       "lazuli/route-param-guard": "error",
       "lazuli/safe-back": "error",
+      "lazuli/no-hardcoded-base-url": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",

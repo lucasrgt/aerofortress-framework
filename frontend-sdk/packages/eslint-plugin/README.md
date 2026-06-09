@@ -24,6 +24,7 @@ plugin and the app still builds; you only lose enforcement.
 | `guard-tristate` | LZFE017 | A route guard redirects on a **tri-state** `SessionState` (`loading \| authenticated \| anonymous`), never a raw `isAuthenticated` boolean (which reads "still loading" as "signed out"). The read-side twin of LZFE010. |
 | `route-param-guard` | LZFE018 | A route reading a **required id param** (expo-router `useLocalSearchParams`) guards its absence — `if (!id) return <Redirect …/>` — so a param-less hit (bookmark / stale link) can't render a ghost screen on an empty id. |
 | `safe-back` | LZFE019 | No bare `router.back()`/`history.back()` — on web a deep-linked screen has no in-app history, so it's a dead button. Route Back through a guarded helper (`safeBack`/`useGoBack`) that falls back to a parent. |
+| `no-hardcoded-base-url` | LZFE020 | The API base URL comes from **configuration** (env `VITE_API_URL`/`EXPO_PUBLIC_API_URL`, a relative base, or an injected default), never a hardcoded host baked into `axios.create({ baseURL: "http://…" })` — a baked literal silently 404s when the backend runs on a different port. |
 
 ### Routing rules — both routers, one shape
 

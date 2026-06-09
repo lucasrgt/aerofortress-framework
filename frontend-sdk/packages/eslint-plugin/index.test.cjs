@@ -311,5 +311,25 @@ ruleTester.run("safe-back", plugin.rules["safe-back"], {
   ],
 });
 
+// LZFE020 — the API base URL comes from configuration, not a hardcoded host baked into the client's construction.
+ruleTester.run("no-hardcoded-base-url", plugin.rules["no-hardcoded-base-url"], {
+  valid: [
+    // env-driven with a relative fallback (web) — the blessed shape.
+    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: import.meta.env.VITE_API_URL ?? "" });` },
+    // env-driven with an env fallback (mobile).
+    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080" });` },
+    // a relative base is configuration, not a baked host.
+    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: "/api" });` },
+    // an injectable default overridden at boot (the hostpoint pattern) is an assignment, not a construction prop.
+    { filename: "src/lib/lazuli-client.ts", code: `instance.defaults.baseURL = "http://localhost:8080";` },
+    // out of scope: a test fixture may hardcode a URL.
+    { filename: "Foo.test.tsx", code: `const c = axios.create({ baseURL: "http://localhost:8080" });` },
+  ],
+  invalid: [
+    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: "http://localhost:8080" });`, errors: [{ messageId: "hardcoded" }] },
+    { filename: "src/lib/client.ts", code: `const c = makeClient({ baseUrl: "https://api.example.com" });`, errors: [{ messageId: "hardcoded" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
