@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -14,7 +15,9 @@ namespace Lazuli.Doctor;
 /// folding it through <c>Validation.Collect</c>) is the type's number-one misuse, flagged here. Unwrapping
 /// <em>inline</em> on a fresh construction (<c>Money.From(10m).Value</c> in a seed or test, where the input is
 /// known valid) stays legal: holding a result and never looking at its outcome is the bug; asserting a known
-/// literal is an idiom.
+/// literal is an idiom. <c>.Tests.cs</c> files are exempt entirely (the same carve-out as LZ0009): in a test an
+/// unguarded unwrap failing IS the signal — the exception fails the test with a stack trace, which is exactly
+/// the behaviour a test wants, and forcing an <c>IsSuccess</c> assert before every read is ceremony.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ResultGuardAnalyzer : DiagnosticAnalyzer
@@ -50,6 +53,11 @@ public sealed class ResultGuardAnalyzer : DiagnosticAnalyzer
         var access = (MemberAccessExpressionSyntax)context.Node;
         var member = access.Name.Identifier.Text;
         if (member is not ("Value" or "Error"))
+            return;
+
+        // A test wants the throw: an unguarded unwrap failing fails the test with a stack trace — the signal,
+        // not the bug. Same carve-out as LZ0009.
+        if (access.SyntaxTree.FilePath.EndsWith(".Tests.cs", StringComparison.Ordinal))
             return;
 
         // Only a *held* result is in scope: unwrapping inline on a fresh construction is the deliberate

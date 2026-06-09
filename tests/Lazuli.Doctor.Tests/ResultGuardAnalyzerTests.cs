@@ -105,13 +105,24 @@ public class ResultGuardAnalyzerTests
             }
             """ + Stubs);
 
+    [Fact]
+    public Task A_test_file_may_unwrap_unguarded_the_throw_is_the_signal() =>
+        // Same carve-out as LZ0009: in a test the exception fails the test with a stack trace — exactly
+        // what the test wants; forcing an IsSuccess assert before every read is ceremony.
+        NewTest("""
+            class C
+            {
+                int Run(Result<int> result) => result.Value;
+            }
+            """ + Stubs, file: "C.Tests.cs").RunAsync();
+
     private static Task Verify(string source) => NewTest(source).RunAsync();
 
-    private static CSharpAnalyzerTest<ResultGuardAnalyzer, DefaultVerifier> NewTest(string source) => new()
+    private static CSharpAnalyzerTest<ResultGuardAnalyzer, DefaultVerifier> NewTest(string source, string file = "C.cs") => new()
     {
         ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         CompilerDiagnostics = CompilerDiagnostics.Errors,
-        TestState = { Sources = { ("C.cs", source) } },
+        TestState = { Sources = { (file, source) } },
     };
 
     // A tiny stand-in for the abstractions so the test needs no Lazuli reference; the rule matches the
