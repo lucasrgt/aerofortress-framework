@@ -89,6 +89,22 @@ public class ResultGuardAnalyzerTests
             }
             """ + Stubs);
 
+    [Fact]
+    public Task Result_born_inside_a_negated_pattern_guard_reports_nothing() =>
+        // The declaring form: the name only flows past the guard on the success path.
+        Verify("""
+            class C
+            {
+                int Run()
+                {
+                    if (Make() is not { IsSuccess: true } parsed)
+                        return 0;
+                    return parsed.Value;
+                }
+                static Result<int> Make() => default;
+            }
+            """ + Stubs);
+
     private static Task Verify(string source) => NewTest(source).RunAsync();
 
     private static CSharpAnalyzerTest<ResultGuardAnalyzer, DefaultVerifier> NewTest(string source) => new()

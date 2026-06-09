@@ -74,7 +74,9 @@ public sealed class ResultGuardAnalyzer : DiagnosticAnalyzer
     }
 
     // True when, earlier in the same member, the result's outcome was consulted: an IsSuccess/IsFailure read,
-    // a `Validation.Collect(…, result)` fold, or an `is`-pattern over those properties.
+    // a `Validation.Collect(…, result)` fold, or an `is`-pattern over those properties — including the
+    // declaring form, where the name is BORN inside the check (`if (X.From(…) is not { IsSuccess: true } r)
+    // return …;` — `r` only flows past the guard on the success path).
     private static bool CheckedBefore(SyntaxNode scope, string name, int position) =>
         scope.DescendantNodes()
             .Where(node => node.SpanStart < position)
@@ -88,13 +90,22 @@ public sealed class ResultGuardAnalyzer : DiagnosticAnalyzer
                     && collect.ArgumentList.Arguments
                         .Any(arg => arg.Expression is IdentifierNameSyntax argId
                                  && argId.Identifier.Text == name),
-                IsPatternExpressionSyntax { Expression: IdentifierNameSyntax patId } pattern =>
-                    patId.Identifier.Text == name
-                    && pattern.Pattern.DescendantNodesAndSelf()
-                        .OfType<SubpatternSyntax>()
-                        .Any(sub => sub.NameColon?.Name.Identifier.Text is "IsSuccess" or "IsFailure"
-                                 || (sub.ExpressionColon?.Expression as IdentifierNameSyntax)?.Identifier.Text
-                                        is "IsSuccess" or "IsFailure"),
+                IsPatternExpressionSyntax pattern =>
+                    (pattern.Expression is IdentifierNameSyntax patId && patId.Identifier.Text == name
+                     || DeclaresName(pattern.Pattern, name))
+                    && ConsultsOutcome(pattern.Pattern),
                 _ => false,
             });
+
+    private static bool DeclaresName(PatternSyntax pattern, string name) =>
+        pattern.DescendantNodesAndSelf()
+            .OfType<SingleVariableDesignationSyntax>()
+            .Any(d => d.Identifier.Text == name);
+
+    private static bool ConsultsOutcome(PatternSyntax pattern) =>
+        pattern.DescendantNodesAndSelf()
+            .OfType<SubpatternSyntax>()
+            .Any(sub => sub.NameColon?.Name.Identifier.Text is "IsSuccess" or "IsFailure"
+                     || (sub.ExpressionColon?.Expression as IdentifierNameSyntax)?.Identifier.Text
+                            is "IsSuccess" or "IsFailure");
 }
