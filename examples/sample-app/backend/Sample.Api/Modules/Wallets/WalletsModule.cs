@@ -29,7 +29,9 @@ public static class WalletsModule
 
     public static void Map(IEndpointRouteBuilder app)
     {
-        var wallets = app.MapGroup("/wallets");
+        // The sample ships no identity provider, so the group is anonymous *on purpose* — the doctor (LZ0022)
+        // demands the decision be written down either way. A real app says .RequireAuthorization() here.
+        var wallets = app.MapGroup("/wallets").AllowAnonymous();
 
         Deposit.Map(wallets);
         Withdraw.Map(wallets);

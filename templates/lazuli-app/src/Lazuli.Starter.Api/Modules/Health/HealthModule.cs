@@ -13,7 +13,9 @@ public static class HealthModule
 
     public static void Map(IEndpointRouteBuilder app)
     {
-        var health = app.MapGroup("/health");
+        // Health probes are public by design — the doctor (LZ0022) wants that decision written down, not
+        // implied. A module exposing user data says .RequireAuthorization() here instead.
+        var health = app.MapGroup("/health").AllowAnonymous();
         Ping.Map(health);
     }
 }
