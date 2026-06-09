@@ -298,9 +298,12 @@ compiles them via glob. No mirror-the-architecture test tree.
   **no database opinion and drags no provider dependency**. Two paths, both the app's to choose:
   - *Fast and isolated* — reference `Lazuli.Testing.InMemory`, call
     `services.UseIsolatedInMemory<WalletsDb>()`.
-  - *A real database (e.g. Testcontainers Postgres)* — register your own provider in `SwapStores`
-    and manage its lifetime with xUnit's `IAsyncLifetime`; the in-memory package never enters the
-    graph.
+  - *A real database* — reference `Lazuli.Testing.Postgres`: one `PostgresTestDatabase` (a single
+    Testcontainers Postgres, one migrated **template** database, an isolated `CREATE DATABASE …
+    TEMPLATE` clone per test, pooling off) wrapped in the app's own static accessor; register its
+    connection in `SwapStores`. Keyed stores let two contexts share one database (the
+    "written-by-one-request, read-by-the-next" pattern). The in-memory package never enters the
+    graph. (Graduated from the hostpoint pilot's `TestDatabase`.)
 - **Assertions and mocking are the app's free choice** — the kit ships and mandates none
   (FluentAssertions, Shouldly, NSubstitute, xUnit-native all work). The one deliberate coupling is
   the **runner: xUnit** (the categories are xUnit traits).

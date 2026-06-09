@@ -1,0 +1,158 @@
+using System.Collections.Concurrent;
+using Npgsql;
+using Testcontainers.PostgreSql;
+
+namespace Lazuli.Testing.Postgres;
+
+/// <summary>
+/// The test suite's real database — one Postgres container (Testcontainers) shared by every test, so unique
+/// constraints, value converters, SQL translation, and any engine-specific behaviour are exercised for real
+/// (an in-memory provider masks all of those). The container starts once on first use and the app's
+/// <c>migrateTemplate</c> delegate migrates a single template database; each store a test asks for is a
+/// database <em>cloned</em> from that template (<c>CREATE DATABASE … TEMPLATE</c>) — the per-test isolation
+/// the in-memory store gives, on the real engine, without re-migrating per test. A <em>keyed</em> store lets
+/// two contexts share one database (the "data written by one request is read by the next" pattern). Pooling
+/// is off so each context's connections close on dispose and hundreds of throwaway databases never exhaust
+/// the server's slots. Graduated from the hostpoint pilot's <c>TestDatabase</c>.
+/// </summary>
+/// <example>
+/// The app wraps one instance in its own static accessor:
+/// <code>
+/// public static class TestDatabase
+/// {
+///     private static readonly PostgresTestDatabase Db = new(
+///         image: "postgis/postgis:16-3.4",
+///         migrateTemplate: async cs =>
+///         {
+///             await using var ctx = new AppDb(OptionsFor(cs));
+///             await ctx.Database.MigrateAsync();
+///         });
+///
+///     public static AppDb NewContext(string? storeKey = null) =>
+///         new(OptionsFor(Db.CreateDatabase(storeKey)));
+/// }
+/// </code>
+/// </example>
+public sealed class PostgresTestDatabase : IAsyncDisposable
+{
+    private readonly PostgreSqlContainer _container;
+    private readonly Func<string, Task> _migrateTemplate;
+    private readonly string _template;
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly ConcurrentDictionary<string, string> _keyedDatabases = new();
+    private bool _ready;
+    private string _maintenanceConnection = "";
+
+    /// <summary>Declare the suite's database. Nothing starts until the first store is asked for.</summary>
+    /// <param name="migrateTemplate">Migrates the template database the clones are cut from; receives its
+    /// connection string (typically <c>ctx.Database.MigrateAsync()</c> over the app's context).</param>
+    /// <param name="image">The Postgres image — override for extensions (e.g. <c>postgis/postgis:16-3.4</c>).</param>
+    /// <param name="template">The template database's name; override only if it collides with a real one.</param>
+    public PostgresTestDatabase(
+        Func<string, Task> migrateTemplate,
+        string image = "postgres:17-alpine",
+        string template = "lazuli_template")
+    {
+        _migrateTemplate = migrateTemplate;
+        _template = template;
+        _container = new PostgreSqlBuilder(image)
+            .WithDatabase("postgres")
+            .WithUsername("postgres")
+            .WithPassword("postgres")
+            .Build();
+    }
+
+    /// <summary>
+    /// A fresh store's connection string. With a <paramref name="storeKey"/>, repeated calls share one
+    /// database (two contexts, same data — simulating two requests); without one, each call is its own
+    /// isolated database. Synchronous on purpose: test constructors and factory hooks are synchronous, and
+    /// the await-worthy work (container boot + template migration) happens once per run.
+    /// </summary>
+    public string CreateDatabase(string? storeKey = null) =>
+        CreateDatabaseAsync(storeKey).GetAwaiter().GetResult();
+
+    /// <summary>The async twin of <see cref="CreateDatabase"/>, for async fixtures.</summary>
+    public async Task<string> CreateDatabaseAsync(string? storeKey = null)
+    {
+        await EnsureReadyAsync().ConfigureAwait(false);
+        var database = storeKey is null
+            ? await CloneTemplateAsync().ConfigureAwait(false)
+            : _keyedDatabases.TryGetValue(storeKey, out var existing)
+                ? existing
+                : _keyedDatabases.GetOrAdd(storeKey, await CloneTemplateAsync().ConfigureAwait(false));
+        return ConnectionFor(database);
+    }
+
+    /// <summary>Stop and reap the container. Test hosts also reap it via Testcontainers' Ryuk if the
+    /// process exits without disposing.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        await _container.DisposeAsync().ConfigureAwait(false);
+        _gate.Dispose();
+    }
+
+    private async Task<string> CloneTemplateAsync()
+    {
+        var name = "t_" + Guid.NewGuid().ToString("N");
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await using var admin = new NpgsqlConnection(_maintenanceConnection);
+            await admin.OpenAsync().ConfigureAwait(false);
+            await using var cmd = admin.CreateCommand();
+            // CA2100: not user input — `name` is a fresh GUID and the template name is ctor-fixed; CREATE
+            // DATABASE is DDL and cannot be parameterized.
+#pragma warning disable CA2100
+            cmd.CommandText = $"CREATE DATABASE \"{name}\" TEMPLATE \"{_template}\"";
+#pragma warning restore CA2100
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+        return name;
+    }
+
+    private async Task EnsureReadyAsync()
+    {
+        if (_ready)
+            return;
+
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_ready)
+                return;
+
+            await _container.StartAsync().ConfigureAwait(false);
+            _maintenanceConnection = _container.GetConnectionString();   // targets the 'postgres' maintenance db
+
+            await using (var admin = new NpgsqlConnection(_maintenanceConnection))
+            {
+                await admin.OpenAsync().ConfigureAwait(false);
+                await using var create = admin.CreateCommand();
+#pragma warning disable CA2100 // the template name is ctor-fixed, not user input
+                create.CommandText = $"CREATE DATABASE \"{_template}\"";
+#pragma warning restore CA2100
+                await create.ExecuteNonQueryAsync().ConfigureAwait(false);
+            }
+
+            await _migrateTemplate(ConnectionFor(_template)).ConfigureAwait(false);
+
+            NpgsqlConnection.ClearAllPools();   // release the template's connections so it can be cloned
+            _ready = true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    // Pooling off: connections close on dispose, so hundreds of throwaway databases never exhaust the server,
+    // and a cloned template has no lingering session blocking the next CREATE DATABASE ... TEMPLATE.
+    internal static string IsolatedConnectionString(string maintenanceConnection, string database) =>
+        new NpgsqlConnectionStringBuilder(maintenanceConnection) { Database = database, Pooling = false }.ConnectionString;
+
+    private string ConnectionFor(string database) => IsolatedConnectionString(_maintenanceConnection, database);
+}
