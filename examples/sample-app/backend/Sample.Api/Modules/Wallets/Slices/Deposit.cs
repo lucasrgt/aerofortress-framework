@@ -24,7 +24,7 @@ public static class Deposit
         // of the amount rule — we only collect its failure, never restate "amount >= 0" here.
         var amount = Money.From(input.Amount);
         var validation = new Validation()
-            .Check(input.WalletId != Guid.Empty, "walletId", WalletsErrorCodes.WalletIdRequired, "is required")
+            .Require(input.WalletId, "walletId", WalletsErrorCodes.WalletIdRequired)
             .Collect("amount", amount);
         if (validation.Failed)
             return validation.ToError();

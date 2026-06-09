@@ -22,7 +22,7 @@ public static class Withdraw
     {
         var amount = Money.From(input.Amount);
         var validation = new Validation()
-            .Check(input.WalletId != Guid.Empty, "walletId", WalletsErrorCodes.WalletIdRequired, "is required")
+            .Require(input.WalletId, "walletId", WalletsErrorCodes.WalletIdRequired)
             .Collect("amount", amount);
         if (validation.Failed)
             return validation.ToError();

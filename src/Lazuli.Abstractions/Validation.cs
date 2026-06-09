@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Lazuli.Abstractions;
@@ -42,6 +43,24 @@ public sealed class Validation
             _fields.Add(new FieldError(field, result.Error.Code, result.Error.Message));
         return this;
     }
+
+    /// <summary>Record an error for <paramref name="field"/> when <paramref name="value"/> is the empty
+    /// <see cref="Guid"/> — the shape of every "id is required" check, written once. Fluent.</summary>
+    public Validation Require(Guid value, string field, string code) =>
+        Check(value != Guid.Empty, field, code, "is required");
+
+    /// <summary>Record an error for <paramref name="field"/> when <paramref name="value"/> is null, empty,
+    /// or only whitespace — the shape of every "text is required" check, written once. Fluent.</summary>
+    public Validation NotBlank(string? value, string field, string code) =>
+        Check(!string.IsNullOrWhiteSpace(value), field, code, "must not be blank");
+
+    /// <summary>Record an error for <paramref name="field"/> when <paramref name="value"/> falls outside
+    /// [<paramref name="min"/>, <paramref name="max"/>] (inclusive). The bounds are restated in the developer
+    /// message so the failure reads without opening the slice. Fluent.</summary>
+    public Validation InRange<T>(T value, T min, T max, string field, string code)
+        where T : IComparable<T> =>
+        Check(value.CompareTo(min) >= 0 && value.CompareTo(max) <= 0, field, code,
+            $"must be between {min} and {max}");
 
     /// <summary>Whether any field error has been recorded.</summary>
     public bool Failed => _fields.Count > 0;
