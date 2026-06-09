@@ -103,3 +103,17 @@ truth. This pins the client to the exact spec it was generated from: the codegen
 (writes `client.gen/.spec-hash`, a whitespace-insensitive fingerprint), and the doctor compares the stamp against
 the live spec. A mismatch is a build-time "the contract moved; regenerate", not a runtime 404. **Notice until the
 first stamp exists**, a hard gate after — so it never blocks before the codegen has run.
+
+## Client scaffold — the mutator + orval config (the hand-owned half of the wired guarantee)
+
+```
+node tools/client-scaffold.mjs <client-name> <contract-path> [target-dir]
+# e.g.  node tools/client-scaffold.mjs shop ./contract/Shop.Api.json packages/app-core
+```
+
+orval generates the hooks, but the **mutator** they all call through (auth injection, the base-URL port, the
+`X-Client: web` header that turns on the cookie session) and the **orval config** are hand-owned files nothing
+scaffolded — every pilot re-derived them. This renders both, conformant by construction: the base URL is an
+injectable default overridden at boot via `configureClient()` (the LZFE020-blessed shape), the token sink is the
+session seam's `setAccessToken`, and the audience filter keeps webhooks/internal endpoints out of the client (so
+endpoint coverage stays high-signal). Existing files are never overwritten — they are hand-owned after birth.
