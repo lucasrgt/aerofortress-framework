@@ -246,7 +246,8 @@ touches primitives and values), the token files (`LZFE012`'s filename pattern:
 
 Recipes are **real, compiled, tested screens** in the sample app — never doc snippets (snippets
 don't lint, so they rot). A new screen starts as a copy of the nearest archetype; composition is
-the recipe's job, binding is yours.
+the recipe's job, binding is yours. (Agents: the `lazuli-design` skill routes you here —
+instantiate, do not invent.)
 
 | Archetype | Canonical unit | Use for |
 |-----------|---------------|---------|
