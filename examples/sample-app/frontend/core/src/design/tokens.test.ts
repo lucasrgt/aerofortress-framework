@@ -19,14 +19,15 @@ describe("design tokens", () => {
 
   it("raises the type scale monotonically caption→display, line-height covering font-size", () => {
     const order = ["caption", "label", "body", "heading", "title", "display"] as const;
-    for (let i = 0; i < order.length; i++) {
-      const role = text[order[i]];
+    const roles = order.map((r) => text[r]);
+    roles.forEach((role, i) => {
       expect(role.lineHeight).toBeGreaterThanOrEqual(role.fontSize);
-      if (i > 0) {
-        expect(role.fontSize).toBeGreaterThan(text[order[i - 1]].fontSize);
-        expect(role.lineHeight).toBeGreaterThan(text[order[i - 1]].lineHeight);
+      const prev = i > 0 ? roles[i - 1] : undefined;
+      if (prev) {
+        expect(role.fontSize).toBeGreaterThan(prev.fontSize);
+        expect(role.lineHeight).toBeGreaterThan(prev.lineHeight);
       }
-    }
+    });
   });
 
   it("keeps the interactive pairs distinct so the five states are visible", () => {
