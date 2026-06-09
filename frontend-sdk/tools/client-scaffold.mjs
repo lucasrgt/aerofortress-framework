@@ -88,7 +88,6 @@ export interface FeedbackSink {
 // silently (a dev booting without wireFeedback still sees every failure).
 let sink: FeedbackSink = {
   success: () => undefined,
-  // eslint-disable-next-line no-console
   error: (message) => console.error(\`[feedback] \${message}\`),
 };
 
