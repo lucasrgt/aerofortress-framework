@@ -91,7 +91,11 @@ public static class Deposit
   the set **discoverable**: `AddLazuliOpenApi` reflects over the registries and enumerates them into the
   `ErrorBody.code` schema, and `ToHttp` advertises the `ErrorBody` envelope on every endpoint — so the generated
   client is typed on the closed set of codes and the frontend's i18n can be checked for an exhaustive translation of
-  each (localization stays the frontend's job — copy has one owner — the backend ships the keys).
+  each (localization stays the frontend's job — copy has one owner — the backend ships the keys). Platform-tier
+  failures follow the same discipline: codes for cross-cutting concerns live on a `PlatformErrorCodes` registry —
+  the framework ships its own (`platform.rate_limited`, rendered by `RejectAsLazuliError()` when the app wires
+  ASP.NET's rate limiter), and an app adds platform codes of its own the same way — so even a 429 reaches the
+  client as a localizable `ErrorBody`, never a bare status.
 - **Rich types carry the semantics.** Prefer `Money`, `Cpf`, `Email` over `decimal`,
   `string`, and let entities own their invariants (see **The domain** below). The type *is*
   the rule — the AI understands it without reading a validator.
