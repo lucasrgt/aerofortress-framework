@@ -16,6 +16,14 @@ public class Wallet
     /// <summary>The running balance — changed only through <see cref="Deposit"/> / <see cref="Withdraw"/>.</summary>
     public Money Balance { get; private set; }
 
+    /// <summary>
+    /// The optimistic-concurrency token (LZ0026). Money is [Critical]: without this, two concurrent
+    /// deposits read the same row and the second save silently erases the first. With it, the loser gets
+    /// a <c>DbUpdateConcurrencyException</c> — a loud failure where a balance would have been lost.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[]? RowVersion { get; private set; }
+
     // Parameterless and private: the one constructor EF Core uses to rehydrate a row. The domain never
     // calls it — callers go through Open — so there is no public way to materialise a blank wallet.
     private Wallet() { }
