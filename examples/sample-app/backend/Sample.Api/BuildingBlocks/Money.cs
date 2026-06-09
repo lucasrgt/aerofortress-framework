@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sample.Api.BuildingBlocks;
 
 /// <summary>
@@ -5,8 +7,12 @@ namespace Sample.Api.BuildingBlocks;
 /// negative <see cref="Money"/>, so any <see cref="Money"/> in the system is already valid.
 /// It lives in BuildingBlocks because it is generic and domain-agnostic — shared by any
 /// module, owned by none. (A module-specific value object would live inside the module.)
+/// On the wire it is transparent: the <see cref="ScalarJsonConverter{TValueObject,TPrimitive}"/>
+/// serializes it as its <see cref="Amount"/> number (and the framework's OpenAPI wiring mirrors
+/// that in the contract), so the richness is a backend guarantee, not a contract change.
 /// </summary>
 [ValueObject]
+[JsonConverter(typeof(MoneyJsonConverter))]
 public readonly record struct Money
 {
     public decimal Amount { get; }
@@ -31,4 +37,7 @@ public readonly record struct Money
     public Result<Money> Subtract(Money other) => From(Amount - other.Amount);
 
     public override string ToString() => Amount.ToString("0.00");
+
+    // Wire transparency: Money crosses the boundary as its amount, validated back in through From.
+    private sealed class MoneyJsonConverter() : ScalarJsonConverter<Money, decimal>(m => m.Amount, From);
 }

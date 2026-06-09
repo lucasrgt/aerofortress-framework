@@ -57,7 +57,53 @@ public static class OpenApiExtensions
                 }
                 return Task.CompletedTask;
             });
+
+            // Mirror scalar value objects in the contract. A [ValueObject] carrying a ScalarJsonConverter
+            // serializes as the primitive it wraps, but the document generator only sees the CLR type — left
+            // alone it emits a bare {} schema and the generated client mistypes every amount and slug. This
+            // reads the converter's TPrimitive off the attribute and writes that primitive's schema instead,
+            // so the wire transparency holds end-to-end with no per-type transformer in the app.
+            options.AddSchemaTransformer((schema, context, _) =>
+            {
+                if (ScalarPrimitiveOf(context.JsonTypeInfo.Type) is { } primitive)
+                {
+                    var (type, format) = SchemaFor(primitive);
+                    schema.Type = type;
+                    schema.Format = format;
+                    schema.Properties = null;
+                }
+                return Task.CompletedTask;
+            });
         });
+
+    // The TPrimitive of the ScalarJsonConverter<TVo, TPrimitive> subclass the type's [JsonConverter] points at,
+    // or null when the type carries no such converter.
+    private static Type? ScalarPrimitiveOf(Type type)
+    {
+        var converter = type.GetCustomAttribute<System.Text.Json.Serialization.JsonConverterAttribute>()?.ConverterType;
+        for (var t = converter; t is not null; t = t.BaseType)
+            if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Abstractions.ScalarJsonConverter<,>))
+                return t.GetGenericArguments()[1];
+        return null;
+    }
+
+    // The OpenAPI (type, format) a wire primitive maps to. Unknown primitives fall back to string — the safe
+    // projection for anything a custom converter writes as text.
+    private static (JsonSchemaType Type, string? Format) SchemaFor(Type primitive) =>
+        Type.GetTypeCode(primitive) switch
+        {
+            TypeCode.Int64 or TypeCode.UInt64 => (JsonSchemaType.Integer, "int64"),
+            TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Byte or TypeCode.SByte =>
+                (JsonSchemaType.Integer, "int32"),
+            TypeCode.Decimal or TypeCode.Double => (JsonSchemaType.Number, "double"),
+            TypeCode.Single => (JsonSchemaType.Number, "float"),
+            TypeCode.Boolean => (JsonSchemaType.Boolean, null),
+            TypeCode.DateTime => (JsonSchemaType.String, "date-time"),
+            _ when primitive == typeof(Guid) => (JsonSchemaType.String, "uuid"),
+            _ when primitive == typeof(DateOnly) => (JsonSchemaType.String, "date"),
+            _ when primitive == typeof(DateTimeOffset) => (JsonSchemaType.String, "date-time"),
+            _ => (JsonSchemaType.String, null),
+        };
 
     // Every error code in the app: the public string constants on classes named *ErrorCodes, across the loaded
     // assemblies. LZ0018 enforces that this registry set is the complete set of codes the app can emit.

@@ -159,6 +159,14 @@ the two laws. The result is plain C# that happens to be hard to misuse.
   concurrent requests can't silently last-write-win each other on exactly the high-stakes operations —
   `LZ0026` (warning-tier) watches for the missing token.
 
+- **Scalar value objects are transparent on the wire.** A scalar `[ValueObject]` that crosses the API
+  boundary subclasses `ScalarJsonConverter<TVo, TPrimitive>` (next to the type, pointed at by
+  `[JsonConverter]`): it serializes as the primitive it wraps (`Money` as its number, `Slug` as its string),
+  invalid wire input fails through the smart constructor as a 400, and `AddLazuliOpenApi` mirrors the
+  primitive in the contract schema automatically — so the generated client types it as the primitive, never
+  an empty object. The richness is a backend guarantee, not a contract change. (Earned in the hostpoint
+  pilot, where every wire-crossing scalar VO needed this by hand.)
+
 - **Where behaviour lives — the split with the slice.** The slice owns *orchestration* and *input validation*
   (inline at the top of `Handle`); the entity and its value objects own *invariants* and *state transitions*.
   A change that cannot fail stays a `void` method (`Wallet.Deposit` — `Money` already guarantees a non-negative
