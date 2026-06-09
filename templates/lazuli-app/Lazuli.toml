@@ -12,3 +12,9 @@ backend = "src/Lazuli.Starter.Api"   # .NET vertical slices — the LZ* analyzer
 
 [harness]
 backend = "Lazuli.Starter.slnx"      # the framework's LZ* Roslyn analyzers run via the solution build
+
+# Optional: where the lazuli-net framework checkout lives, when you develop against it. With this set,
+# `lazuli doctor` compares your Lazuli* package versions and the eslint-plugin mirror against the checkout
+# and fails on drift (the package-first law). Machines without the checkout (CI) skip the check.
+# [framework]
+# repo = "../lazuli-net"

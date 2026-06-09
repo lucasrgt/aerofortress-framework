@@ -138,6 +138,21 @@ adapters in core, no runtime you inherit from. When a need smells like *capabili
 
 ---
 
+## The package-first law (anti-desync)
+
+This app consumes the framework **only as versioned `Lazuli*` packages and a rebased `eslint-plugin-lazuli`
+mirror** — never as source copies. If a need here is framework-shaped (a rule, a spine primitive, a harness
+mechanism, anything another Lazuli app would also want), it does **not** get implemented in this repo:
+it lands in **lazuli-net first**, ships through the package feed, and arrives here as a version bump whose
+doctor fallout you then fix. Writing it here "for now" is how framework code gets lost in time.
+
+Enforcement: declare the framework checkout in `Lazuli.toml` (`[framework] repo = "…"`) and `lazuli doctor`
+fails on a stale package version or a drifted plugin mirror; the frontend lint chain re-checks the mirror on
+every commit. App-specific code (your domain, your vendors, your copy) stays here, obviously — the law is
+about *generic* mechanisms only.
+
+---
+
 ## Git discipline
 
 - Stage specific files (`git add <path>`), never `-A`/`.`. One commit per concern; lowercase, present-tense

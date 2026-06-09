@@ -112,6 +112,29 @@ violation. Reject in line — do not defer it to a checklist.
 
 ---
 
+## The package-first law — how a change reaches the pilots
+
+The pilots (hostpoint, pauta) consume this framework **only as versioned packages and a rebased
+eslint-plugin mirror — never as source copies, and never the other way around**. Framework-shaped code
+(a rule, a primitive, a converter, a harness mechanism) lands HERE first; a pilot prototyping one inline
+is the failure mode that buried half this framework inside hostpoint for months. The release loop:
+
+1. Implement + test here. Bump `<Version>` in `build/Lazuli.Library.props` when the wave is meaningful.
+2. `dotnet pack Lazuli.slnx -c Release -o local-feed` — the pilots' `nuget.config` fronts nuget.org with
+   this feed. **Re-packing the same version requires purging the consumer cache**
+   (`rm -rf ~/.nuget/packages/<package>/<version>`) or the pilot keeps restoring the stale bits.
+3. In each pilot: bump the `Lazuli*` package versions, rebase the eslint-plugin mirror (copy `index.cjs`
+   + `index.test.cjs`, bump its version), and fix what the new doctor reveals. The fallout IS the feature.
+
+Enforcement, not memory: `lazuli doctor` carries a **framework-sync leg** (`src/Lazuli.Cli/FrameworkSync.cs`)
+that fails a pilot on a stale package version or a drifted mirror when the checkout declared in its
+`Lazuli.toml` `[framework] repo` is reachable; the pilots' lint chains run the mirror check on every commit
+(`frontend-sdk/tools/framework-sync.mjs`, delegated to — never copied). When a pilot legitimately discovers
+a framework gap mid-feature, the order is: fix it here, repack, re-restore — the same loop, just inner.
+`docs/PORTBACK-CHECKLIST.md` tracks anything that historically leaked the wrong way.
+
+---
+
 ## Git discipline
 
 - Stage specific files (`git add <path>`), never `-A`/`.`.

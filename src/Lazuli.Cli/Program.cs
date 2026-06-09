@@ -34,9 +34,19 @@ static int Doctor(string[] rest)
     foreach (var message in manifest.Messages)
         Console.Error.WriteLine($"  {message}");
 
+    // The anti-desync leg: when the framework checkout is reachable ([framework] repo in Lazuli.toml), a
+    // stale package version or a drifted eslint-plugin mirror fails the doctor — the package-first law,
+    // enforced. Unreachable (CI) degrades to a notice.
+    var sync = FrameworkSync.Check(Directory.GetCurrentDirectory());
+    Console.WriteLine("lazuli doctor — framework sync...");
+    foreach (var message in sync.Messages)
+        Console.Error.WriteLine($"  {message}");
+
     Console.WriteLine("lazuli doctor — backend conventions (build)...");
     var code = Tooling.Dotnet("build", rest);
     if (manifest.Present && !manifest.Valid)
+        code = Math.Max(code, 1);
+    if (sync.Gating && !sync.InSync)
         code = Math.Max(code, 1);
 
     foreach (var client in FrontendClients(Directory.GetCurrentDirectory()))
