@@ -101,6 +101,64 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 - [ ] **Tier C** — Stryker mutation-score lane (doctor consumes the artifact). _Deferred — needs a
   `[Critical]` journey set to be meaningful._
 
+## Re-sweep 2026-06-09 — new findings (not previously tracked)
+
+A second audit pass over the pilot, after the LZ0022–26 / LZFE021–22 wave. Claims verified against the
+framework source (several apparent gaps turned out already owned: `ClaimsCurrentUser` ships in
+`Lazuli.Auth`; refresh rotation + theft detection and `TenantDbContext` ship as `lazuli g auth`
+scaffold templates — the lazuli way, app-owned by construction).
+
+### Backend
+
+- [ ] **Scalar VO wire transparency has no framework mechanism.** Every scalar `[ValueObject]` the
+  pilot adds needs a hand-written `[JsonConverter]` + a per-type branch in the `Web.cs` OpenAPI
+  schema transformer (`hostpoint/src/Hostpoint.Api/Platform/Web.cs:52`, `Money.cs:54`, `Slug.cs:46`)
+  or the contract emits an empty object and the generated client breaks. The mechanism is generic:
+  a `Lazuli.AspNetCore` schema-transformer that maps a `[ValueObject]` with a primitive-writing
+  converter to its primitive schema (`Money`→`int64`, `Slug`→`string`). _FRAMEWORK-GAP — this is the
+  pilot's most repeated per-feature toll._
+- [ ] **Testcontainers Postgres harness with template-database cloning.**
+  (`hostpoint/tests/Hostpoint.Tests/TestDatabase.cs`) One container, one migration into a template DB,
+  then `CREATE DATABASE … TEMPLATE` per test/keyed group, pooling off. `Lazuli.Testing` ships only the
+  WebApplicationFactory harness + InMemory; the real-database leg every serious pilot needs lives in
+  the app. Candidate: `Lazuli.Testing.Postgres`. _FRAMEWORK-GAP._
+- [ ] **Rate-limiting wired to the error envelope.** The pilot wires ASP.NET's limiter and renders 429
+  as the framework's `ErrorBody` with a `platform.rate_limited` registry code
+  (`hostpoint/src/Hostpoint.Api/Platform/RateLimiting.cs`). The framework owns `ErrorKind.RateLimit` and
+  the envelope but ships no limiter↔envelope bridge; each app re-derives the `OnRejected` glue. Port the
+  bridge (policies stay app-owned). _FRAMEWORK-GAP (the glue), policies APP-SPECIFIC._
+- [ ] _(convention, doc-only)_ **`PlatformErrorCodes` registry** — platform-tier codes (rate limit, etc.)
+  live in one `*ErrorCodes` class so LZ0018/19 + the OpenAPI enum pick them up like module codes.
+  Document in CONVENTIONS (platform layer section); no code needed.
+- [ ] _(hold, 1-pilot)_ JSON-list `ValueConverter`+`ValueComparer` helper; sandbox env-gated vendor
+  tests (`Sandbox.cs`); reflection seed-helper for encapsulated entities (`TestUser.cs`); presigned-URL
+  memoization in an eventual `Lazuli.Storage.S3`.
+
+### Frontend
+
+- [ ] **The session seam has no framework home.** `onAuthenticated` / `bootstrapSession` /
+  `clearSession` + the `useSession` boot hook + the `refresh-token.ts`/`.web.ts` platform-seam pair
+  (`hostpoint/clients/app-core/src/lib/session/*`) are the generic mechanics LZFE016/017 *steer
+  toward*, yet the spine ships only the read-side (`SessionState`). The write-side trio (token write
+  paired with `me`-cache reset by construction) belongs in `@lazuli/react` (storage injected as a
+  port). _FRAMEWORK-GAP — the harness polices a seam the framework doesn't ship._
+- [ ] **`apiErrorCopy()` — the error-code→copy bridge.**
+  (`hostpoint/clients/app-core/src/lib/api-error.ts`) Reads `ErrorBody.code` off an axios error, looks
+  up the `api-errors` i18n namespace, falls back to a generic key. It is the runtime half of the
+  `error-code-coverage` loop (the tool proves the catalog is complete; this consumes it). Generic —
+  graduate to the spine or ship in the scaffold. _FRAMEWORK-GAP._
+- [ ] **Mutator/`configureClient` template.** The orval mutator (`lazuli-client.ts`: auth injection,
+  base-URL port, `Result` envelope) + boot-time `configureClient()` exist only in the pilot; the SDK's
+  `generate.mjs` scaffolds features against a client whose mutator nothing scaffolds. Folds into the
+  tracked **`lazuli gen client`** item — listed here so the mutator template isn't forgotten when that
+  lands.
+- [ ] **Reverse drift (pilot behind framework).** The hostpoint `eslint-plugin-lazuli` mirror is
+  v0.3.0 — missing LZFE021/022 and the hardened LZFE002/011/013/016/018 — and the app forks
+  `AsyncState` locally while not using the spine's `SessionState`/`requiredParam`/`combineAsyncStates`
+  at all (guards still branch on a raw `session.ready` boolean — exactly what LZFE017 exists to
+  prevent). Both are symptoms of the tracked "@lazuli/react publish" gap; flagged so the next pilot
+  sync rebases the mirror + adopts the spine unions.
+
 ## P3 / AMBIGUOUS — wait for ≥3-pilot evidence (per the framework's own rule)
 
 - [ ] _(hold)_ `IUserScoped` (global user-owned data) — generic in shape, 1-pilot evidence.
