@@ -4,7 +4,8 @@ namespace Lazuli.Cli;
 
 /// <summary>
 /// Generates a conformant slice and its co-located tests — code that passes the doctor by
-/// construction (LZ0001's shape, LZ0003's test, and for a critical slice LZ0008's journeys), so the
+/// construction (LZ0001's shape, LZ0003's test, LZ0012's endpoint name, LZ0018's registry constant,
+/// and for a critical slice LZ0008's journeys), so the
 /// convention is born right instead of the author having to remember it. The root namespace is read
 /// from the project's .csproj in the target directory; the test namespace follows the
 /// <c>&lt;App&gt;.Api → &lt;App&gt;.Tests</c> convention.
@@ -77,15 +78,18 @@ public static class SliceGenerator
 
                 public static Task<Result<Output>> Handle(Input input, CancellationToken ct)
                 {
-                    if (input.Id == Guid.Empty)
-                        return Task.FromResult<Result<Output>>(Error.Validation({{module}}ErrorCodes.IdRequired, "id is required"));
+                    var validation = new Validation()
+                        .Require(input.Id, "id", {{module}}ErrorCodes.IdRequired);
+                    if (validation.Failed)
+                        return Task.FromResult<Result<Output>>(validation.ToError());
 
                     return Task.FromResult<Result<Output>>(new Output(input.Id));
                 }
 
                 public static void Map(IEndpointRouteBuilder app) =>
                     app.MapPost("/{{name.ToLowerInvariant()}}", async (Input input, CancellationToken ct) =>
-                        (await Handle(input, ct)).ToHttp());
+                            (await Handle(input, ct)).ToHttp())
+                        .WithName(nameof({{name}}));
             }
 
             """;

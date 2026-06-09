@@ -21,8 +21,12 @@ public class SliceGeneratorTests
         Assert.Contains("Task<Result<Output>> Handle", slice);
         Assert.Contains("void Map(", slice);
 
-        // The scaffolded validation uses a registry constant (LZ0018), and the module's registry is created with it.
-        Assert.Contains("OrdersErrorCodes.IdRequired", slice);
+        // The endpoint is named after the slice (LZ0012) — the operationId the typed client hooks from.
+        Assert.Contains(".WithName(nameof(Place))", slice);
+
+        // The scaffolded validation uses the accumulator's sugar with a registry constant (LZ0018), and the
+        // module's registry is created with it.
+        Assert.Contains(".Require(input.Id, \"id\", OrdersErrorCodes.IdRequired)", slice);
         var registry = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "OrdersErrorCodes.cs"));
         Assert.Contains("public const string IdRequired = \"id.required\";", registry);
 

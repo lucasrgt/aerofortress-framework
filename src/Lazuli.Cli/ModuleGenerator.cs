@@ -94,8 +94,9 @@ public static class ModuleGenerator
 
             public static void Map(IEndpointRouteBuilder app)
             {
-                // Register this module's slices here as you generate them:
-                //   var {{name.ToLowerInvariant()}} = app.MapGroup("/{{name.ToLowerInvariant()}}");
+                // Register this module's slices here as you generate them. The group carries the module's
+                // authorization decision — LZ0022 wants it explicit either way:
+                //   var {{name.ToLowerInvariant()}} = app.MapGroup("/{{name.ToLowerInvariant()}}").RequireAuthorization(); // or .AllowAnonymous()
                 //   <Slice>.Map({{name.ToLowerInvariant()}});
             }
         }
