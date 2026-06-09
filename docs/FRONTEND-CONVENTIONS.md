@@ -286,6 +286,9 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE021` | **No raw HTML** — no `dangerouslySetInnerHTML` outside the one audited seam (`lib/html`). JSX escapes by construction; raw HTML is the XSS door, and if the app renders rich HTML (a CMS body) the sanitizer lives in that seam, reviewable | **shipped** | the single React opt-out of escaping must not scatter across screens |
 | `LZFE022` | **No open redirect** — never navigate to a value that arrived in the URL (`router.replace(returnTo)` / `location.href = next` off `useLocalSearchParams`/`useSearch`/`useSearchParams`); map the param through an **allowlist** of known in-app routes first | **shipped** | the phishing primitive: a crafted link sends the session-carrying browser anywhere the attacker chose |
 | `LZFE023` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done (renumbered as shipped rules claimed the lower slots) |
+| `LZFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui` (the app-owned kit). A missing primitive is extended in `ui/`, never inlined. The `LZFE002` one-door pattern applied to paint — the design band, [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md) | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every visual decision |
+| `LZFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`/`margin*`/`gap`/`rowGap`/`columnGap`/`borderRadius`/`fontSize`/`lineHeight`; `0` allowed), no Tailwind arbitrary value (`[13px]`) in `className` | planned (design band) | off-scale values are how rhythm dies one screen at a time |
+| `LZFE026` | **Semantic colors** — outside token files: no `rgb()/hsl()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `LZFE012`: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
@@ -377,7 +380,10 @@ Both are **warn-first** — a revealed backlog promoted to error per-rule once c
 `has-accessibility-hint` **off**: a hint is supplementary (only for non-obvious actions), and on by
 default it buries the high-signal rules under noise. This is the same posture as the curated
 community kit (`sonarjs`, `no-secrets`, `@tanstack/query`): external rules wired *alongside* the LZFE
-plugin, never reinvented inside it.
+plugin, never reinvented inside it. The design layer raises this bar exactly once: when the
+canonical screens land (the recipes — [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md)), **web
+jsx-a11y promotes to error** for the sample tree — the exemplar proves green is reachable, so the
+bar rises then, not before.
 
 ## Scope — and non-goals
 
@@ -391,13 +397,16 @@ client` (stock orval, wrapped) with the shipped config + mutator. One blessed fr
   re-emitted. No "smart stubs" that pre-fill logic. (The Lazuli-2 vector.)
 - **No MVVM framework.** Plain custom hooks, not classes/observables/two-way binding. (The
   stranger-maintainable law.)
-- **No prescribed styling system.** The blessed shape pins what touches the seam (router, query
-  layer, generator, form lib, test runner — all relevant to *wired/tested*) and stays silent on pure
-  paint: the styling library (StyleSheet / NativeWind / Tamagui / Unistyles), the component kit, the
-  icon set, the design tokens are **the app's choice**. The `LZFE*` harness is styling-neutral by
-  construction — it polices the data seam (`LZFE001` no data layer in a View, `LZFE002` one data door,
-  `LZFE009` platform-agnostic ViewModel), never the paint above it. (Hostpoint picks NativeWind + its
-  own design system; another app picks differently — the convention and harness are unchanged.)
+- **No prescribed styling *mechanism* — but the design *vocabulary* is conventional.** The blessed
+  shape pins what touches the seam (router, query layer, generator, form lib, test runner) and stays
+  neutral on the paint *mechanism*: the styling library (StyleSheet / NativeWind / Tamagui /
+  Unistyles / CSS vars) and the icon set remain **the app's choice**, mapped by hand from the tokens,
+  once. What is no longer free-invented is the **vocabulary**: the token taxonomy (names + types),
+  the closed kit shape (the app-owned `ui/`), and the ui-door discipline are the convention,
+  constitutionalized in [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md) and enforced by the design
+  band (`LZFE024–026`, beside `LZFE012`). Token **values** stay the app's — that is the entire
+  theming story. (Hostpoint keeps NativeWind + its own finished components; if it ever adopts, it is
+  by aliasing values onto the taxonomy with zero visual delta — the mechanism choice is untouched.)
 - **No TS decorators (`@Slice`/`@Journey`/`@Critical`).** The backend's `[Slice]` is a first-class
   C# attribute the Roslyn doctor reads natively; React function components have no idiomatic decorator
   seam, and bolting one on (babel `experimentalDecorators`, wrapper indirection) *adds* LLM decision

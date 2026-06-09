@@ -44,9 +44,11 @@ templates/lazuli-app/         The `lazuli new` starter the CLI scaffolds from.
 build/Lazuli.Library.props    The library standard, declared once.
 docs/CONVENTIONS.md           The backend constitution + slice shape + full LZ* rule catalog.
 docs/FRONTEND-CONVENTIONS.md  The frontend constitution + MVVM shape + full LZFE* rule catalog.
+docs/DESIGN-CONVENTIONS.md    The design constitution: token taxonomy + closed kit shape + the LZFE design band.
 ```
 
-Ground every convention fact in `docs/CONVENTIONS.md` / `docs/FRONTEND-CONVENTIONS.md`, never memory.
+Ground every convention fact in `docs/CONVENTIONS.md` / `docs/FRONTEND-CONVENTIONS.md` /
+`docs/DESIGN-CONVENTIONS.md`, never memory.
 
 ---
 
