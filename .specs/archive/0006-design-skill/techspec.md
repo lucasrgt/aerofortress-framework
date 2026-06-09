@@ -2,12 +2,13 @@
 id: 0006
 title: Design skill — the context loader for UI work
 type: techspec
-status: ready
+status: done
 created: 2026-06-09
+completed: 2026-06-09
 depends_on: [0005]
 parallel_safe: true
 test_gate: node -e "for (const p of ['.claude/skills/lazuli-design/SKILL.md','templates/lazuli-app/.claude/skills/lazuli-design/SKILL.md']) require('fs').accessSync(p)" && git diff --no-index .claude/skills/lazuli-design/SKILL.md templates/lazuli-app/.claude/skills/lazuli-design/SKILL.md
-agent: unassigned
+agent: claude-fable-5
 ---
 
 # TechSpec — Design skill (lazuli-design)
@@ -86,3 +87,8 @@ pointer-only (no embedded rules/values — the one non-automatable check).
   specs' other checks; editing one file alone fails it.
 
 **Rollback:** delete both files; nothing depends on the skill.
+
+## As-Built
+Shipped 2026-06-09, commit `6f52d71` — as planned: 41 lines, pointer-only, repo + template copies
+byte-identical (hash-verified), the constitution's recipes section carries the routing line. The
+skill registered immediately (it appears in this session's skill roster as `lazuli-design`).

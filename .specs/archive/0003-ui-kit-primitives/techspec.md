@@ -2,12 +2,13 @@
 id: 0003
 title: UI kit — closed-API primitives in the sample app
 type: techspec
-status: ready
+status: done
 created: 2026-06-09
+completed: 2026-06-09
 depends_on: [0001, 0002]
 parallel_safe: true
 test_gate: npm --prefix frontend-sdk run check
-agent: unassigned
+agent: claude-fable-5
 ---
 
 # TechSpec — UI kit primitives
@@ -90,3 +91,12 @@ including the Items suite).
   focus", not the detection mechanism; test via fireEvent keyboard focus.
 
 **Rollback:** revert; restore the two `ui.tsx` files (git), Items.view props revert with them.
+
+## As-Built
+Shipped 2026-06-09, commit `76436a1`. Deltas: `renderUiKitWeb()` lives in `tools/ui-kit-web.mjs`,
+not generate.mjs (separate concerns; the embed is GENERATED from the committed kit files, so
+template ≡ exemplar by construction and the drift test pins it both ways). vitest gained the
+`web/**` test glob (ui.test.tsx was invisible without it) and explicit RTL cleanup (no vitest
+globals → no auto-cleanup). The mobile mirror stays outside the gate (no react-native in the
+workspace — the same posture as the ui.tsx it replaced). renderFeature's view template moved to the
+closed props. Later (0005): `Text` gained `alert` and the kit embed was rebuilt.

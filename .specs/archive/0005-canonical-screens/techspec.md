@@ -2,12 +2,13 @@
 id: 0005
 title: Canonical screens — the recipe catalog in the sample app
 type: techspec
-status: ready
+status: done
 created: 2026-06-09
+completed: 2026-06-09
 depends_on: [0003, 0004]
 parallel_safe: true
 test_gate: npm --prefix frontend-sdk run check
-agent: unassigned
+agent: claude-fable-5
 ---
 
 # TechSpec — Canonical screens (recipes)
@@ -84,3 +85,14 @@ command now proves: recipes compile, tests pass, band + a11y hold at error.
 
 **Rollback:** revert; the promotion commit and the recipe commits are separate, so the band can drop
 back to warn without losing the screens.
+
+## As-Built
+Shipped 2026-06-09, commit `c447c4b`. Deltas: the form recipe is **`deposit/`**, not `itemForm/` —
+the contract's own escape hatch ("bind to the closest existing write"): the sample backend has no
+Items module at all (Wallets only), so the recipe mirrors the REAL Deposit slice (LZ0012 1:1;
+stand-in mutation hook with a NotFound sentinel + observable pending). `Text` gained `alert` (C2
+supersession) as the command-error surface. The detail recipe deferred per the PRD (no get-by-id in
+the client). Learnings pinned in code: zod 4 validates UUID version/variant bits (test UUIDs must be
+real v4s); jsx-a11y's `aria-role` needs `ignoreNonDOM` (the kit's `Text role=` is a TextRole, not
+ARIA). Workspace devDeps gained react-hook-form/zod/@hookform/resolvers (+ vitest aliases).
+Promotion proof: 33 files, 0 findings with the band + web jsx-a11y at error; 109 tests green.

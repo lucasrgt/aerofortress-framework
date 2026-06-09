@@ -2,12 +2,13 @@
 id: 0004
 title: LZFE design band — ui-door, scale-only, semantic-colors
 type: techspec
-status: ready
+status: done
 created: 2026-06-09
+completed: 2026-06-09
 depends_on: [0001]
 parallel_safe: true
 test_gate: npm --prefix frontend-sdk run check
-agent: unassigned
+agent: claude-fable-5
 ---
 
 # TechSpec — LZFE design band (LZFE024–026)
@@ -92,3 +93,11 @@ current sample tree (clean-at-warn check, step 5).
   extra to build here.
 
 **Rollback:** revert the commit; rules unregister cleanly (config + mapping live in the same commit).
+
+## As-Built
+Shipped 2026-06-09, commit `644ae2c` — as planned (3 rules, 23 RuleTester cases, doctor map, warn
+registration, README rows; generate.test.ts also runs the band over the scaffolded unit, closing the
+emitter↔enforcer loop). Gate addendum: the eslint CLI can't reach `../examples` (flat-config base
+path), so the clean-at-warn sweep ran via the Linter API — 29 files, 0 findings. The pauta dogfood
+(0007) later exposed the band's biggest blind spot: Tailwind utility classes carry the raw palette
+and the band never sees them (HIGH portback — PORTBACK-CHECKLIST.md, design-dogfood section).

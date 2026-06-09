@@ -2,12 +2,13 @@
 id: 0002
 title: Token contract — tokens.ts scaffold + sample instantiation
 type: techspec
-status: ready
+status: done
 created: 2026-06-09
+completed: 2026-06-09
 depends_on: [0001]
 parallel_safe: true
 test_gate: npm --prefix frontend-sdk run check
-agent: unassigned
+agent: claude-fable-5
 ---
 
 # TechSpec — Token contract
@@ -83,3 +84,10 @@ are the convention (DESIGN-CONVENTIONS.md), values are yours; hex lives ONLY her
 - Value taste disputes → values are the app's by contract; defaults only need to be coherent.
 
 **Rollback:** revert the commits; nothing imports `design/tokens.ts` until 0003.
+
+## As-Built
+Shipped 2026-06-09, commit `04cba31` — as planned (renderDesign + design-scaffold.mjs + canonical
+instance + 6 tests incl. the template↔exemplar drift pin). Post-landing: the type-scale test was
+rewritten without unchecked indexing (`cc185df` — the example tsconfig runs noUncheckedIndexedAccess);
+`scrim` values joined both themes (`37785aa`). Pre-existing debt, unchanged: the example tree has no
+standalone tsc leg (deps resolve via vitest aliases until the root npm workspace the roadmap tracks).

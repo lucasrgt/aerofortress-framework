@@ -2,12 +2,13 @@
 id: 0001
 title: Design constitution — DESIGN-CONVENTIONS.md
 type: techspec
-status: ready
+status: done
 created: 2026-06-09
+completed: 2026-06-09
 depends_on: []
 parallel_safe: true
 test_gate: maker approves taxonomy (one-time, explicit) — see Gate
-agent: unassigned
+agent: claude-fable-5
 ---
 
 # TechSpec — Design constitution
@@ -140,3 +141,12 @@ escape hatch for non-automatable acceptance). Everything downstream is automated
 - Doc drifts from shipped code later → the recipe index links to real files; 0005's gate lints them.
 
 **Rollback:** revert the doc commits; no code depends on this stage until 0002 lands.
+
+## As-Built
+Shipped 2026-06-09, commit `ccd3569` (specs scaffold `1f6c9bd`). Deltas: the band was renumbered
+023–025 → 024–026 BEFORE execution — the FRONTEND-CONVENTIONS catalog already reserves LZFE023 for
+the planned orphan-placeholder rule (caught by grounding in the doc, not memory). Two locked
+contracts were superseded later in the wave, this spec updated in place both times: C2 `Text` gained
+`alert?: boolean` (the form's command-error surface, 0005, `c447c4b`) and C1 `ColorRole` gained
+`scrim` (the pauta Dialog backdrop, 0007 inner loop, `37785aa`). Maker approved the taxonomy
+2026-06-09.

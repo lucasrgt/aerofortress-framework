@@ -2,12 +2,13 @@
 id: 0007
 title: Pauta design dogfood — wire the design layer into the worst-UI pilot, harvest the gaps
 type: techspec
-status: ready
+status: done
 created: 2026-06-09
+completed: 2026-06-09
 depends_on: [0003, 0004, 0005]
 parallel_safe: true
 test_gate: pnpm --dir C:\Users\lucas\dev\pauta-web\frontend lint && pnpm --dir C:\Users\lucas\dev\pauta-web\frontend test
-agent: unassigned
+agent: claude-fable-5
 ---
 
 # TechSpec — Pauta design dogfood
@@ -99,3 +100,18 @@ Dialog once (the "asqueroso → recipe-grade" check is visual by nature).
 
 **Rollback:** pauta changes are additive + one feature dir; revert the relift commit and the app is
 where it started, mirror and tokens inert at warn.
+
+## As-Built
+Shipped 2026-06-09 — pauta commits `2f735764` (mirror+band) · `4be9a905` (tokens+tailwind) ·
+`370b16ec` (kit+Dialog) · `0c9d495d` (exemplar relift) · `b578574b` (worklist); lazuli-net `37785aa`
+(scrim, inner loop) + `f0cae35` (harvest). Deltas: the "gross modal" turned out to be
+`window.confirm` on every detail page — rebuilt as the app-owned Dialog (scrim/overlay tokens, focus
+in/return, Esc/backdrop, sentinel trap; 4 tests). The exemplar is `billing-type-edit` (form recipe;
+audit/soft-delete fields dropped from the form — the partial update schema makes the narrower
+payload legal). Pauta's palette IS the default theme (aerocoding used stock Tailwind blue/red), so
+token values needed no edits. The baseline produced the headline finding: the band fired **0× over
+533 files** — Tailwind utility classes are invisible to it (HIGH portback). The mirror was rebased
+mid-stage to 0.6.0 when the mutation band (LZFE027/028) landed in parallel. `'use client'` added
+app-side to the hooky primitives (template-portback candidate). Gate: lint 0 errors, 456 tests green
+(98 files, 8 new). Maker eyeballed and approved 2026-06-09. The full-app relift is the next wave
+(`pauta-web/frontend/docs/design-relift-worklist.md`).
