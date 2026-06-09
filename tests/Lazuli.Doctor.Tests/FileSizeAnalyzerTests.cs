@@ -29,6 +29,19 @@ public class FileSizeAnalyzerTests
         return test.RunAsync();
     }
 
+    [Fact]
+    public Task An_ef_migration_is_exempt_however_large()
+    {
+        // Tool-emitted, append-only — its size is the schema's, not a packing smell.
+        var test = new CSharpAnalyzerTest<FileSizeAnalyzer, DefaultVerifier>
+        {
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            CompilerDiagnostics = CompilerDiagnostics.Errors,
+            TestState = { Sources = { ("/src/App/Migrations/20260101000000_InitialCreate.cs", Lines(600)) } },
+        };
+        return test.RunAsync();
+    }
+
     // A file of N comment-only lines: enough to cross the ceiling without declaring anything the
     // compiler would warn about.
     private static string Lines(int n) => string.Join("\n", Enumerable.Repeat("//", n));

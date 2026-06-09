@@ -9,7 +9,9 @@ namespace Lazuli.Doctor;
 /// LZ0007 — keeps every source file in a Lazuli app at or under 500 lines, the Rails-repo discipline
 /// the framework holds itself to (the user-app counterpart of <c>LZSELF001</c>, which polices the
 /// framework's own libraries). A file past the ceiling is the signal to extract a concern into its own
-/// file — a vertical slice should be small — not to keep packing.
+/// file — a vertical slice should be small — not to keep packing. EF migrations (a <c>Migrations</c>
+/// directory) are exempt: tool-emitted, append-only, never hand-maintained — their size is the schema's,
+/// not a packing smell (the hostpoint pilot's InitialCreate crossed the ceiling on real tables alone).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class FileSizeAnalyzer : DiagnosticAnalyzer
@@ -42,6 +44,9 @@ public sealed class FileSizeAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeTree(SyntaxTreeAnalysisContext context)
     {
+        if (IsMigration(context.Tree.FilePath))
+            return;   // tool-emitted, append-only — its size is the schema's, not a packing smell
+
         var lineCount = context.Tree.GetText(context.CancellationToken).Lines.Count;
         if (lineCount <= MaxLines)
             return;
@@ -49,4 +54,8 @@ public sealed class FileSizeAnalyzer : DiagnosticAnalyzer
         var location = Location.Create(context.Tree, new TextSpan(0, 0));
         context.ReportDiagnostic(Diagnostic.Create(Rule, location, lineCount, MaxLines));
     }
+
+    private static bool IsMigration(string? path) =>
+        path is not null
+        && path.Replace('\\', '/').Contains("/Migrations/");
 }
