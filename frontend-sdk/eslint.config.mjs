@@ -64,6 +64,10 @@ export default [
       "lazuli/route-param-guard": "error",
       "lazuli/safe-back": "error",
       "lazuli/no-hardcoded-base-url": "error",
+      // The security pair (LZFE021–022) — the XSS door stays behind one sanitizing seam; a URL-supplied value
+      // never becomes a navigation target without an allowlist. Error-tier (correctness, same bar as routing).
+      "lazuli/no-raw-html": "error",
+      "lazuli/no-open-redirect": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",

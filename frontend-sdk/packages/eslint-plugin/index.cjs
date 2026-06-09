@@ -213,12 +213,29 @@ const rules = {
       messages: {
         offdoor:
           "LZFE002: the generated client is the ViewModel's alone — import it only from a *.viewModel.ts (one data door).",
+        laundered:
+          "LZFE002: re-exporting the generated client launders the data door — a helper that `export … from \"client.gen\"` hands every importer the client without ever naming it. The door is the ViewModel; don't re-export the client through anything else.",
       },
     },
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
       if (isViewModel(f) || isGenerated(f) || isInfraDataDoor(f)) return {};
-      return forbidImport(context, GENERATED_CLIENT, "offdoor");
+      const isTypeOnlyExport = (node) =>
+        node.exportKind === "type" ||
+        (node.specifiers?.length > 0 && node.specifiers.every((s) => s.exportKind === "type"));
+      return {
+        ...forbidImport(context, GENERATED_CLIENT, "offdoor"),
+        // `export { useThing } from "@/client.gen/x"` / `export * from "@/client.gen/x"` — the import rule's
+        // trivial bypass: no import statement, same access handed to every consumer.
+        ExportNamedDeclaration(node) {
+          if (node.source && !isTypeOnlyExport(node) && GENERATED_CLIENT.test(node.source.value))
+            context.report({ node, messageId: "laundered" });
+        },
+        ExportAllDeclaration(node) {
+          if (node.exportKind !== "type" && GENERATED_CLIENT.test(node.source.value))
+            context.report({ node, messageId: "laundered" });
+        },
+      };
     },
   },
 
@@ -424,12 +441,17 @@ const rules = {
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
       if (!/\.i18n\.ts$/.test(f)) return {};
-      const keysOf = (objExpr) => {
-        const keys = new Set();
+      // Keys are compared as FLATTENED paths ("empty.title"), so a key missing inside a nested group is caught
+      // the same as a missing top-level key — nesting is layout, not a parity boundary.
+      const keysOf = (objExpr, prefix = "", keys = new Set()) => {
         for (const p of objExpr.properties) {
           if (p.type !== "Property" || p.computed) continue;
           const k = p.key.type === "Identifier" ? p.key.name : p.key.type === "Literal" ? String(p.key.value) : null;
-          if (k !== null) keys.add(k);
+          if (k === null) continue;
+          let value = p.value;
+          while (value && value.type === "TSAsExpression") value = value.expression;
+          if (value && value.type === "ObjectExpression") keysOf(value, `${prefix}${k}.`, keys);
+          else keys.add(prefix + k);
         }
         return keys;
       };
@@ -513,6 +535,8 @@ const rules = {
       messages: {
         unhandled:
           "LZFE013: a mutation must surface its error (no silent failure; the front-side of the backend's error_handling). Use ANY ONE: pass `onError` to .{{method}}(args, { onError }); OR read `{{name}}.isError` and expose it as state the View renders; OR `await {{name}}.mutateAsync()` inside a try/catch that sets an error surface.",
+        empty:
+          "LZFE013: this `onError` swallows the failure — an empty handler is the silent failure with paperwork. Route the error somewhere the user can see (set an error state, show a toast), or read `{{name}}.isError` as state instead.",
       },
     },
     create(context) {
@@ -587,8 +611,28 @@ const rules = {
           if (callee.property.type !== "Identifier") return;
           const method = callee.property.name;
           if (method !== "mutate" && method !== "mutateAsync") return;
-          // A) inline onError in the options arg.
-          if (hasKey(node.arguments[1], "onError")) return;
+          // A) inline onError in the options arg — but an EMPTY handler (`onError: () => {}`) is the silent
+          // failure with paperwork: the rule's whole point, defeated by its own escape hatch. Flag it.
+          const opts = node.arguments[1];
+          if (hasKey(opts, "onError")) {
+            const handler = opts.properties.find(
+              (p) =>
+                p.type === "Property" &&
+                !p.computed &&
+                ((p.key.type === "Identifier" && p.key.name === "onError") ||
+                  (p.key.type === "Literal" && p.key.value === "onError")),
+            );
+            const fn = handler?.value;
+            const objName = callee.object.type === "Identifier" ? callee.object.name : "the mutation";
+            if (
+              fn &&
+              (fn.type === "ArrowFunctionExpression" || fn.type === "FunctionExpression") &&
+              fn.body.type === "BlockStatement" &&
+              fn.body.body.length === 0
+            )
+              context.report({ node: handler, messageId: "empty", data: { name: objName } });
+            return;
+          }
           // B) the mutation handle's error state is read in this file (surfaced as state the View renders).
           const obj = callee.object;
           const name = obj.type === "Identifier" ? obj.name : null;
@@ -725,17 +769,43 @@ const rules = {
       messages: {
         offdoor:
           "LZFE016: write the session only through the seam — import the token setter (`{{name}}`) into `lib/session` and expose signIn/signOut, not here. A scattered token write that forgets to reset the `me` query bounces the just-authenticated user back to login.",
+        storage:
+          "LZFE016: don't write the token to storage here (`{{call}}(\"{{key}}\", …)`) — that is a session write outside the seam, and it skips the `me`-cache reset the seam pairs with it. Call the seam's signIn/signOut instead; only `lib/session` touches token storage.",
       },
     },
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
-      if (isInfraDataDoor(f)) return {}; // the seam (lib/session) legitimately imports the setter
+      if (isInfraDataDoor(f) || isTest(f)) return {}; // the seam (lib/session) legitimately writes; tests seed freely
+      // A storage write keyed by a token-ish name is the same scattered session write as importing the setter —
+      // the name-pattern door closes, the localStorage/AsyncStorage/SecureStore door must close with it.
+      const TOKEN_KEY = /token|session|jwt|auth/i;
+      const STORAGE = /^(localStorage|sessionStorage|AsyncStorage|SecureStore)$/;
       return {
         ImportDeclaration(node) {
           for (const s of node.specifiers) {
             if (s.type === "ImportSpecifier" && /^set(Access)?(Token|Session)$/.test(s.imported.name))
               context.report({ node: s, messageId: "offdoor", data: { name: s.imported.name } });
           }
+        },
+        CallExpression(node) {
+          const callee = node.callee;
+          if (callee.type !== "MemberExpression" || callee.computed) return;
+          if (callee.property.type !== "Identifier" || !/^set(Item|ItemAsync)$/.test(callee.property.name)) return;
+          const obj = callee.object;
+          const root =
+            obj.type === "Identifier"
+              ? obj.name
+              : obj.type === "MemberExpression" && obj.property.type === "Identifier"
+                ? obj.property.name // window.localStorage
+                : null;
+          if (!root || !STORAGE.test(root)) return;
+          const key = node.arguments[0];
+          if (key && key.type === "Literal" && typeof key.value === "string" && TOKEN_KEY.test(key.value))
+            context.report({
+              node,
+              messageId: "storage",
+              data: { call: `${root}.${callee.property.name}`, key: key.value },
+            });
         },
       };
     },
@@ -886,9 +956,122 @@ const rules = {
       };
     },
   },
+
+  // LZFE021 — no dangerouslySetInnerHTML outside one audited seam. React's JSX escapes text by construction;
+  // dangerouslySetInnerHTML is the single opt-out, and server/user-influenced HTML through it is XSS. If the app
+  // truly renders rich HTML (a CMS body), that rendering lives in ONE seam (lib/html) where the sanitizer is
+  // wired and reviewable — the same one-door shape as LZFE002/LZFE016. Everywhere else the prop is flagged.
+  "no-raw-html": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "No dangerouslySetInnerHTML outside the lib/html seam — JSX escapes by construction; raw HTML is the XSS door and belongs behind one audited, sanitizing seam.",
+      },
+      messages: {
+        rawHtml:
+          "LZFE021: no dangerouslySetInnerHTML here — JSX already escapes; raw HTML is the XSS door. If the app renders rich HTML, do it in ONE seam (lib/html) with the sanitizer wired, and use that component.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (isTest(f) || /(^|\/)lib\/html(\.|\/)/.test(f)) return {};
+      return {
+        JSXAttribute(node) {
+          if (node.name.type === "JSXIdentifier" && node.name.name === "dangerouslySetInnerHTML")
+            context.report({ node, messageId: "rawHtml" });
+        },
+      };
+    },
+  },
+
+  // LZFE022 — never navigate to a value that arrived in the URL. `router.replace(returnTo)` /
+  // `window.location.href = next` where the target derives from a route/search param is an open redirect: a
+  // crafted link sends the user (and their session-carrying browser) anywhere the attacker chose — the phishing
+  // primitive. The fix is an allowlist: map the param to a KNOWN in-app route (`const to = routes[returnTo] ??
+  // "/home"`) and navigate to the mapped value, never the raw param. The rule tracks the identifiers bound from
+  // useLocalSearchParams / useSearchParams / useSearch and flags any navigation whose argument references one.
+  "no-open-redirect": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "No navigation to a raw route/search param (open redirect) — map the param through an allowlist of known in-app routes first.",
+      },
+      messages: {
+        openRedirect:
+          "LZFE022: `{{call}}` navigates to a value that arrived in the URL (`{{name}}`) — an open redirect: a crafted link sends the user anywhere. Map it through an allowlist of known routes (`routes[{{name}}] ?? \"/home\"`) and navigate to the mapped value.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isView(f) && !isRoute(f)) return {};
+      // Names that carry URL-supplied values: the params object itself and the names destructured from it.
+      const tainted = new Set();
+      const PARAM_HOOKS = /^(useLocalSearchParams|useSearchParams|useSearch|useGlobalSearchParams)$/;
+      const taintedIn = (expr) => {
+        let hit = null;
+        walk(expr, (n) => {
+          if (n.type === "Identifier" && tainted.has(n.name)) {
+            hit = n.name;
+            return true;
+          }
+          return false;
+        });
+        return hit;
+      };
+      const report = (node, call, name) =>
+        context.report({ node, messageId: "openRedirect", data: { call, name } });
+      return {
+        VariableDeclarator(node) {
+          if (!node.init || node.init.type !== "CallExpression") return;
+          if (node.init.callee.type !== "Identifier" || !PARAM_HOOKS.test(node.init.callee.name)) return;
+          if (node.id.type === "Identifier") tainted.add(node.id.name);
+          if (node.id.type === "ObjectPattern")
+            for (const p of node.id.properties)
+              if (p.type === "Property" && p.value.type === "Identifier") tainted.add(p.value.name);
+          if (node.id.type === "ArrayPattern" && node.id.elements[0]?.type === "Identifier")
+            tainted.add(node.id.elements[0].name); // useSearchParams() → [params]
+        },
+        CallExpression(node) {
+          const callee = node.callee;
+          if (callee.type !== "MemberExpression" || callee.computed) return;
+          if (callee.property.type !== "Identifier") return;
+          const method = callee.property.name;
+          const isRouterNav =
+            callee.object.type === "Identifier" &&
+            callee.object.name === "router" &&
+            /^(replace|push|navigate)$/.test(method);
+          const isLocationNav =
+            /^(assign|replace)$/.test(method) &&
+            ((callee.object.type === "Identifier" && callee.object.name === "location") ||
+              (callee.object.type === "MemberExpression" &&
+                callee.object.property.type === "Identifier" &&
+                callee.object.property.name === "location"));
+          if (!isRouterNav && !isLocationNav) return;
+          for (const arg of node.arguments) {
+            const name = taintedIn(arg);
+            if (name) return report(node, `${isRouterNav ? "router" : "location"}.${method}(…)`, name);
+          }
+        },
+        AssignmentExpression(node) {
+          // window.location.href = <param> / location.href = <param>
+          const left = node.left;
+          if (
+            left.type === "MemberExpression" &&
+            left.property.type === "Identifier" &&
+            left.property.name === "href"
+          ) {
+            const name = taintedIn(node.right);
+            if (name) report(node, "location.href = …", name);
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {
-  meta: { name: "eslint-plugin-lazuli", version: "0.3.0" },
+  meta: { name: "eslint-plugin-lazuli", version: "0.4.0" },
   rules,
 };

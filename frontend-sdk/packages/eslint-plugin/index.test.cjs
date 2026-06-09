@@ -331,5 +331,100 @@ ruleTester.run("no-hardcoded-base-url", plugin.rules["no-hardcoded-base-url"], {
   ],
 });
 
+// LZFE021 — no dangerouslySetInnerHTML outside the lib/html seam (the one audited, sanitizing door).
+ruleTester.run("no-raw-html", plugin.rules["no-raw-html"], {
+  valid: [
+    // The seam owns rich-HTML rendering — the sanitizer is wired there.
+    { filename: "src/lib/html/RichText.tsx", code: `const x = <div dangerouslySetInnerHTML={{ __html: clean }} />;` },
+    // Plain JSX text is escaped by construction.
+    { filename: "Foo.view.tsx", code: `const x = <div>{body}</div>;` },
+    // A test may exercise the seam.
+    { filename: "Foo.test.tsx", code: `const x = <div dangerouslySetInnerHTML={{ __html: "<b>x</b>" }} />;` },
+  ],
+  invalid: [
+    { filename: "Foo.view.tsx", code: `const x = <div dangerouslySetInnerHTML={{ __html: body }} />;`, errors: [{ messageId: "rawHtml" }] },
+    { filename: "src/app/post.tsx", code: `const x = <article dangerouslySetInnerHTML={{ __html: post.html }} />;`, errors: [{ messageId: "rawHtml" }] },
+  ],
+});
+
+// LZFE022 — never navigate to a value that arrived in the URL (open redirect); map it through an allowlist first.
+ruleTester.run("no-open-redirect", plugin.rules["no-open-redirect"], {
+  valid: [
+    // Navigating to a literal route is fine.
+    { filename: "src/app/login.tsx", code: `function R() { const { returnTo } = useLocalSearchParams(); router.replace("/home"); return null; }` },
+    // The allowlisted mapping is the blessed shape: the raw param picks a KNOWN route, never becomes one.
+    { filename: "src/app/login.tsx", code: `function R() { const { returnTo } = useLocalSearchParams(); const to = ROUTES.has(returnTo) ? returnTo : "/home"; return null; }` },
+    // out of scope: a viewModel does not navigate.
+    { filename: "Foo.viewModel.ts", code: `const { returnTo } = useLocalSearchParams(); router.replace(returnTo);` },
+  ],
+  invalid: [
+    { filename: "src/app/login.tsx", code: `function R() { const { returnTo } = useLocalSearchParams(); router.replace(returnTo); return null; }`, errors: [{ messageId: "openRedirect" }] },
+    { filename: "src/app/login.tsx", code: `function R() { const params = useLocalSearchParams(); router.push(params.next); return null; }`, errors: [{ messageId: "openRedirect" }] },
+    { filename: "src/app/login.tsx", code: `function R() { const { next } = useLocalSearchParams(); window.location.href = next; return null; }`, errors: [{ messageId: "openRedirect" }] },
+    { filename: "Foo.view.tsx", code: `function R() { const { next } = useSearch(); location.assign(next); return null; }`, errors: [{ messageId: "openRedirect" }] },
+  ],
+});
+
+// LZFE016 (storage half) — a token-ish storage write outside the seam is the same scattered session write as
+// importing the setter; only lib/session touches token storage.
+ruleTester.run("session-one-door", plugin.rules["session-one-door"], {
+  valid: [
+    // The seam owns the storage write.
+    { filename: "src/lib/session.ts", code: `localStorage.setItem("accessToken", t);` },
+    // A non-token key is app state, not a session write.
+    { filename: "Settings.viewModel.ts", code: `localStorage.setItem("theme", "dark");` },
+    // Tests seed storage freely.
+    { filename: "Login.test.tsx", code: `localStorage.setItem("accessToken", "fake");` },
+  ],
+  invalid: [
+    { filename: "Login.viewModel.ts", code: `localStorage.setItem("accessToken", t);`, errors: [{ messageId: "storage" }] },
+    { filename: "Login.viewModel.ts", code: `window.localStorage.setItem("auth.session", s);`, errors: [{ messageId: "storage" }] },
+    { filename: "Login.viewModel.ts", code: `SecureStore.setItemAsync("jwt", t);`, errors: [{ messageId: "storage" }] },
+  ],
+});
+
+// LZFE002 (re-export half) — `export … from "client.gen"` outside the doors launders the client to every importer.
+ruleTester.run("data-door", plugin.rules["data-door"], {
+  valid: [
+    // Type re-exports are the shared contract vocabulary, not data access.
+    { filename: "src/lib/contracts.ts", code: `export type { Thing } from "@/client.gen/model";` },
+    // The ViewModel door may compose over the client however it likes.
+    { filename: "Foo.viewModel.ts", code: `export { useThing } from "@/client.gen/sample";` },
+  ],
+  invalid: [
+    { filename: "src/lib/api.ts", code: `export { useThing } from "@/client.gen/sample";`, errors: [{ messageId: "laundered" }] },
+    { filename: "src/lib/api.ts", code: `export * from "@/client.gen/sample";`, errors: [{ messageId: "laundered" }] },
+  ],
+});
+
+// LZFE013 (empty-handler half) — `onError: () => {}` is the silent failure with paperwork; the structure must
+// route the error somewhere, not merely exist.
+ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"], {
+  valid: [
+    // A handler with a body is trusted (its quality is human judgment, not lint's).
+    { filename: "Foo.viewModel.ts", code: `mut.mutate(input, { onError: (e) => setError(e) });` },
+  ],
+  invalid: [
+    { filename: "Foo.viewModel.ts", code: `mut.mutate(input, { onError: () => {} });`, errors: [{ messageId: "empty" }] },
+  ],
+});
+
+// LZFE011 (nested half) — keys are compared as flattened paths, so a key missing inside a nested group is caught.
+ruleTester.run("i18n-completeness", plugin.rules["i18n-completeness"], {
+  valid: [
+    {
+      filename: "x.i18n.ts",
+      code: `export const ptBR = { empty: { title: "1" } }; export const enUS = { empty: { title: "x" } };`,
+    },
+  ],
+  invalid: [
+    {
+      filename: "x.i18n.ts",
+      code: `export const ptBR = { empty: { title: "1", hint: "2" } }; export const enUS = { empty: { title: "x" } };`,
+      errors: [{ messageId: "missing" }],
+    },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");

@@ -9,22 +9,24 @@ plugin and the app still builds; you only lose enforcement.
 | Rule | Code | Polices |
 |---|---|---|
 | `view-purity` | LZFE001 | A `*.view.tsx` renders only — no generated client / axios / react-query import (contract **types** are fine). |
-| `data-door` | LZFE002 | The generated client has exactly two doors: a screen's `*.viewModel.ts`, and the auth/routing infra (`lib/session`, `lib/guards`). |
+| `data-door` | LZFE002 | The generated client has exactly two doors: a screen's `*.viewModel.ts`, and the auth/routing infra (`lib/session`, `lib/guards`). Re-exporting it (`export … from "client.gen"`) outside the doors is the laundering bypass — also flagged (type re-exports stay free). |
 | `viewmodel-platform-agnostic` | LZFE009 | A `*.viewModel.ts` imports no `react-native` / `expo` (value **or** type) — the core stays shareable web↔mobile and testable in jsdom. |
 | `test-colocated` | LZFE005 | Every `*.viewModel.ts` has a co-located `*.test.tsx` that `renderHook()`s it (unit tier — proof the data door mounts). |
 | `view-integration-test` | LZFE006 | Every `*.view.tsx` has a co-located test that `render()`s the View (integration tier — proof the screen composes + mounts). |
 | `no-mock` | LZFE003 | No mock/fixture/MSW import in production code (only under `*.test.*`). |
 | `state-completeness` | LZFE010 | A `*.view.tsx` routes loading/error/empty through `<Resource>` — no raw `isPending`/`isError`/… (the booleans are the ViewModel's). |
-| `i18n-completeness` | LZFE011 | Every locale catalog in a `*.i18n.ts` declares the same keys (a key in one but not its siblings is a silent untranslated string). |
+| `i18n-completeness` | LZFE011 | Every locale catalog in a `*.i18n.ts` declares the same keys, compared as **flattened paths** (`empty.title`) so a key missing inside a nested group is caught too — a key in one locale but not its siblings is a silent untranslated string. |
 | `design-tokens` | LZFE012 | No inline hex color in production code — colors come from a token; only the `theme`/`tokens`/`palette` definition files may hold hex. |
-| `mutation-error-handled` | LZFE013 | A `*.viewModel.ts` mutation (`.mutate`/`.mutateAsync`) passes an `onError` — no silent failure (front-side of the backend's error_handling). |
+| `mutation-error-handled` | LZFE013 | A `*.viewModel.ts` mutation (`.mutate`/`.mutateAsync`) passes an `onError` — no silent failure (front-side of the backend's error_handling). An **empty** `onError: () => {}` is flagged too: that's the silent failure with paperwork. |
 | `no-hardcoded-copy` | LZFE014 | A `*.view.tsx` has no hardcoded user-facing text — JSX text children (`>text<`) **and** copy props (`placeholder`/`title`/`label`/…) go through i18n `t()`. High-signal (`{t()}`/non-copy attrs never flagged). |
 | `no-router-replace-in-effect` | LZFE015 | A redirect-on-state is a **declarative** `<Redirect>`/`<Navigate>` returned from render, never an imperative `router.replace`/`router.navigate`/`useNavigate()` call inside `useEffect` (a post-paint flash on TanStack; an infinite navigation/refetch loop on expo-router web). |
-| `session-one-door` | LZFE016 | The session token is written through **one seam** (`lib/session`); a `*.viewModel`/`*.view` importing the token setter (`setAccessToken`/…) directly is the scattered write that forgets the cache reset — and bounces the just-authenticated user back to login. |
+| `session-one-door` | LZFE016 | The session token is written through **one seam** (`lib/session`); a `*.viewModel`/`*.view` importing the token setter (`setAccessToken`/…) directly — **or writing a token-ish key straight to storage** (`localStorage`/`AsyncStorage`/`SecureStore.setItem("…token…", …)`) — is the scattered write that forgets the cache reset, and bounces the just-authenticated user back to login. |
 | `guard-tristate` | LZFE017 | A route guard redirects on a **tri-state** `SessionState` (`loading \| authenticated \| anonymous`), never a raw `isAuthenticated` boolean (which reads "still loading" as "signed out"). The read-side twin of LZFE010. |
 | `route-param-guard` | LZFE018 | A route reading a **required id param** (expo-router `useLocalSearchParams`) guards its absence — `if (!id) return <Redirect …/>` — so a param-less hit (bookmark / stale link) can't render a ghost screen on an empty id. |
 | `safe-back` | LZFE019 | No bare `router.back()`/`history.back()` — on web a deep-linked screen has no in-app history, so it's a dead button. Route Back through a guarded helper (`safeBack`/`useGoBack`) that falls back to a parent. |
 | `no-hardcoded-base-url` | LZFE020 | The API base URL comes from **configuration** (env `VITE_API_URL`/`EXPO_PUBLIC_API_URL`, a relative base, or an injected default), never a hardcoded host baked into `axios.create({ baseURL: "http://…" })` — a baked literal silently 404s when the backend runs on a different port. |
+| `no-raw-html` | LZFE021 | No `dangerouslySetInnerHTML` outside the **one audited seam** (`lib/html`) — JSX escapes by construction; raw HTML is the XSS door, and if the app renders rich HTML the sanitizer lives in that seam, reviewable. |
+| `no-open-redirect` | LZFE022 | Never navigate to a value that **arrived in the URL** (`router.replace(returnTo)` / `location.href = next` off `useLocalSearchParams`/`useSearch`) — the open-redirect phishing primitive. Map the param through an **allowlist** of known routes first. |
 
 ### Routing rules — both routers, one shape
 
