@@ -5,5 +5,13 @@
 export { type AsyncState, type QueryLike, toAsyncState, combineAsyncStates } from "./async-state";
 export { Resource } from "./Resource";
 export { type SessionState, type SessionQueryLike, toSessionState } from "./session";
+export {
+  type AuthTokens,
+  type RefreshTokenStore,
+  type SessionSeam,
+  type SessionSeamPorts,
+  createSessionSeam,
+} from "./session-seam";
+export { useSession } from "./useSession";
 export { type BackRouter, safeBack } from "./nav";
 export { type RequiredParam, requiredParam } from "./params";
