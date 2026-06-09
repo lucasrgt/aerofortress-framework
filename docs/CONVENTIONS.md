@@ -349,6 +349,14 @@ never speculation. Keep it minimal; add only on real drift.
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
 
+Beside the LZ* rules the doctor ships a **security floor** for the built-in .NET analyzers
+(`buildTransitive/lazuli.globalconfig`): a curated CA* set — dropped `CancellationToken`
+(CA2016), insecure deserialization (CA23xx), broken crypto / disabled cert validation /
+deprecated TLS (CA53xx) — raised to error tier. Same removability story: opt out per-project
+with `<LazuliSecurityAnalysis>false</LazuliSecurityAnalysis>`, or override a single rule from
+your own `.globalconfig` at a `global_level` above 50. The libraries hold themselves to the
+same floor via `build/Lazuli.Library.props`.
+
 ---
 
 ## The self-harness — framework-dev only, never shipped

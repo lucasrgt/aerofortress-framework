@@ -33,6 +33,7 @@
   <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="buildTransitive/Lazuli.Doctor.dll" Visible="false" />
     <None Include="buildTransitive/Lazuli.Doctor.targets" Pack="true" PackagePath="buildTransitive/Lazuli.Doctor.targets" Visible="false" />
+    <None Include="buildTransitive/lazuli.globalconfig" Pack="true" PackagePath="buildTransitive/lazuli.globalconfig" Visible="false" />
   </ItemGroup>
 
 </Project>

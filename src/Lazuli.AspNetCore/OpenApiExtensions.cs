@@ -47,7 +47,8 @@ public static class OpenApiExtensions
             options.AddSchemaTransformer((schema, context, _) =>
             {
                 if (context.JsonTypeInfo.Type == typeof(ErrorBody)
-                    && schema.Properties.TryGetValue("code", out var codeSchema)
+                    && schema.Properties is { } properties
+                    && properties.TryGetValue("code", out var codeSchema)
                     && codeSchema is OpenApiSchema concreteCode)
                 {
                     var codes = ErrorCodes();

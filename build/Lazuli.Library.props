@@ -16,6 +16,12 @@
     <NoWarn>$(NoWarn);RS2008;CS8524</NoWarn>
   </PropertyGroup>
 
+  <!-- The same security floor the doctor ships to the user's app (see buildTransitive/lazuli.globalconfig):
+       the libraries hold themselves to it too. -->
+  <ItemGroup>
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)..\analyzers\Lazuli.Doctor\buildTransitive\lazuli.globalconfig" />
+  </ItemGroup>
+
   <!--
     NuGet package metadata, shared. The framework ships to nuget.org as a set of small, focused packages (the
     publish workflow packs them on a v* tag). Only the projects that pack use this; the rest ignore it. The

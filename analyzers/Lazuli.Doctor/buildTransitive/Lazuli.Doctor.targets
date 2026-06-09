@@ -12,4 +12,15 @@
     <Analyzer Include="$(MSBuildThisFileDirectory)Lazuli.Doctor.dll" />
   </ItemGroup>
 
+  <!--
+    The security floor for the built-in .NET analyzers (CA*): a curated globalconfig that raises the
+    defect classes the LZ* rules don't cover (dropped CancellationToken, insecure deserialization, broken
+    crypto, disabled cert validation, deprecated TLS) to error tier. Same removability story as the doctor:
+    opt out per-project with <LazuliSecurityAnalysis>false</LazuliSecurityAnalysis>, or tune a single rule
+    in your own .globalconfig with a higher global_level — this one sits at 50.
+  -->
+  <ItemGroup Condition="'$(Language)' == 'C#' and '$(LazuliSecurityAnalysis)' != 'false'">
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)lazuli.globalconfig" />
+  </ItemGroup>
+
 </Project>
