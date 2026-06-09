@@ -7,7 +7,8 @@
       "@lazuli/react": ["../../../frontend-sdk/packages/lazuli-react/src/index.ts"],
       "@/client.gen/*": ["./core/src/client.gen/*"],
       "@/i18n": ["./core/src/i18n.ts"],
-      "@/ui": ["./web/src/ui.tsx"]
+      "@/design/tokens": ["./core/src/design/tokens.ts"],
+      "@/ui": ["./web/src/ui/index.ts"]
     }
   },
   "include": ["core/src", "web/src"]

@@ -1,0 +1,43 @@
+import type { ReactNode } from "react";
+import { color, text, type TextRole } from "./tokens-bridge";
+
+// A role maps to the document outline (one title per screen — DESIGN-CONVENTIONS.md §Text hierarchy);
+// size + line-height + weight travel together so typography is one decision, not three.
+const TAG: Record<TextRole, "h1" | "h2" | "p" | "span"> = {
+  display: "h1",
+  title: "h1",
+  heading: "h2",
+  body: "p",
+  label: "span",
+  caption: "span",
+};
+
+export function Text({
+  children,
+  role = "body",
+  tone = "default",
+}: {
+  children: ReactNode;
+  role?: TextRole;
+  tone?: "default" | "muted" | "danger" | "inverse";
+}) {
+  const Tag = TAG[role];
+  const t = text[role];
+  const TONE = { default: color.text, muted: color.textMuted, danger: color.danger, inverse: color.textInverse };
+  return (
+    <Tag
+      data-ui="text"
+      data-role={role}
+      style={{
+        // Margins belong to the container (Stack gap), so the element defaults are zeroed.
+        margin: 0,
+        fontSize: t.fontSize,
+        lineHeight: t.lineHeight + "px",
+        fontWeight: t.fontWeight,
+        color: TONE[tone],
+      }}
+    >
+      {children}
+    </Tag>
+  );
+}

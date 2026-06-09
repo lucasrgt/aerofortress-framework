@@ -109,11 +109,9 @@ export function ${Plural}View() {
 function ${Plural}List({ ${collection} }: { ${collection}: ${Entity}[] }) {
   return (
     <Screen>
-      <Stack className="gap-3">
+      <Stack>
         {${collection}.map((item) => (
-          <Text key={item.id} variant="body">
-            {item.name}
-          </Text>
+          <Text key={item.id}>{item.name}</Text>
         ))}
       </Stack>
     </Screen>

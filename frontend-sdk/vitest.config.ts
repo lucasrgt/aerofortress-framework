@@ -17,6 +17,7 @@ export default defineConfig({
       "frontend-sdk/packages/**/*.test.{ts,tsx}",
       "frontend-sdk/tools/**/*.test.{ts,tsx}",
       "examples/sample-app/frontend/core/**/*.test.{ts,tsx}",
+      "examples/sample-app/frontend/web/**/*.test.{ts,tsx}",
     ],
   },
   resolve: {
@@ -24,7 +25,8 @@ export default defineConfig({
       "@lazuli/react": r("./packages/lazuli-react/src/index.ts"),
       "@/client.gen/sample": r("../examples/sample-app/frontend/core/src/client.gen/sample.ts"),
       "@/i18n": r("../examples/sample-app/frontend/core/src/i18n.ts"),
-      "@/ui": r("../examples/sample-app/frontend/web/src/ui.tsx"),
+      "@/design/tokens": r("../examples/sample-app/frontend/core/src/design/tokens.ts"),
+      "@/ui": r("../examples/sample-app/frontend/web/src/ui/index.ts"),
       // The example lives at examples/ (a sibling of frontend/), so its direct bare imports can't reach
       // frontend/node_modules by node resolution — alias them to the framework's installed copies (their transitive
       // deps then resolve from there naturally). Boundary-matched, so "react" doesn't catch "react-i18next" etc.

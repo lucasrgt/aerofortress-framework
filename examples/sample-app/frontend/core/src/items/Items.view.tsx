@@ -29,11 +29,9 @@ export function ItemsView() {
 function ItemList({ items }: { items: Item[] }) {
   return (
     <Screen>
-      <Stack className="gap-3">
+      <Stack>
         {items.map((item) => (
-          <Text key={item.id} variant="body">
-            {item.name}
-          </Text>
+          <Text key={item.id}>{item.name}</Text>
         ))}
       </Stack>
     </Screen>
