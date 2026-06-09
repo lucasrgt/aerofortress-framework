@@ -32,16 +32,21 @@ the target.
 ## Repository layout
 
 ```
-src/Lazuli.Abstractions/      The thin wire: Result<T>, Error, [Slice], [ValueObject], [Entity]. A normal dependency.
-analyzers/Lazuli.Doctor/      SHIPPED harness. LZ* rules — run on the USER's code.
+src/Lazuli.Abstractions/      The thin wire: Result<T>, Error, Validation, [Slice], [ValueObject], [Entity]. A normal dependency.
+src/Lazuli.AspNetCore/        The HTTP boundary: ToHttp, ErrorBody, AddLazuli/UseLazuli, slice-aware OpenAPI.
+src/Lazuli.Auth/ + others     The optional component standards (auth, mail, sms, storage, testing) — each a small package.
+src/Lazuli.Cli/               `lazuli` — scaffolders (module/slice/entity/vo/…) that emit doctor-conformant code.
+analyzers/Lazuli.Doctor/      SHIPPED harness. LZ* rules + the CA* security-floor globalconfig — run on the USER's code.
 analyzers/Lazuli.SelfHarness/ FRAMEWORK-DEV ONLY. LZSELF* rules — run on OUR code. Never shipped.
-src/Sample.Api/               The reference app + canonical slice. The template source.
-tests/Sample.Tests/           Slice tests, with intent.
+frontend-sdk/                 The front half: @lazuli/react (the spine), eslint-plugin-lazuli (LZFE* rules), tools/ (doctors).
+examples/sample-app/          The reference app + canonical slice (backend/Sample.Api, Sample.Tests, frontend/).
+templates/lazuli-app/         The `lazuli new` starter the CLI scaffolds from.
 build/Lazuli.Library.props    The library standard, declared once.
-docs/CONVENTIONS.md           The constitution + slice shape + full rule catalog.
+docs/CONVENTIONS.md           The backend constitution + slice shape + full LZ* rule catalog.
+docs/FRONTEND-CONVENTIONS.md  The frontend constitution + MVVM shape + full LZFE* rule catalog.
 ```
 
-Ground every convention fact in `docs/CONVENTIONS.md`, never memory.
+Ground every convention fact in `docs/CONVENTIONS.md` / `docs/FRONTEND-CONVENTIONS.md`, never memory.
 
 ---
 

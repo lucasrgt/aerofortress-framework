@@ -55,13 +55,24 @@ public static class Deposit
 ```
 
 - **DbContext direct** — no `IRepository` / unit-of-work / mapper profile (`LZ0006`). The endpoint stays thin,
-  an expression-bodied handler, never a statement block (`LZ0002`).
+  an expression-bodied handler, never a statement block (`LZ0002`). Raw SQL never splices runtime values as
+  text — a `*Raw` EF call with interpolation/concat is flagged (`LZ0024`); use `FromSql`/`ExecuteSql`.
+- **Security is a decision, never an omission**: every slice's endpoint declares its authorization —
+  `.RequireAuthorization(…)` or an explicit `.AllowAnonymous()`, on its own `Map` chain or the module's route
+  group (`LZ0022`); a `Handle` that injects `ICurrentUser` and never reads it is a missing ownership check
+  (`LZ0023`). A curated CA* security floor (dropped `CancellationToken`, insecure deserialization, broken
+  crypto/TLS) ships with the doctor at error tier (opt-out: `<LazuliSecurityAnalysis>false</…>`).
 - **Modules** own both halves of their wiring — `AddServices` + `Map` (`LZ0015/16`); `Program.cs` is only an
   index (`LZ0017`). Each module carries a `<Module>.ctx.md` (`## Boundaries` + `## Design notes`, non-empty and
   kept **fresh** — `LZ0004/05`).
 - **Domain is always-valid**: a `[ValueObject]`/`[Entity]` exposes no public constructor or setter and is built
   only through a smart constructor returning `Result<T>` (`LZ0013/14`); a persisted or entity-owned type must
-  declare its mark (`LZ0021`). **Write-ownership**: a module writes only its own entities (`LZ0009`).
+  declare its mark (`LZ0021`). **Write-ownership**: a module writes only its own entities — on a `DbSet` or
+  through the untyped `db.Add(entity)` (`LZ0009`). A held `Result<T>` is **checked before unwrapped** —
+  `IsSuccess`/`IsFailure`/`Validation.Collect` before `.Value`/`.Error` (`LZ0025`). An entity a `[Critical]`
+  slice writes carries a concurrency token (`[Timestamp] RowVersion` — `LZ0026`, warn-tier).
+- **Validation inline** at the top of `Handle`, accumulated with `Validation` — `Check`/`Collect` plus the
+  shorthands `Require(guid, field, code)`, `NotBlank`, `InRange`.
 - **Errors are registry constants** on a `*ErrorCodes` class (`LZ0018/19`) — the OpenAPI + i18n seam.
   `.WithName(nameof(Slice))` (`LZ0012`) is what the typed client turns into the `use<Slice>` hook.
 - **Tests**: every slice has a co-located `<Slice>.Tests.cs` (`LZ0003`); a `[Critical]` slice has a happy **and**
@@ -75,23 +86,32 @@ A screen is a triple: a **View** that renders, a **ViewModel** that owns data, a
 
 - **View renders only** (`LZFE001`); the **ViewModel is the one data door** to the generated client (`LZFE002`)
   and is **platform-agnostic** — no `react-native`/`expo` (`LZFE009`), so the core is shared web↔mobile.
-- Async state flows through the spine's `AsyncState` + `<Resource>` (`LZFE010`), never raw `isPending`/`isError`.
-  Mutations surface their error (`LZFE013`). No mocks in production (`LZFE003`); co-located unit + integration
-  tests (`LZFE005/06`). Copy goes through i18n (`LZFE011/14`); color through design tokens (`LZFE012`).
+- Async state flows through the spine's `AsyncState` + `<Resource>` (`LZFE010`), never raw `isPending`/`isError`
+  (multi-query screens fold with `combineAsyncStates`). Mutations surface their error — and an empty
+  `onError: () => {}` doesn't count (`LZFE013`). No mocks in production (`LZFE003`); co-located unit +
+  integration tests (`LZFE005/06`). Copy goes through i18n, with locale-key parity checked as flattened nested
+  paths (`LZFE011/14`); color through design tokens (`LZFE012`). The API base URL comes from config, never a
+  hardcoded host (`LZFE020`).
+- **Security** (`LZFE021–022`): no `dangerouslySetInnerHTML` outside the one audited `lib/html` seam (the XSS
+  door); never navigate to a value that arrived in the URL — allowlist it first (open redirect).
 - **Routing & session** (`LZFE015–019`) — the navigation harness, born from real pilot bugs and router-agnostic
   (recognizes expo-router ↔ TanStack):
   - **`LZFE015`** — a redirect-on-state is declarative (`return <Redirect/Navigate …/>`), never `router.replace`
     / `router.navigate` / a `useNavigate()` call inside a `useEffect`.
   - **`LZFE016`** — the bearer token is written through **one seam** (`lib/session`) that pairs the write with a
-    `me`-cache **reset**; a scattered write that forgets the reset bounces a just-authenticated user back to login.
+    `me`-cache **reset**; a scattered write — importing the setter directly **or** writing a token-ish key to
+    `localStorage`/`AsyncStorage`/`SecureStore` — forgets the reset and bounces a just-authenticated user to login.
   - **`LZFE017`** — a guard branches on a **tri-state** `SessionState` (`loading | authenticated | anonymous`),
     never an `isAuthenticated` boolean (which reads "still loading" as "signed out").
   - **`LZFE018`** — a route reading a required id param guards its absence with a declarative redirect (no ghost
-    screen on an empty id).
+    screen on an empty id); the spine's `requiredParam()` union (`missing | ready`) is the blessed guard shape.
   - **`LZFE019`** — no bare `router.back()`/`history.back()`; Back goes through a guarded helper
     (`safeBack`/`useGoBack`) that falls back to a parent when there is no in-app history.
   - The spine `@lazuli/react` ships the primitives these steer toward: `SessionState`/`toSessionState`,
-    `AsyncState`/`Resource`, `safeBack`.
+    `AsyncState`/`Resource`/`combineAsyncStates`, `safeBack`, `requiredParam`.
+- **Contract freshness** — the typed client is pinned to the spec it was generated from: the codegen tail stamps
+  `client.gen/.spec-hash` and the doctor compares it against the live OpenAPI document. A moved contract is a
+  build-time "regenerate", never a runtime 404.
 
 Routing rules are **error**-tier (correctness), beside the architecture rules — not the warn-tier polish rules.
 A badly-wired route **fails the build**.

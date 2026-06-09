@@ -70,12 +70,13 @@ public static class Deposit
 
     public static void Map(IEndpointRouteBuilder app) =>       // transport — one thin line
         app.MapPost("/deposit", async (Input input, AppDb db, CancellationToken ct) =>
-            (await Handle(input, db, ct)).ToHttp());
+                (await Handle(input, db, ct)).ToHttp())
+            .WithName(nameof(Deposit));                        // the operationId the typed client hooks from (LZ0012)
 }
 ```
 
 - **DbContext direct** in the handler. The repository/UoW layer is the clean-architecture
-  bloat we cut; the doctor forbids reintroducing it (planned rule).
+  bloat we cut; the doctor forbids reintroducing it (`LZ0006`).
 - **Handlers are HTTP-agnostic.** They return `Result<T>`; the API boundary maps it to a
   status code (`ResultHttpExtensions.ToHttp`). This keeps them unit-testable without a host.
 - **Errors carry a code, not just copy.** An `Error` is `(Kind, Code, Message[, Fields])`. `Kind` is the closed
@@ -112,13 +113,20 @@ public static class Deposit
   platform. The doctor (`LZ0017`) keeps the index pure: any service registration, pipeline step, or endpoint
   mapping that leaks into `Program.cs` is a build error, redirected to the platform or a module — so the index
   can't rot back into a dumping ground.
+- **Authorization is a decision, never an omission.** Every slice's endpoint carries an explicit posture —
+  `.RequireAuthorization(…)` or `.AllowAnonymous()` — on its own `Map` chain or on the module's route group
+  (`app.MapGroup("/wallets").RequireAuthorization()`); an endpoint with neither is a build error (`LZ0022`).
+  Inside the handler, the caller arrives as an injected `ICurrentUser` (claims-based, from `Lazuli.Auth`) and
+  the slice does its own ownership/role/org check — a `Handle` that injects `ICurrentUser` and never reads it
+  is flagged (`LZ0023`): the signature would claim a check the body doesn't make.
 - **Co-located `<Module>.ctx.md`** carries the business "why" — the rules that are not in the
   control flow. One per module (not per slice). Shape + rationale in
   [The ctx.md schema](#the-ctxmd-schema); presence + spine are gated by `LZ0004`.
 - **LAW — validation is always inline at the top of the Handle; never extracted to a method.**
   Build the value objects, accumulate with `Validation` (`Check` for an inline condition,
-  `Collect` for a value object's verdict), then `if (validation.Failed) return
-  validation.ToError();`. There is no per-slice judgment and no "extract when it grows": if the
+  `Collect` for a value object's verdict, and the shorthands for the recurring shapes —
+  `Require(guid, field, code)`, `NotBlank(text, field, code)`, `InRange(value, min, max, field, code)`),
+  then `if (validation.Failed) return validation.ToError();`. There is no per-slice judgment and no "extract when it grows": if the
   inline validation ever feels too large, the fix is to push rules into value objects (where the
   rule belongs), never to extract a `Validate` method. Validation's complexity lives in the
   types, so the inline part stays a short list — there is nothing big to extract.
@@ -146,6 +154,10 @@ the two laws. The result is plain C# that happens to be hard to misuse.
   persisted broken, and the invariant cannot be bypassed by a slice that forgets to check. `LZ0014` enforces
   the shape. The required private parameterless constructor is exactly the one EF Core materialises through —
   the convention and the ORM ask for the same thing, so encapsulation costs nothing at the storage boundary.
+  An entity that a `[Critical]` slice writes also declares its **concurrency posture**: a `[Timestamp]
+  public byte[]? RowVersion { get; private set; }` (or `[ConcurrencyCheck]` on a domain field), so two
+  concurrent requests can't silently last-write-win each other on exactly the high-stakes operations —
+  `LZ0026` (warning-tier) watches for the missing token.
 
 - **Where behaviour lives — the split with the slice.** The slice owns *orchestration* and *input validation*
   (inline at the top of `Handle`); the entity and its value objects own *invariants* and *state transitions*.

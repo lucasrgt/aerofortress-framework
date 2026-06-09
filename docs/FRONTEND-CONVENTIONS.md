@@ -105,6 +105,11 @@ features/<zone>/<name>/
   **One ViewModel per screen, never per query.**
 - **Mandatory states.** A ViewModel exposing server data exposes `loading`, `error`, and `empty`
   as explicit state — never improvised in the View. This is the sad-path discipline of the back.
+  The spine (`@lazuli/react`) carries the primitives: the ViewModel projects each query through
+  `toAsyncState` into the closed `AsyncState<T>` union (a multi-query screen folds them with
+  `combineAsyncStates` — precedence `error > loading > empty > ready`, combined retry), and the
+  View renders it through `<Resource>` (`LZFE010`). Routes project raw params through
+  `requiredParam` (`missing | ready`) before rendering (`LZFE018`).
 
 The parallel to the slice is near-exact — the payoff is semantic density: the AI reads one
 ViewModel and knows the feature, as it reads one slice:
@@ -147,7 +152,7 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
 - **One backend micro-convention makes the 1:1 clean.** The slice's `Map` names its endpoint —
   `MapPost("/deposit", …).WithName("Deposit")` → the OpenAPI `operationId` → orval emits
   `useDeposit`. The contract of the `Handle` becomes the name of the wire, with nothing bespoke
-  in between. (Candidate doctor rule: endpoint name = slice name.)
+  in between. (`LZ0012` enforces it: endpoint name = slice name.)
 - **Audience filters the client at the generator, not the rule.** orval is configured to include only
   endpoints tagged for *this* frontend's audience (`app`). Webhooks, internal/server-to-server, and
   other-audience endpoints carry a different `[Endpoint(...)]` kind (below), are tagged accordingly, and
@@ -259,7 +264,7 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | Rule | Enforces | Status | Origin |
 |------|----------|--------|--------|
 | `LZFE001` | View purity — a `*.view.tsx` imports no data layer (generated hooks, the client, `fetch`/`axios`); it consumes its ViewModel. Type-only imports of the contract are exempt | **shipped** | the wired-only seam — keeps the View mock-free |
-| `LZFE002` | ViewModel is the only data door — only `*.viewModel.ts` may (value-)import the generated client | **shipped** | one data path, one policed surface |
+| `LZFE002` | ViewModel is the only data door — only `*.viewModel.ts` (plus the auth/routing infra seams, `lib/session`/`lib/guards`) may (value-)import the generated client. Re-exporting it (`export … from "client.gen"`) outside the doors is the laundering bypass, also flagged; type re-exports stay free | **shipped** | one data path, one policed surface |
 | `LZFE003` | **No mock in production code** — no import from `**/__mocks__`/`**/fixtures`/MSW outside `*.test.*` | **shipped** | hostpoint: `WAR-*` storybook fixtures shipped as data |
 | `LZFE004` | ViewModel is render-agnostic — a `*.viewModel.ts` imports no JSX/`react-dom` | planned | keeps the ViewModel unit-testable without rendering |
 | `LZFE005` | **Co-located test that exercises the ViewModel** — every `*.viewModel.ts` has a sibling `*.test.tsx` that imports it and calls `renderHook()`. Existence alone is not enough: mounting `useXModel()` compiles the ViewModel against the real generated client and proves the hook is callable. Behavior assertions stay per-screen judgment (no test-theater) | **shipped** | mirror of `LZ0003` — the triple's third leg; "renders + has a data door but no test" is not done |
@@ -268,17 +273,19 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 ViewModel; an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | **shipped** (`tools/endpoint-coverage.mjs`) | back→front completeness — catches "backend done, UI not wired" |
 | `LZFE009` | **ViewModel is platform-agnostic** — a `*.viewModel.ts` imports no `react-native`/`expo-*` (value *or* type); platform capabilities are injected ports | **shipped** | keeps the ViewModel + core shareable web↔mobile and Vitest-testable |
 | `LZFE010` | **State completeness** — a `*.view.tsx` routes loading/error/empty through `<Resource>` (the spine), not raw `isPending`/`isError` | **shipped** | every async state handled by construction, not a hand-rolled branch that forgets one |
-| `LZFE011` | **i18n parity** — every locale object in a `*.i18n.ts` declares the same keys; a key in one language but not its siblings is a silent untranslated string. Two mechanisms by layout: the `i18n-completeness` eslint rule when catalogs are in lint scope, `tools/i18n-parity.mjs` when they are cross-package | **shipped** | no string ships untranslated in any language |
+| `LZFE011` | **i18n parity** — every locale object in a `*.i18n.ts` declares the same keys, compared as **flattened paths** (`empty.title`) so a key missing inside a nested group is caught too; a key in one language but not its siblings is a silent untranslated string. Two mechanisms by layout: the `i18n-completeness` eslint rule when catalogs are in lint scope, `tools/i18n-parity.mjs` when they are cross-package | **shipped** | no string ships untranslated in any language |
 | `LZFE012` | **Design tokens** — no inline hex color outside the token/theme/palette files; color comes from the theme | **shipped** | one palette; theming (dark mode, white-label) survives |
-| `LZFE013` | **Mutation surfaces its error** — a react-query `.mutate(...)`/`.mutateAsync(...)` in a ViewModel routes its failure somewhere (inline `onError`, a read `.isError` state, a try/catch or `.catch()` on `mutateAsync`, or a propagated return) | **shipped** | the front-side of the backend's `error_handling` — no silent failure, no `onError` theater |
+| `LZFE013` | **Mutation surfaces its error** — a react-query `.mutate(...)`/`.mutateAsync(...)` in a ViewModel routes its failure somewhere (inline `onError`, a read `.isError` state, a try/catch or `.catch()` on `mutateAsync`, or a propagated return). An **empty** `onError: () => {}` is flagged too — the silent failure with paperwork | **shipped** | the front-side of the backend's `error_handling` — no silent failure, no `onError` theater |
 | `LZFE014` | **No hardcoded copy** — user-facing JSX text + copy props (`placeholder`, `label`, `accessibilityLabel`…) in a View go through i18n (`t()`), not literals | **shipped** | feeds the catalog that `LZFE011` then keeps complete |
 | `LZFE015` | **No imperative redirect inside `useEffect`** — a redirect-on-state is declarative (`if (terminal) return <Redirect/Navigate … />`), never `router.replace`/`router.navigate`/a `useNavigate()` call in an effect: it runs after paint and re-fires every render (a flash on TanStack; on expo-router web the router freezes the source screen → an infinite navigation/refetch loop). `push`/`back` on a user action stay allowed. Scoped to the navigating layer (views + routes) | **shipped** | the pilot shipped this loop twice (Splash, then ChooseRole + 5 screens) before the rule existed |
-| `LZFE016` | **Session one door** — the bearer token is written through one seam (`lib/session`, where the write is paired with a `me`-cache reset); a `*.viewModel`/`*.view` importing the token setter (`setAccessToken`…) directly is the scattered write that forgets the reset | **shipped** | pauta: a forgotten reset after registration bounced the new user back to `/login` |
+| `LZFE016` | **Session one door** — the bearer token is written through one seam (`lib/session`, where the write is paired with a `me`-cache reset); a `*.viewModel`/`*.view` importing the token setter (`setAccessToken`…) directly — **or writing a token-ish key straight to storage** (`localStorage`/`AsyncStorage`/`SecureStore.setItem("…token…", …)`) — is the scattered write that forgets the reset | **shipped** | pauta: a forgotten reset after registration bounced the new user back to `/login` |
 | `LZFE017` | **Guard tri-state** — a route guard redirects on a `SessionState` (`loading \| authenticated \| anonymous`), never a raw `isAuthenticated` boolean (which reads "still loading" as "signed out"). The read-side twin of `LZFE010` | **shipped** | the bounce-to-login root cause: a boolean collapses the still-loading case |
-| `LZFE018` | **Route param guard** — a route reading a required id param (expo-router `useLocalSearchParams`) guards its absence with a declarative redirect, so a param-less hit (bookmark / stale link) can't render a ghost screen on an empty id | **shipped** | hostpoint: a param-less `/messaging/chat` rendered an empty "ghost" thread |
+| `LZFE018` | **Route param guard** — a route reading a required id param (expo-router `useLocalSearchParams`) guards its absence with a declarative redirect, so a param-less hit (bookmark / stale link) can't render a ghost screen on an empty id. The spine's `requiredParam()` union (`missing \| ready`) is the blessed guard shape (`if (id.status === "missing") return <Redirect/>`), recognized beside the bare `!id` form | **shipped** | hostpoint: a param-less `/messaging/chat` rendered an empty "ghost" thread |
 | `LZFE019` | **Safe back** — no bare `router.back()`/`history.back()`; Back goes through a guarded helper (the spine's `safeBack` / an app `useGoBack`) that falls back to a parent when there's no in-app history | **shipped** | hostpoint: deep-linked screens had a dead "Voltar" button (~13 screens migrated) |
 | `LZFE020` | **No hardcoded API base URL** — the base URL comes from configuration (env `VITE_API_URL`/`EXPO_PUBLIC_API_URL`, a relative base, or an injected default), never a host baked into `axios.create({ baseURL: "http://…" })`. The backend pins its dev port in `launchSettings`, so the two agree by construction | **shipped** | pauta: the front baked `:8080` while the API ran on the .NET default `:5000` → `me` 404'd → the registered user bounced to login |
-| `LZFE021` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done (renumbered as shipped rules claimed the lower slots) |
+| `LZFE021` | **No raw HTML** — no `dangerouslySetInnerHTML` outside the one audited seam (`lib/html`). JSX escapes by construction; raw HTML is the XSS door, and if the app renders rich HTML (a CMS body) the sanitizer lives in that seam, reviewable | **shipped** | the single React opt-out of escaping must not scatter across screens |
+| `LZFE022` | **No open redirect** — never navigate to a value that arrived in the URL (`router.replace(returnTo)` / `location.href = next` off `useLocalSearchParams`/`useSearch`/`useSearchParams`); map the param through an **allowlist** of known in-app routes first | **shipped** | the phishing primitive: a crafted link sends the session-carrying browser anywhere the attacker chose |
+| `LZFE023` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done (renumbered as shipped rules claimed the lower slots) |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
@@ -287,6 +294,14 @@ legitimate intermediate state → a **warning** (`LZFE008`). Failing the build t
 revealing it is the point. The completeness gate — "does this call a real endpoint?" — is **not** a
 rule. It is `tsc` against the generated client. Lean on the type system; the harness only forbids the
 bypass and surfaces the loose ends.
+
+**Contract freshness — the mirror is pinned to its spec.** Every loop above reads the generated client
+as truth, but nothing re-checks the mirror after generation: a backend shape change leaves the front
+compiling happily against a stale client. `tools/contract-freshness.mjs` closes that: the codegen script
+ends with `--stamp` (writes `client.gen/.spec-hash`, a whitespace-insensitive fingerprint of the OpenAPI
+document), and the doctor leg compares the stamp against the live spec — a mismatch is a build-time "the
+contract moved; regenerate", not a runtime 404. A **notice** until the first stamp exists, a hard gate
+after.
 
 ---
 
