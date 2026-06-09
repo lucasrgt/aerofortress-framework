@@ -22,6 +22,14 @@ export const LZFE_CODES = {
   "lazuli/design-tokens": "LZFE012",
   "lazuli/mutation-error-handled": "LZFE013",
   "lazuli/no-hardcoded-copy": "LZFE014",
+  "lazuli/no-router-replace-in-effect": "LZFE015",
+  "lazuli/session-one-door": "LZFE016",
+  "lazuli/guard-tristate": "LZFE017",
+  "lazuli/route-param-guard": "LZFE018",
+  "lazuli/safe-back": "LZFE019",
+  "lazuli/no-hardcoded-base-url": "LZFE020",
+  "lazuli/no-raw-html": "LZFE021",
+  "lazuli/no-open-redirect": "LZFE022",
 };
 
 /**

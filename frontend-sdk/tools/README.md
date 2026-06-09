@@ -88,3 +88,18 @@ OpenAPI `ErrorBody.code`. This proves every code in the generated union has a ca
 user untranslated. It's the **coverage** half (code → copy); `i18n-parity.mjs` is the **parity** half (copy → every
 language). It reads the orval-generated `errorBody.ts` union directly, and is a **notice until the client is
 regenerated** against the enum-bearing contract, a hard gate after — so it never blocks before the codegen has run.
+
+## Contract freshness — the client mirrors the live spec
+
+```
+node tools/contract-freshness.mjs <openapi.json> <client.gen dir>            # check (the doctor leg)
+node tools/contract-freshness.mjs <openapi.json> <client.gen dir> --stamp    # stamp (run as the codegen tail)
+```
+
+The typed client is a **mirror** of the backend's OpenAPI document, and nothing re-checks the mirror after
+generation — a backend shape change leaves the front compiling happily against a stale client, and every other
+loop (endpoint coverage, error-code coverage, journey parity) inherits the drift because they read the client as
+truth. This pins the client to the exact spec it was generated from: the codegen script ends with `--stamp`
+(writes `client.gen/.spec-hash`, a whitespace-insensitive fingerprint), and the doctor compares the stamp against
+the live spec. A mismatch is a build-time "the contract moved; regenerate", not a runtime 404. **Notice until the
+first stamp exists**, a hard gate after — so it never blocks before the codegen has run.
