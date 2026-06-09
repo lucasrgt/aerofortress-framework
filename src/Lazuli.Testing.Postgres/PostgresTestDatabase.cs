@@ -128,12 +128,16 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
             await _container.StartAsync().ConfigureAwait(false);
             _maintenanceConnection = _container.GetConnectionString();   // targets the 'postgres' maintenance db
 
+            // Drop-then-create: a previous run that failed mid-migration (a pending-model-changes error, a
+            // killed test host) leaves an orphan template behind, and a bare CREATE would fail every run after
+            // with 42P04 — the suite would never self-heal. Recreating is cheap (the migration runs once per
+            // container) and makes EnsureReady idempotent.
             await using (var admin = new NpgsqlConnection(_maintenanceConnection))
             {
                 await admin.OpenAsync().ConfigureAwait(false);
                 await using var create = admin.CreateCommand();
 #pragma warning disable CA2100 // the template name is ctor-fixed, not user input
-                create.CommandText = $"CREATE DATABASE \"{_template}\"";
+                create.CommandText = $"DROP DATABASE IF EXISTS \"{_template}\"; CREATE DATABASE \"{_template}\"";
 #pragma warning restore CA2100
                 await create.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
