@@ -11,8 +11,9 @@ namespace Lazuli.Cli;
 /// first reader so <c>lazuli doctor</c> can confirm a project HAS one and that the paths it declares exist.
 ///
 /// The check is deliberately light (the keys it gates, not a full TOML parse): a missing manifest is a
-/// notice (older projects predate it), but a present-yet-broken one — no <c>[workspace]</c>, no name, or a
-/// declared backend/core path that isn't on disk — is a reported failure.
+/// notice (older projects predate it), but a present-yet-broken one — no <c>[workspace]</c>, no name, a
+/// declared backend/core path that isn't on disk, or a backend that doesn't pin its dev environment
+/// (<see cref="CheckBackendDevEnv"/>) — is a reported failure.
 /// </summary>
 internal static class LazuliManifest
 {
@@ -44,15 +45,55 @@ internal static class LazuliManifest
             messages.Add($"{FileName}: [workspace] declares no name");
 
         // Every backend/core path a product declares must resolve on disk, so the manifest can't drift from
-        // the real tree (the topology it claims is the topology that exists).
+        // the real tree (the topology it claims is the topology that exists). A declared backend (the .NET API)
+        // must also pin its dev environment (see CheckBackendDevEnv).
         foreach (Match m in Regex.Matches(text, @"^\s*(backend|core)\s*=\s*""([^""]+)""", RegexOptions.Multiline))
         {
+            var kind = m.Groups[1].Value;
             var rel = m.Groups[2].Value;
             var full = Path.Combine(root, rel);
             if (!Directory.Exists(full) && !File.Exists(full))
-                messages.Add($"{FileName}: {m.Groups[1].Value} path '{rel}' does not exist");
+            {
+                messages.Add($"{FileName}: {kind} path '{rel}' does not exist");
+                continue;
+            }
+
+            if (kind == "backend" && Directory.Exists(full))
+                CheckBackendDevEnv(full, rel, messages);
         }
 
         return new Outcome(Present: true, Valid: messages.Count == 0, Messages: messages);
+    }
+
+    /// <summary>
+    /// A declared <c>backend</c> (the .NET API) must pin its dev environment in
+    /// <c>Properties/launchSettings.json</c>: <c>ASPNETCORE_ENVIRONMENT=Development</c> and an
+    /// <c>applicationUrl</c>. Without the file a `dotnet run` silently defaults to <b>Production</b> on the .NET
+    /// default port — which both drifts the port the frontend points at and flips on Production-gated behavior
+    /// (rate limiting → 429 on register/login). One missing file caused both in a pilot; this catches it at the
+    /// doctor instead of at runtime. The check is textual (the keys it gates, not a full JSON parse), matching
+    /// the rest of this validator.
+    /// </summary>
+    private static void CheckBackendDevEnv(string backendDir, string rel, List<string> messages)
+    {
+        var launchSettings = Path.Combine(backendDir, "Properties", "launchSettings.json");
+        if (!File.Exists(launchSettings))
+        {
+            messages.Add(
+                $"{FileName}: backend '{rel}' has no Properties/launchSettings.json — a dev run then defaults to " +
+                "Production on the .NET default port (port drift vs the frontend + Production-gated behavior like " +
+                "rate limiting → 429s). Pin ASPNETCORE_ENVIRONMENT=Development and an applicationUrl.");
+            return;
+        }
+
+        var json = File.ReadAllText(launchSettings);
+        if (!Regex.IsMatch(json, @"""ASPNETCORE_ENVIRONMENT""\s*:\s*""Development"""))
+            messages.Add(
+                $"{FileName}: backend '{rel}' launchSettings.json sets no ASPNETCORE_ENVIRONMENT=Development — a dev " +
+                "run defaults to Production (rate limiting on → 429 on register/login while iterating locally).");
+        if (!Regex.IsMatch(json, @"""applicationUrl""\s*:\s*""[^""]+"""))
+            messages.Add(
+                $"{FileName}: backend '{rel}' launchSettings.json pins no applicationUrl — the dev port isn't " +
+                "deterministic, so the frontend's base URL can't agree with it by construction.");
     }
 }
