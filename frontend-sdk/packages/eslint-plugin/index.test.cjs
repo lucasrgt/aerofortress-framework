@@ -508,5 +508,114 @@ ruleTester.run("semantic-colors", plugin.rules["semantic-colors"], {
   ],
 });
 
+// LZFE027 — a QueryClient carries the mutation defaults (mutationCache: new MutationCache({ onSuccess, onError })).
+// Tests and the shared test harness construct bare clients freely; an inline or same-file-declared cache is checked,
+// anything built further away is trusted as visible-in-review.
+ruleTester.run("query-client-defaults", plugin.rules["query-client-defaults"], {
+  valid: [
+    // The blessed shape — inline cache with both handlers.
+    {
+      filename: "src/lib/query.ts",
+      code: `const qc = new QueryClient({ mutationCache: new MutationCache({ onSuccess: inv, onError: feed }) });`,
+    },
+    // The cache declared first, referenced by name — still checked, still conformant.
+    {
+      filename: "src/lib/query.ts",
+      code: `const cache = new MutationCache({ onSuccess: inv, onError: feed }); const qc = new QueryClient({ mutationCache: cache });`,
+    },
+    // A spread may carry the handlers (or the cache) — trusted.
+    { filename: "src/lib/query.ts", code: `const qc = new QueryClient({ mutationCache: new MutationCache({ ...defaults }) });` },
+    { filename: "src/lib/query.ts", code: `const qc = new QueryClient({ ...base });` },
+    // An options factory is visible in review — not a false positive.
+    { filename: "src/lib/query.ts", code: `const qc = new QueryClient(makeOptions());` },
+    // Tests and the shared test harness build throwaway clients for ISOLATION — the defaults are deliberately absent.
+    { filename: "Foo.test.tsx", code: `const c = new QueryClient();` },
+    { filename: "src/test/providers.tsx", code: `const c = new QueryClient({ defaultOptions: { queries: { retry: false } } });` },
+  ],
+  invalid: [
+    // The pilot's exact bug: a bare client — no invalidation, no feedback, 13 ViewModels left to remember by hand.
+    { filename: "src/lib/queryClient.ts", code: `export const queryClient = new QueryClient();`, errors: [{ messageId: "missing" }] },
+    {
+      filename: "src/lib/query.ts",
+      code: `const qc = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });`,
+      errors: [{ messageId: "missing" }],
+    },
+    // A cache without both handlers is the defaults half-wired.
+    {
+      filename: "src/lib/query.ts",
+      code: `const qc = new QueryClient({ mutationCache: new MutationCache({ onSuccess: inv }) });`,
+      errors: [{ messageId: "incomplete" }],
+    },
+    {
+      filename: "src/lib/query.ts",
+      code: `const qc = new QueryClient({ mutationCache: new MutationCache() });`,
+      errors: [{ messageId: "incomplete" }],
+    },
+    {
+      filename: "src/lib/query.ts",
+      code: `const cache = new MutationCache({ onError: feed }); const qc = new QueryClient({ mutationCache: cache });`,
+      errors: [{ messageId: "incomplete" }],
+    },
+  ],
+});
+
+// LZFE028 — an onSuccess whose entire body is refetch/invalidate calls duplicates the LZFE027 defaults (the pilot's
+// hand-rolled ritual, 30 of 43 ViewModels). A handler that does MORE than refetch is real behavior — never flagged.
+ruleTester.run("no-manual-refetch-ritual", plugin.rules["no-manual-refetch-ritual"], {
+  valid: [
+    // Does more than refetch — navigation/handoff is behavior, not ritual.
+    { filename: "Foo.viewModel.ts", code: `useCreateThing({ mutation: { onSuccess: (r) => onCreated(r.id) } });` },
+    // Mixed body: the refetch may be redundant, the rest is not — human judgment, not lint's.
+    {
+      filename: "Foo.viewModel.ts",
+      code: `const refetch = () => void q.refetch(); m.mutate(d, { onSuccess: () => { refetch(); reset(); } });`,
+    },
+    // An unresolvable name is not assumed to be a ritual.
+    { filename: "Foo.viewModel.ts", code: `m.mutate(d, { onSuccess: props.onSaved });` },
+    // out of scope: only the ViewModel owns mutations.
+    { filename: "Foo.view.tsx", code: `m.mutate(d, { onSuccess: () => q.refetch() });` },
+  ],
+  invalid: [
+    // The pilot's exact shapes: a named ritual passed to the hook options…
+    {
+      filename: "Foo.viewModel.ts",
+      code: `const refetch = () => void departments.refetch(); const create = useCreateDepartment({ mutation: { onSuccess: refetch } });`,
+      errors: [{ messageId: "ritual" }],
+    },
+    // …an inline arrow at the call-site…
+    { filename: "Foo.viewModel.ts", code: `m.mutate(d, { onSuccess: () => list.refetch() });`, errors: [{ messageId: "ritual" }] },
+    // …and the useCallback-wrapped invalidate (one level of indirection, still pure).
+    {
+      filename: "Foo.viewModel.ts",
+      code: `const invalidate = useCallback(() => { queryClient.invalidateQueries({ queryKey: k }); }, [queryClient]); m.mutate(d, { onSuccess: invalidate });`,
+      errors: [{ messageId: "ritual" }],
+    },
+    {
+      filename: "Foo.viewModel.ts",
+      code: `const invalidateSteps = useCallback(() => queryClient.invalidateQueries({ queryKey: k }), [queryClient]); const up = useUpdateStep({ mutation: { onSuccess: () => void invalidateSteps() } });`,
+      errors: [{ messageId: "ritual" }],
+    },
+  ],
+});
+
+// LZFE013 ({ globalSurface: true } half) — with the LZFE027 defaults wired, the global MutationCache.onError IS the
+// surface (react-query fires it regardless of per-call handlers), so a bare .mutate() passes; the empty onError stays
+// flagged — it is dead paperwork either way.
+ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"], {
+  valid: [
+    { filename: "Foo.viewModel.ts", code: `m.mutate(data);`, options: [{ globalSurface: true }] },
+    { filename: "Foo.viewModel.ts", code: `m.mutate(data, { onSuccess: ok });`, options: [{ globalSurface: true }] },
+    { filename: "Foo.viewModel.ts", code: `async function f(){ await m.mutateAsync(data); }`, options: [{ globalSurface: true }] },
+  ],
+  invalid: [
+    {
+      filename: "Foo.viewModel.ts",
+      code: `m.mutate(data, { onError: () => {} });`,
+      options: [{ globalSurface: true }],
+      errors: [{ messageId: "empty" }],
+    },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");

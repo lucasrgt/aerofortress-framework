@@ -545,13 +545,27 @@ const rules = {
   // error somewhere (a toast, a saveError state, a banner). Scoped to *.viewModel.ts (the data door owns commands).
   // It enforces PRESENCE of onError, not what it does (anti-test-theater): wiring the error out is the bar, the
   // UX of it stays per-screen judgment.
+  //
+  // `{ globalSurface: true }` — for apps running the LZFE027 mutation defaults: the QueryClient's global
+  // MutationCache.onError already routes EVERY failure through the feedback seam (and react-query fires it
+  // regardless of per-call handlers), so a bare `.mutate()` is surfaced by construction and the per-call demand
+  // would be the redundant second handler this rule refuses to require. The empty `onError: () => {}` stays
+  // flagged either way — it is dead paperwork. Set the option only alongside `query-client-defaults: "error"`
+  // (LZFE027 is what makes the claim true).
   "mutation-error-handled": {
     meta: {
       type: "problem",
       docs: {
         description:
-          "Every mutation surfaces its failure — via an onError handler, a read .isError state, or a try/catch around mutateAsync (no silent failure).",
+          "Every mutation surfaces its failure — via an onError handler, a read .isError state, or a try/catch around mutateAsync (no silent failure). With { globalSurface: true } (the LZFE027 defaults wired), the global onError is the surface and only an empty onError is flagged.",
       },
+      schema: [
+        {
+          type: "object",
+          properties: { globalSurface: { type: "boolean" } },
+          additionalProperties: false,
+        },
+      ],
       messages: {
         unhandled:
           "LZFE013: a mutation must surface its error (no silent failure; the front-side of the backend's error_handling). Use ANY ONE: pass `onError` to .{{method}}(args, { onError }); OR read `{{name}}.isError` and expose it as state the View renders; OR `await {{name}}.mutateAsync()` inside a try/catch that sets an error surface.",
@@ -562,6 +576,7 @@ const rules = {
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
       if (!isViewModel(f)) return {};
+      const globalSurface = context.options[0]?.globalSurface === true;
       // The whole-file text lets us see the `.isError` surface pattern: react-query's idiom is to read the mutation
       // handle's `isError`/`error` and expose it as returned state (the View renders it via <ErrorBanner> / toast),
       // which is a real error surface — just not an inline onError. Recognizing it stops the rule demanding a
@@ -653,6 +668,9 @@ const rules = {
               context.report({ node: handler, messageId: "empty", data: { name: objName } });
             return;
           }
+          // With the LZFE027 defaults wired, the global MutationCache.onError surfaces every failure — a bare
+          // call is handled by construction, and only the empty handler above remains worth flagging.
+          if (globalSurface) return;
           // B) the mutation handle's error state is read in this file (surfaced as state the View renders).
           const obj = callee.object;
           const name = obj.type === "Identifier" ? obj.name : null;
@@ -1249,9 +1267,171 @@ const rules = {
       };
     },
   },
+
+  // LZFE027 — a QueryClient carries the app's mutation defaults. The write-side of the state discipline: a bare
+  // `new QueryClient()` leaves every mutation to hand-roll its own cache invalidation and its own error surface —
+  // and the screen that forgets ships the pilot bug ("created a category, it only appeared after F5, with no
+  // toast"; 13 of 43 ViewModels had no invalidation at all). The convention pins ONE construction shape:
+  // `mutationCache: new MutationCache({ onSuccess, onError })` — success marks every query stale (active ones
+  // refetch immediately; the safe, slightly-wasteful default that is always correct) and posts the success note;
+  // failure routes through the feedback seam (the global half of LZFE013). Scaffolded by tools/client-scaffold.mjs
+  // as lib/query.ts. Tests and the shared test harness (a test/ or test-utils/ path) construct bare clients freely
+  // — isolation is their job, defaults are the app's.
+  "query-client-defaults": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "A QueryClient is constructed with the mutation defaults wired — mutationCache: new MutationCache({ onSuccess: <invalidate + success note>, onError: <feedback> }) — so every mutation invalidates stale reads and surfaces its outcome by default.",
+      },
+      messages: {
+        missing:
+          "LZFE027: this QueryClient carries no mutation defaults — every mutation is left to hand-roll invalidation and error feedback, and the screen that forgets ships stale lists (the F5-to-see-your-write bug) and silent failures. Construct it with `mutationCache: new MutationCache({ onSuccess: <invalidateQueries + success note>, onError: <feedback seam> })` — scaffold lib/query.ts (tools/client-scaffold.mjs).",
+        incomplete:
+          "LZFE027: the MutationCache defaults are missing `{{missing}}` — `onSuccess` invalidates every active query (no list is one F5 behind its server) and `onError` routes the failure through the feedback seam (no silent failure). Wire both.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      // The shared test harness lives outside *.test.* (e.g. src/test/providers.tsx) but builds throwaway
+      // clients for isolation — the defaults are deliberately absent there.
+      if (isTest(f) || /(^|\/)(test|tests|test-utils|testing|__tests__)(\/|\.)/.test(f)) return {};
+      const prop = (obj, name) =>
+        obj.properties.find(
+          (p) =>
+            p.type === "Property" &&
+            !p.computed &&
+            ((p.key.type === "Identifier" && p.key.name === name) || (p.key.type === "Literal" && p.key.value === name)),
+        );
+      const hasSpread = (obj) => obj.properties.some((p) => p.type === "SpreadElement");
+      // `const cache = new MutationCache({...})` declared before the QueryClient — the indirection is still
+      // checkable; anything built further away (imported, computed) is trusted as visible-in-review.
+      const caches = new Map();
+      const checkCacheOptions = (reportNode, optsNode) => {
+        if (optsNode && optsNode.type !== "ObjectExpression") return; // built elsewhere — review's job
+        const obj = optsNode ?? { properties: [] };
+        if (hasSpread(obj)) return; // a spread may carry the handlers
+        const missing = ["onSuccess", "onError"].filter((k) => !prop(obj, k));
+        if (missing.length)
+          context.report({ node: reportNode, messageId: "incomplete", data: { missing: missing.join("` and `") } });
+      };
+      return {
+        VariableDeclarator(node) {
+          if (
+            node.id.type === "Identifier" &&
+            node.init &&
+            node.init.type === "NewExpression" &&
+            node.init.callee.type === "Identifier" &&
+            node.init.callee.name === "MutationCache"
+          )
+            caches.set(node.id.name, node.init.arguments[0] ?? null);
+        },
+        NewExpression(node) {
+          if (node.callee.type !== "Identifier" || node.callee.name !== "QueryClient") return;
+          const arg = node.arguments[0];
+          if (!arg) return context.report({ node, messageId: "missing" });
+          if (arg.type !== "ObjectExpression") return; // an options factory — trusted, visible in review
+          const cacheProp = prop(arg, "mutationCache");
+          if (!cacheProp) {
+            if (!hasSpread(arg)) context.report({ node, messageId: "missing" });
+            return;
+          }
+          const v = cacheProp.value;
+          if (v.type === "NewExpression" && v.callee.type === "Identifier" && v.callee.name === "MutationCache")
+            return checkCacheOptions(node, v.arguments[0] ?? null);
+          if (v.type === "Identifier" && caches.has(v.name)) return checkCacheOptions(node, caches.get(v.name));
+          // an imported/composed cache — it exists; its wiring is review's job, not a false positive's.
+        },
+      };
+    },
+  },
+
+  // LZFE028 — no manual refetch ritual. With the LZFE027 defaults wired, a successful mutation already invalidates
+  // every active query — so an `onSuccess` whose entire body is refetch/invalidate calls is the convention's
+  // pre-history surviving as cargo cult (the pilot hand-rolled it in 30 of 43 ViewModels; the 13 that forgot were
+  // the bug). Deleting it is the point: less ceremony per mutation, one fewer thing the next screen can forget.
+  // An `onSuccess` that does MORE than refetch (navigate, reset a form, hand off an id) is real behavior — never
+  // flagged. Warn-tier: it reveals redundancy, it does not gate.
+  "no-manual-refetch-ritual": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "No onSuccess whose body only refetches/invalidates — the LZFE027 mutation defaults already invalidate every active query on success; keep handlers only when they do more.",
+      },
+      messages: {
+        ritual:
+          "LZFE028: redundant manual refetch — the app's mutation defaults (LZFE027, lib/query.ts) already invalidate every active query on mutation success. Delete this `onSuccess`; keep a handler only when it does more than refetch.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isViewModel(f)) return {};
+      const REFETCHISH = /^(refetch|invalidateQueries|resetQueries|refetchQueries)$/;
+      const decls = new Map(); // name -> initializer (declared anywhere in the file)
+      const candidates = [];
+      // `useCallback(fn, deps)` wraps the ritual without changing it — analyze the wrapped fn.
+      const unwrapInit = (init) =>
+        init && init.type === "CallExpression" && init.callee.type === "Identifier" && init.callee.name === "useCallback"
+          ? (init.arguments[0] ?? null)
+          : init;
+      const unwrapExpr = (expr) => {
+        let e = expr;
+        for (;;) {
+          if (e && e.type === "UnaryExpression" && e.operator === "void") e = e.argument;
+          else if (e && e.type === "AwaitExpression") e = e.argument;
+          else if (e && e.type === "ChainExpression") e = e.expression;
+          else return e;
+        }
+      };
+      // A "refetch-ish" expression: a call to *.refetch()/queryClient.invalidateQueries(...) (any receiver), or a
+      // call to a local name that itself resolves to a pure-refetch function (`onSuccess: () => invalidateSteps()`).
+      const isRefetchCall = (expr, seen) => {
+        const e = unwrapExpr(expr);
+        if (!e || e.type !== "CallExpression") return false;
+        const callee = e.callee;
+        if (callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier")
+          return REFETCHISH.test(callee.property.name);
+        if (callee.type === "Identifier") return isPureRefetchName(callee.name, seen);
+        return false;
+      };
+      const isPureRefetchFn = (fn, seen) => {
+        if (!fn || (fn.type !== "ArrowFunctionExpression" && fn.type !== "FunctionExpression")) return false;
+        if (fn.body.type !== "BlockStatement") return isRefetchCall(fn.body, seen);
+        if (fn.body.body.length === 0) return false;
+        return fn.body.body.every((s) => s.type === "ExpressionStatement" && isRefetchCall(s.expression, seen));
+      };
+      const isPureRefetchName = (name, seen) => {
+        if (seen.has(name)) return false; // cycle guard
+        seen.add(name);
+        return isPureRefetchFn(unwrapInit(decls.get(name)), seen);
+      };
+      return {
+        VariableDeclarator(node) {
+          if (node.id.type === "Identifier" && node.init) decls.set(node.id.name, node.init);
+        },
+        Property(node) {
+          if (node.computed) return;
+          const key =
+            node.key.type === "Identifier" ? node.key.name : node.key.type === "Literal" ? node.key.value : null;
+          if (key === "onSuccess") candidates.push(node);
+        },
+        // Resolved at exit so a ritual referenced before its declaration is still traced.
+        "Program:exit"() {
+          for (const node of candidates) {
+            const pure =
+              node.value.type === "Identifier"
+                ? isPureRefetchName(node.value.name, new Set())
+                : isPureRefetchFn(unwrapInit(node.value), new Set());
+            if (pure) context.report({ node, messageId: "ritual" });
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {
-  meta: { name: "eslint-plugin-lazuli", version: "0.5.0" },
+  meta: { name: "eslint-plugin-lazuli", version: "0.6.0" },
   rules,
 };

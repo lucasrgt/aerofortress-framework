@@ -73,6 +73,10 @@ export default [
       "lazuli/ui-door": "error",
       "lazuli/scale-only": "error",
       "lazuli/semantic-colors": "error",
+      // The mutation band (LZFE027–028) — the QueryClient carries the write-side defaults (invalidate on success,
+      // feedback on error), and the hand-rolled `onSuccess: refetch` ritual those defaults obsolete is revealed.
+      "lazuli/query-client-defaults": "error",
+      "lazuli/no-manual-refetch-ritual": "warn",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",

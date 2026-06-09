@@ -1,6 +1,10 @@
+import { Linter } from "eslint";
+import tsParser from "@typescript-eslint/parser";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error - plain .mjs tool module, typed by its JSDoc
-import { renderMutator, renderOrvalConfig } from "./client-scaffold.mjs";
+import { renderFeedback, renderMutator, renderOrvalConfig, renderQueryClient } from "./client-scaffold.mjs";
+// @ts-expect-error - the CommonJS plugin, loaded for the conformance proof below
+import lazuli from "../packages/eslint-plugin/index.cjs";
 
 // The mutator/config pair every pilot re-derived by hand — rendered conformant by construction. What is
 // pinned: the seams the harness depends on, and the LZFE020-blessed base-URL shape.
@@ -35,5 +39,43 @@ describe("client-scaffold", () => {
     expect(config).toContain('tags: ["lazuli:webhook", "lazuli:internal"]');
     expect(config).toContain('mutator: { path: "./src/lib/lazuli-client.ts", name: "lazuliClient" }');
     expect(config).toContain('target: "./src/client.gen/shop.ts"');
+  });
+
+  it("the QueryClient carries the write-side defaults: invalidate on success, unconditional feedback on error", () => {
+    const query = renderQueryClient();
+
+    // The convention's two halves: success marks the world stale + posts the note (meta.silent opts out of the
+    // note only); failure ALWAYS surfaces — there is no silent flag on onError, by design.
+    expect(query).toContain("void queryClient.invalidateQueries();");
+    expect(query).toContain("mutation.meta?.silent !== true");
+    expect(query).toContain("feedback.error(copy.failed(error));");
+    expect(query).not.toMatch(/onError:[\s\S]*?meta\?\.silent/);
+  });
+
+  it("the feedback seam exposes one door with a visible (console) fallback until the shell wires a sink", () => {
+    const feedback = renderFeedback();
+
+    expect(feedback).toContain("export function wireFeedback");
+    expect(feedback).toContain("export const feedback: FeedbackSink");
+    expect(feedback).toContain("console.error");
+  });
+
+  it("the rendered lib/query.ts passes LZFE027 — conformant by construction, proved with the real rule", () => {
+    const linter = new Linter();
+    const lint = (code: string, filename: string) =>
+      linter.verify(
+        code,
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
+          plugins: { lazuli },
+          rules: { "lazuli/query-client-defaults": "error" },
+        },
+        { filename },
+      );
+
+    expect(lint(renderQueryClient(), "src/lib/query.ts")).toEqual([]);
+    // …and the gate actually fires on this surface: the pilot's bare client is caught.
+    expect(lint("export const queryClient = new QueryClient();", "src/lib/queryClient.ts")).toHaveLength(1);
   });
 });

@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // LZFE — the generated client's hand-owned half. orval generates the hooks, but the MUTATOR they all call
-// through (auth injection, base-URL port, the X-Client header that turns on the web cookie session) and the
-// orval config itself are hand-owned files nothing scaffolded — every pilot re-derived them. This renders both,
-// conformant by construction: the base URL is an injectable default overridden at boot via configureClient()
-// (the LZFE020-blessed shape — never a baked host in axios.create), the token sink is the seam's
-// setAccessToken, and the audience filter keeps non-app endpoints out of the client (so LZFE008 stays
-// high-signal). Graduated from the hostpoint pilot's lazuli-client.ts + orval.config.ts.
+// through (auth injection, base-URL port, the X-Client header that turns on the web cookie session), the
+// orval config itself, AND the QueryClient + feedback seam every mutation rides are hand-owned files nothing
+// scaffolded — every pilot re-derived them (and the one that re-derived the QueryClient bare shipped the
+// created-it-but-only-saw-it-after-F5 bug). This renders all four, conformant by construction: the base URL is
+// an injectable default overridden at boot via configureClient() (the LZFE020-blessed shape — never a baked
+// host in axios.create), the token sink is the seam's setAccessToken, the audience filter keeps non-app
+// endpoints out of the client (so LZFE008 stays high-signal), and the QueryClient carries the write-side
+// mutation defaults — invalidate on success, feedback on error (the LZFE027-blessed shape). Graduated from the
+// hostpoint pilot's lazuli-client.ts + orval.config.ts and the pauta pilot's state-management gap.
 //
 // Usage: node tools/client-scaffold.mjs <client-name> <contract-path> [target-dir]
 //   node tools/client-scaffold.mjs hostpoint ./contract/Hostpoint.Api.json ../app-core/src
@@ -68,6 +71,90 @@ export default lazuliClient;
 `;
 }
 
+/** The feedback seam (lib/feedback.ts) — the one door for transient user feedback (LZFE016's shape, applied to toasts). */
+export function renderFeedback() {
+  return `// The one door for transient user feedback (toasts/banners) — the "one seam" shape (LZFE016) applied to
+// notifications. The app picks its toast library and wires it ONCE at boot (wireFeedback); everything below
+// the shell — the mutation defaults in lib/query.ts, any ViewModel — speaks to this seam and never imports a
+// toast lib directly. Swapping the library is a one-file change no ViewModel notices.
+
+/** What a feedback sink renders. The shell provides one at boot (e.g. sonner's toast.success / toast.error). */
+export interface FeedbackSink {
+  success(message: string): void;
+  error(message: string): void;
+}
+
+// Until the shell wires a real sink, errors fall back to the console — feedback degrades visibly, never
+// silently (a dev booting without wireFeedback still sees every failure).
+let sink: FeedbackSink = {
+  success: () => undefined,
+  // eslint-disable-next-line no-console
+  error: (message) => console.error(\`[feedback] \${message}\`),
+};
+
+/** Install the app's toast sink — called once at boot by the shell. */
+export function wireFeedback(next: FeedbackSink): void {
+  sink = next;
+}
+
+/** The seam the mutation defaults (and any ViewModel) call — success and error notes through one door. */
+export const feedback: FeedbackSink = {
+  success: (message) => sink.success(message),
+  error: (message) => sink.error(message),
+};
+`;
+}
+
+/** The QueryClient factory (lib/query.ts) — the write-side mutation defaults, the LZFE027-blessed shape. */
+export function renderQueryClient() {
+  return `import { MutationCache, QueryClient } from "@tanstack/react-query";
+
+import { feedback } from "./feedback";
+
+// The write-side defaults the convention pins (LZFE027). A successful mutation marks EVERY query stale
+// (TanStack refetches the active ones immediately), so no screen hand-rolls \`onSuccess: refetch\` and no list
+// is ever one F5 behind its server — the safe, slightly-wasteful default that is always correct. A failed
+// mutation always surfaces through the feedback seam — the global half of LZFE013 (no silent failure).
+// Targeted invalidation and optimistic updates remain the per-screen opt-in LAYERED ABOVE this default for the
+// screen that proves it needs them, never a replacement for it.
+
+declare module "@tanstack/react-query" {
+  interface Register {
+    mutationMeta: {
+      /** Skip the success note for this mutation (a sign-in, a drag reorder — the UI change IS the feedback). */
+      silent?: boolean;
+    };
+  }
+}
+
+/** The copy the defaults speak — resolved by the shell (i18n), so this seam carries no i18n dependency. */
+export interface MutationCopy {
+  /** The generic success note ("Saved"). */
+  saved(): string;
+  /** The failure note — receives the error so the app can map an ErrorBody code to localized copy. */
+  failed(error: unknown): string;
+}
+
+/** Build the app's QueryClient with the convention's mutation defaults wired (LZFE027). */
+export function createQueryClient(copy: MutationCopy): QueryClient {
+  const queryClient: QueryClient = new QueryClient({
+    mutationCache: new MutationCache({
+      onSuccess: (_data, _variables, _context, mutation) => {
+        void queryClient.invalidateQueries();
+        if (mutation.meta?.silent !== true) feedback.success(copy.saved());
+      },
+      // Deliberately unconditional: a mutation failure ALWAYS surfaces. A screen that also reads .isError just
+      // adds a richer inline surface on top — double feedback beats the silent kind.
+      onError: (error) => {
+        feedback.error(copy.failed(error));
+      },
+    }),
+  });
+  return queryClient;
+}
+`;
+}
+
 /** The orval convention config — one typed TanStack hook per slice, audience-filtered, mutator-wired. */
 export function renderOrvalConfig(name, contract) {
   return `import { defineConfig } from "orval";
@@ -112,9 +199,13 @@ if (invokedDirectly) {
     process.exit(2);
   }
   const mutatorPath = join(targetDir, "src", "lib", "lazuli-client.ts");
+  const feedbackPath = join(targetDir, "src", "lib", "feedback.ts");
+  const queryPath = join(targetDir, "src", "lib", "query.ts");
   const orvalPath = join(targetDir, "orval.config.ts");
   for (const [path, content] of [
     [mutatorPath, renderMutator()],
+    [feedbackPath, renderFeedback()],
+    [queryPath, renderQueryClient()],
     [orvalPath, renderOrvalConfig(name, contract)],
   ]) {
     if (existsSync(path)) {

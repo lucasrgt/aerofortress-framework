@@ -33,6 +33,8 @@ export const LZFE_CODES = {
   "lazuli/ui-door": "LZFE024",
   "lazuli/scale-only": "LZFE025",
   "lazuli/semantic-colors": "LZFE026",
+  "lazuli/query-client-defaults": "LZFE027",
+  "lazuli/no-manual-refetch-ritual": "LZFE028",
 };
 
 /**

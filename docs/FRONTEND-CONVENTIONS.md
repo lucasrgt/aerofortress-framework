@@ -136,6 +136,8 @@ rule (the frontend analog of the old `API-HANDLER-UNWIRED-001`: no silent 404).
 client.gen/              # GENERATED — never edited by hand, committed verbatim
   <slice>.gen.ts         #   one typed TanStack hook per slice (useDeposit, …)
 lazuli.client.ts         # the orval mutator — unwraps Result<T>, injects auth, maps error→state
+lib/query.ts             # the QueryClient factory — the write-side mutation defaults (LZFE027, below)
+lib/feedback.ts          # the feedback seam — one door for toasts; the shell wires the sink at boot
 orval.config.ts          # the shipped convention config — the "poison" lives here
 ```
 
@@ -189,6 +191,45 @@ submit path. Reimplementing that is the gesture the framework forbids.
 Big forms decompose **panel-per-tab**: a hand-written spine (the ViewModel + the tab-shell View
 with a panel registry) plus one pure `panels/<X>Panel.view.tsx` per tab, each a function of the
 shared `control`. The panels are independent, so they migrate as panel-granularity fan-out.
+
+---
+
+## Mutations — the write-side defaults (invalidate + feedback)
+
+The read side has long been covered (`AsyncState` → `<Resource>`, `LZFE010`); the write side was
+convention-by-hope, and a pilot paid for it: **a created category only appeared after F5, with no
+toast** — the mutation succeeded on the server while the query cache kept serving the stale list.
+30 of 43 ViewModels hand-rolled `onSuccess: refetch`; the 13 that forgot were the bug. When 70% of
+the code repeats a ritual and 30% forgets it, that is the operational definition of a missing
+default. The answer is **not** a second store (zustand/redux would duplicate server state into a
+second cache and double the desync surface — TanStack Query *is* the Model); it is pinning the
+write-side defaults where TanStack designed them to live:
+
+- **Write = the world is stale.** The app's QueryClient (scaffolded as `lib/query.ts`, enforced by
+  `LZFE027`) carries a global `MutationCache`: on every successful mutation it calls
+  `queryClient.invalidateQueries()` — every query marked stale, the **active** ones refetched
+  immediately. For a business app this is cheap and **always correct**: no screen can forget to
+  invalidate, because no screen is asked to. The safe, slightly-wasteful default; Rails would smile.
+- **Every outcome surfaces.** The same cache posts a success note through the **feedback seam**
+  (`lib/feedback.ts` — the one-door shape of `LZFE016` applied to toasts; the shell wires the
+  app's toast lib once at boot via `wireFeedback`, nothing below the shell imports a toast lib) and
+  routes every failure through it **unconditionally** — the global half of `LZFE013`. With the
+  defaults wired, the app sets `mutation-error-handled: ["error", { globalSurface: true }]`: a bare
+  `.mutate()` is surfaced by construction, and only the actively-swallowing `onError: () => {}`
+  stays flagged.
+- **`meta: { silent: true }` opts out of the success note** (a sign-in, a drag reorder — the UI
+  change *is* the feedback). There is deliberately no silent flag for errors: a mutation failure
+  always surfaces, and a screen that also reads `.isError` just adds a richer inline surface on top.
+- **Targeted invalidation / optimistic updates are the opt-in, not the baseline.** A screen that
+  *proves* it needs surgical `setQueryData`/optimistic UX layers it above the default. What dies is
+  the hand-rolled `onSuccess: () => refetch()` ritual — with the defaults wired it is pure
+  redundancy, and `LZFE028` (warn) reveals it so it gets deleted instead of cargo-culted into the
+  next screen.
+
+The parallel to the backend is exact: a slice's `Handle` does not opt into transactionality or
+error mapping per call site — the boundary owns it once. The frontend's write boundary is the
+`MutationCache`; this convention just moves the two defaults (cache coherence, outcome feedback)
+to where the boundary already is.
 
 ---
 
@@ -275,7 +316,7 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE010` | **State completeness** — a `*.view.tsx` routes loading/error/empty through `<Resource>` (the spine), not raw `isPending`/`isError` | **shipped** | every async state handled by construction, not a hand-rolled branch that forgets one |
 | `LZFE011` | **i18n parity** — every locale object in a `*.i18n.ts` declares the same keys, compared as **flattened paths** (`empty.title`) so a key missing inside a nested group is caught too; a key in one language but not its siblings is a silent untranslated string. Two mechanisms by layout: the `i18n-completeness` eslint rule when catalogs are in lint scope, `tools/i18n-parity.mjs` when they are cross-package | **shipped** | no string ships untranslated in any language |
 | `LZFE012` | **Design tokens** — no inline hex color outside the token/theme/palette files; color comes from the theme | **shipped** | one palette; theming (dark mode, white-label) survives |
-| `LZFE013` | **Mutation surfaces its error** — a react-query `.mutate(...)`/`.mutateAsync(...)` in a ViewModel routes its failure somewhere (inline `onError`, a read `.isError` state, a try/catch or `.catch()` on `mutateAsync`, or a propagated return). An **empty** `onError: () => {}` is flagged too — the silent failure with paperwork | **shipped** | the front-side of the backend's `error_handling` — no silent failure, no `onError` theater |
+| `LZFE013` | **Mutation surfaces its error** — a react-query `.mutate(...)`/`.mutateAsync(...)` in a ViewModel routes its failure somewhere (inline `onError`, a read `.isError` state, a try/catch or `.catch()` on `mutateAsync`, or a propagated return). An **empty** `onError: () => {}` is flagged too — the silent failure with paperwork. With the `LZFE027` defaults wired, the app sets `{ globalSurface: true }`: the global `MutationCache.onError` IS the surface (react-query fires it regardless of per-call handlers), so a bare `.mutate()` passes and only the empty handler stays flagged | **shipped** | the front-side of the backend's `error_handling` — no silent failure, no `onError` theater |
 | `LZFE014` | **No hardcoded copy** — user-facing JSX text + copy props (`placeholder`, `label`, `accessibilityLabel`…) in a View go through i18n (`t()`), not literals | **shipped** | feeds the catalog that `LZFE011` then keeps complete |
 | `LZFE015` | **No imperative redirect inside `useEffect`** — a redirect-on-state is declarative (`if (terminal) return <Redirect/Navigate … />`), never `router.replace`/`router.navigate`/a `useNavigate()` call in an effect: it runs after paint and re-fires every render (a flash on TanStack; on expo-router web the router freezes the source screen → an infinite navigation/refetch loop). `push`/`back` on a user action stay allowed. Scoped to the navigating layer (views + routes) | **shipped** | the pilot shipped this loop twice (Splash, then ChooseRole + 5 screens) before the rule existed |
 | `LZFE016` | **Session one door** — the bearer token is written through one seam (`lib/session`, where the write is paired with a `me`-cache reset); a `*.viewModel`/`*.view` importing the token setter (`setAccessToken`…) directly — **or writing a token-ish key straight to storage** (`localStorage`/`AsyncStorage`/`SecureStore.setItem("…token…", …)`) — is the scattered write that forgets the reset | **shipped** | pauta: a forgotten reset after registration bounced the new user back to `/login` |
@@ -289,6 +330,8 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui` (the app-owned kit). A missing primitive is extended in `ui/`, never inlined. The `LZFE002` one-door pattern applied to paint — the design band, [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md) | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every visual decision |
 | `LZFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`/`margin*`/`gap`/`rowGap`/`columnGap`/`borderRadius`/`fontSize`/`lineHeight`; `0` allowed), no Tailwind arbitrary value (`[13px]`) in `className` | planned (design band) | off-scale values are how rhythm dies one screen at a time |
 | `LZFE026` | **Semantic colors** — outside token files: no `rgb()/hsl()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `LZFE012`: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
+| `LZFE027` | **QueryClient carries the mutation defaults** — every production `new QueryClient(...)` wires `mutationCache: new MutationCache({ onSuccess, onError })`: success invalidates every active query + posts the success note (`meta.silent` opts out of the note), failure routes through the feedback seam unconditionally. Tests and the shared test harness (`test/`, `test-utils/`) build bare clients freely. Scaffolded as `lib/query.ts` | **shipped** | pauta: a created category only appeared after F5, with no toast — 13 of 43 ViewModels had no invalidation at all |
+| `LZFE028` | **No manual refetch ritual** — an `onSuccess` whose entire body is refetch/invalidate calls (inline, named, or `useCallback`-wrapped) duplicates the `LZFE027` defaults; delete it. A handler that does *more* than refetch (navigate, reset, hand off an id) is behavior — never flagged. Warn-tier: reveals, does not gate | **shipped** | pauta: 30 of 43 ViewModels hand-rolled `onSuccess: refetch` — the convention the majority groped toward, pinned so the minority can't forget it |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
