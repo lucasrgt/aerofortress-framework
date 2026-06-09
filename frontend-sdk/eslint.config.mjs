@@ -56,6 +56,13 @@ export default [
       "lazuli/design-tokens": "error",
       "lazuli/mutation-error-handled": "error",
       "lazuli/no-hardcoded-copy": "error",
+      // The routing harness (LZFE015–019) — declarative redirects, one session seam, a tri-state guard, guarded
+      // params + Back. Error-tier (correctness), router-agnostic (expo + TanStack). The default a generated app gets.
+      "lazuli/no-router-replace-in-effect": "error",
+      "lazuli/session-one-door": "error",
+      "lazuli/guard-tristate": "error",
+      "lazuli/route-param-guard": "error",
+      "lazuli/safe-back": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",
