@@ -18,7 +18,7 @@ namespace Lazuli.Doctor;
 /// Like <c>LZ0008</c>/<c>LZ0010</c>, journeys live in test files excluded from the app compilation, so this
 /// reads them as <c>AdditionalFiles</c> and works textually: for each <c>[Journey(...)]</c> it brace-matches
 /// the test method body and looks for an assertion token (<c>Assert</c>, FluentAssertions' <c>Should</c>, or
-/// a <c>Verify</c>/<c>Expect</c> helper). Warning-tier — the heuristic is lenient by design (a body that
+/// a <c>Verify</c>/<c>Expect</c>/<c>Ensure</c> helper — <c>EnsureSuccessStatusCode()</c> is a real assertion: it throws on failure). Warning-tier — the heuristic is lenient by design (a body that
 /// delegates to a custom-named asserter is not flagged), so it catches the empty journey, not the clever one.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -44,10 +44,11 @@ public sealed class JourneyAssertionAnalyzer : DiagnosticAnalyzer
         @"\[\s*Journey\s*\(\s*(?:covers\s*:\s*)?typeof\s*\(\s*(?<slice>[\w.]+)\s*\)\s*,\s*(?:\w+\s*\.\s*)?(?:Happy|Sad)\b[^\]]*\]",
         RegexOptions.Compiled);
 
-    // An assertion token: xUnit Assert.*, FluentAssertions .Should(), or a Verify/Expect helper. Boundary on the
-    // left only, so helper names that extend the token (VerifyRejected, AssertBalance) still count — lenient by
-    // design: the rule flags the empty journey, not the one that asserts through a custom-named helper.
-    private static readonly Regex AssertionPattern = new(@"\b(Assert|Should|Verify|Expect)", RegexOptions.Compiled);
+    // An assertion token: xUnit Assert.*, FluentAssertions .Should(), a Verify/Expect helper, or an Ensure*
+    // call (EnsureSuccessStatusCode throws on failure — a real assertion). Boundary on the left only, so helper
+    // names that extend the token (VerifyRejected, AssertBalance) still count — lenient by design: the rule
+    // flags the empty journey, not the one that asserts through a custom-named helper.
+    private static readonly Regex AssertionPattern = new(@"\b(Assert|Should|Verify|Expect|Ensure)", RegexOptions.Compiled);
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
