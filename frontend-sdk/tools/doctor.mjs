@@ -35,6 +35,7 @@ export const LZFE_CODES = {
   "lazuli/semantic-colors": "LZFE026",
   "lazuli/query-client-defaults": "LZFE027",
   "lazuli/no-manual-refetch-ritual": "LZFE028",
+  "lazuli/refresh-one-door": "LZFE029",
 };
 
 /**

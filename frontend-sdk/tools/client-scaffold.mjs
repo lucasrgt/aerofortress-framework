@@ -18,7 +18,11 @@ import { join } from "node:path";
 
 /** The orval mutator + client seam (lib/lazuli-client.ts) — the single HTTP door every generated hook calls. */
 export function renderMutator() {
-  return `import axios, { type AxiosRequestConfig } from "axios";
+  return `import axios, {
+  type AxiosRequestConfig,
+  type AxiosError,
+  type InternalAxiosRequestConfig,
+} from "axios";
 
 // Web detection without importing react-native's Platform (which would pull the RN runtime into the
 // platform-agnostic data-door path + the jsdom test env). \`document\` exists only on web/DOM.
@@ -54,6 +58,59 @@ let accessToken: string | null = null;
 export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
+
+// ── Session restore — the ONE rotation path (LZFE029: refresh-one-door) ─────────────────────────────────
+// The refresh credential is an httpOnly cookie on web (invisible to JS; it rides via withCredentials) or a
+// secure-stored token on native. Rotating it TWICE in parallel replays a spent token and trips the backend's
+// theft detection, burning the whole session family — so every consumer shares ONE in-flight refresh, and
+// the 401 interceptor below is the only place a rotation starts. Cookie mode posts an empty body; a native
+// (body-mode) client instead wires its stored refresh token through the session seam's gated boot bootstrap
+// — either way: one door, single-flight, never both paths at once.
+const REFRESH_PATH = "/account/refresh"; // the app's Refresh slice route (Lazuli.Auth picks cookie/body by X-Client)
+
+let refreshing: Promise<string | null> | null = null;
+
+/** Exchange the refresh credential for a fresh access token — single-flight: concurrent callers share the
+ * one in-flight rotation. Resolves to the new token, or null when there is no live session. */
+export function refreshAccessToken(): Promise<string | null> {
+  refreshing ??= instance
+    .post<{ accessToken?: string }>(REFRESH_PATH, {})
+    .then((r) => {
+      const token = r.data?.accessToken ?? null;
+      setAccessToken(token);
+      return token;
+    })
+    .catch(() => {
+      setAccessToken(null);
+      return null;
+    })
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
+
+// On a 401, transparently refresh once and replay the request — restores the session on a cold load (the
+// in-memory bearer is gone, the refresh credential survives) and rides over a mid-session expiry without
+// bouncing to login. The auth routes are exempt and each request retries at most once, so a genuinely
+// anonymous caller settles to 401 instead of looping.
+instance.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const original = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
+    const url = original?.url ?? "";
+    const isAuthRoute = url.includes(REFRESH_PATH) || url.includes("/login");
+    if (error.response?.status === 401 && original && !original._retried && !isAuthRoute) {
+      original._retried = true;
+      const token = await refreshAccessToken();
+      if (token) {
+        original.headers.set("Authorization", \`Bearer \${token}\`);
+        return instance.request(original);
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 /** The mutator orval wires every endpoint through: inject auth, return the body. */
 export const lazuliClient = async <T>(config: AxiosRequestConfig): Promise<T> => {
@@ -122,6 +179,9 @@ declare module "@tanstack/react-query" {
     mutationMeta: {
       /** Skip the success note for this mutation (a sign-in, a drag reorder — the UI change IS the feedback). */
       silent?: boolean;
+      /** Skip the ERROR note — legal ONLY when the failure is a modeled, visible state the screen renders
+       * (an anonymous probe settling onto the login screen), never a way to hide a real failure. */
+      expectedFailure?: boolean;
     };
   }
 }
@@ -142,10 +202,11 @@ export function createQueryClient(copy: MutationCopy): QueryClient {
         void queryClient.invalidateQueries();
         if (mutation.meta?.silent !== true) feedback.success(copy.saved());
       },
-      // Deliberately unconditional: a mutation failure ALWAYS surfaces. A screen that also reads .isError just
-      // adds a richer inline surface on top — double feedback beats the silent kind.
-      onError: (error) => {
-        feedback.error(copy.failed(error));
+      // A mutation failure ALWAYS surfaces — the only opt-out is \`meta.expectedFailure\`, for the mutation
+      // whose failure is a modeled, visible state (not an error to announce). A screen that also reads
+      // .isError just adds a richer inline surface on top — double feedback beats the silent kind.
+      onError: (error, _variables, _context, mutation) => {
+        if (mutation.meta?.expectedFailure !== true) feedback.error(copy.failed(error));
       },
     }),
   });

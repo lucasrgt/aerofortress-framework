@@ -231,6 +231,37 @@ error mapping per call site — the boundary owns it once. The frontend's write 
 `MutationCache`; this convention just moves the two defaults (cache coherence, outcome feedback)
 to where the boundary already is.
 
+**The one error opt-out: `meta: { expectedFailure: true }`.** A mutation failure always surfaces —
+except when the failure *is* a modeled, visible state the screen renders. The canonical case: an
+anonymous visitor's refresh probe failing IS the login screen, not an error to toast. The flag's
+name carries the bar: it marks an *expected* outcome the UI already shows, never a way to hide a
+real failure (an empty `onError` stays flagged by `LZFE013` regardless).
+
+---
+
+## Session restore — one rotation path (LZFE029)
+
+The refresh credential — an httpOnly cookie on web, a secure-stored token on native — is **burned
+by parallel rotation**: the backend's theft detection sees a spent token replayed and revokes the
+whole session family. So session restore is a **one-door** discipline, the LZFE002/016 shape
+applied to rotation:
+
+- **The blessed door (web): the client seam's 401 interceptor.** The scaffolded mutator
+  (`lib/lazuli-client.ts`) ships `refreshAccessToken()` — **single-flight** (concurrent callers
+  share the one in-flight rotation) — and an interceptor that, on a 401 outside the auth routes,
+  refreshes once and replays the request. A cold load and a mid-session expiry both restore
+  transparently inside the first attempt: no anonymous flash, no bounce to login, and a genuinely
+  anonymous caller settles to 401 at once (pair it with a no-retry-on-401 read policy in the
+  QueryClient's `defaultOptions`).
+- **The alternative door (native/body-mode): the session seam's gated boot bootstrap** — the
+  stored refresh token is exchanged once at app start, with navigation gated on `ready` so nothing
+  else is in flight. One deliberate rotation, then the app proceeds.
+- **Never both.** A bootstrap probe in the session seam *and* a 401 interceptor in the client both
+  fire on a cold load — two parallel rotations, one burned family. A pilot shipped each half in the
+  same week from different branches; the merge is where the race was caught. `LZFE029` closes the
+  door mechanically: the refresh hook/operation (and any hand-rolled POST to a refresh route) is
+  consumable only inside `lib/lazuli-client` / `lib/session`.
+
 ---
 
 ## Endpoint kinds — the wiring vocabulary
@@ -332,6 +363,7 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE026` | **Semantic colors** — outside token files: no `rgb()/hsl()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `LZFE012`: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
 | `LZFE027` | **QueryClient carries the mutation defaults** — every production `new QueryClient(...)` wires `mutationCache: new MutationCache({ onSuccess, onError })`: success invalidates every active query + posts the success note (`meta.silent` opts out of the note), failure routes through the feedback seam unconditionally. Tests and the shared test harness (`test/`, `test-utils/`) build bare clients freely. Scaffolded as `lib/query.ts` | **shipped** | pauta: a created category only appeared after F5, with no toast — 13 of 43 ViewModels had no invalidation at all |
 | `LZFE028` | **No manual refetch ritual** — an `onSuccess` whose entire body is refetch/invalidate calls (inline, named, or `useCallback`-wrapped) duplicates the `LZFE027` defaults; delete it. A handler that does *more* than refetch (navigate, reset, hand off an id) is behavior — never flagged. Warn-tier: reveals, does not gate | **shipped** | pauta: 30 of 43 ViewModels hand-rolled `onSuccess: refetch` — the convention the majority groped toward, pinned so the minority can't forget it |
+| `LZFE029` | **Refresh one-door** — the refresh hook/operation (and any hand-rolled `POST` to a refresh route) is consumed only inside the rotation doors (`lib/lazuli-client`, `lib/session`); anywhere else is a second rotation path. Type-only imports stay free | **shipped** | pauta near-miss: a session-seam refresh bootstrap and a client 401 interceptor landed the same week from different branches — two cold-load rotations would have tripped the backend's theft detection and burned the session family |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't

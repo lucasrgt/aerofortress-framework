@@ -41,15 +41,28 @@ describe("client-scaffold", () => {
     expect(config).toContain('target: "./src/client.gen/shop.ts"');
   });
 
-  it("the QueryClient carries the write-side defaults: invalidate on success, unconditional feedback on error", () => {
+  it("the QueryClient carries the write-side defaults: invalidate on success, feedback on error", () => {
     const query = renderQueryClient();
 
     // The convention's two halves: success marks the world stale + posts the note (meta.silent opts out of the
-    // note only); failure ALWAYS surfaces — there is no silent flag on onError, by design.
+    // note only); failure always surfaces, with meta.expectedFailure as the ONLY error opt-out — and it is for
+    // failures modeled as visible state, never for hiding real errors. `silent` must NOT reach onError.
     expect(query).toContain("void queryClient.invalidateQueries();");
     expect(query).toContain("mutation.meta?.silent !== true");
-    expect(query).toContain("feedback.error(copy.failed(error));");
-    expect(query).not.toMatch(/onError:[\s\S]*?meta\?\.silent/);
+    expect(query).toContain("mutation.meta?.expectedFailure !== true");
+    expect(query).not.toMatch(/onError:[\s\S]*?meta\?\.silent\b/);
+  });
+
+  it("the mutator owns the ONE session-rotation path: single-flight refresh + a once-only 401 replay", () => {
+    const mutator = renderMutator();
+
+    // Single-flight: concurrent callers share the in-flight rotation (parallel rotation replays a spent
+    // token and trips the backend's theft detection, burning the session family).
+    expect(mutator).toContain("refreshing ??=");
+    expect(mutator).toContain("export function refreshAccessToken");
+    // The interceptor replays at most once and exempts the auth routes, so an anonymous caller settles to 401.
+    expect(mutator).toContain("_retried");
+    expect(mutator).toContain("isAuthRoute");
   });
 
   it("the feedback seam exposes one door with a visible (console) fallback until the shell wires a sink", () => {

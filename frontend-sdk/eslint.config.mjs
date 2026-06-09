@@ -77,6 +77,9 @@ export default [
       // feedback on error), and the hand-rolled `onSuccess: refetch` ritual those defaults obsolete is revealed.
       "lazuli/query-client-defaults": "error",
       "lazuli/no-manual-refetch-ritual": "warn",
+      // The session-rotation door (LZFE029) — refresh is consumed by ONE seam (the client's single-flight
+      // interceptor / the session seam); a second rotation path trips the backend's theft detection.
+      "lazuli/refresh-one-door": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",

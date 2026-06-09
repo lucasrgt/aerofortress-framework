@@ -617,5 +617,36 @@ ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"],
   ],
 });
 
+// LZFE029 — refresh-one-door: the session rotation has exactly one consumer surface (the client seam's
+// single-flight interceptor / the session seam's gated bootstrap). A second consumer — the refresh hook/op
+// imported into a screen, or a hand-rolled POST to a refresh route — eventually rotates in parallel and the
+// backend's theft detection burns the session family.
+ruleTester.run("refresh-one-door", plugin.rules["refresh-one-door"], {
+  valid: [
+    // The session seam may consume the rotation (a gated boot bootstrap composes the client's single-flight).
+    { filename: "src/lib/session.ts", code: `import { refreshAccessToken } from "@/lib/lazuli-client";` },
+    { filename: "src/lib/session/useSession.ts", code: `import { refresh } from "@/client.gen/sample";` },
+    // The client seam itself defines the rotation — its own raw post is the door's inside.
+    { filename: "src/lib/lazuli-client.ts", code: `instance.post("/account/refresh", {});` },
+    // Type-only imports are contract vocabulary, not a rotation path.
+    { filename: "Foo.viewModel.ts", code: `import type { refresh } from "@/client.gen/sample";` },
+    // Unrelated names from the client are fine.
+    { filename: "Foo.viewModel.ts", code: `import { useLogin } from "@/client.gen/sample";` },
+    // A refresh-named import from a NON-client source is not the rotation (e.g. a UI helper).
+    { filename: "Foo.viewModel.ts", code: `import { refresh } from "@/lib/animation";` },
+    // Tests exercise freely.
+    { filename: "Session.test.tsx", code: `import { refreshAccessToken } from "@/lib/lazuli-client";` },
+  ],
+  invalid: [
+    // The near-miss shapes: the hook/op consumed outside the doors…
+    { filename: "Foo.viewModel.ts", code: `import { useRefresh } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
+    { filename: "src/app/_layout.tsx", code: `import { refresh } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
+    { filename: "Foo.viewModel.ts", code: `import { refreshAccessToken } from "@/lib/lazuli-client";`, errors: [{ messageId: "offdoor" }] },
+    // …and the hand-rolled rotation.
+    { filename: "Foo.viewModel.ts", code: `instance.post("/account/refresh", {});`, errors: [{ messageId: "raw" }] },
+    { filename: "src/lib/api-helpers.ts", code: `axios.post("/auth/refresh-token");`, errors: [{ messageId: "raw" }] },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
