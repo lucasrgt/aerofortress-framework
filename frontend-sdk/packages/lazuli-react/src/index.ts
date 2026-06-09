@@ -15,3 +15,4 @@ export {
 export { useSession } from "./useSession";
 export { type BackRouter, safeBack } from "./nav";
 export { type RequiredParam, requiredParam } from "./params";
+export { type ApiErrorCopyOptions, type I18nLike, apiErrorCode, apiErrorCopy } from "./api-error";
