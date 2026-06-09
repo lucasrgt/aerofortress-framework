@@ -17,6 +17,17 @@ export function extractHooks(clientText) {
 }
 
 /**
+ * Whether a file is a legal data door whose hook references count as "wired": a screen's `*.viewModel.ts`, or
+ * the auth/routing infra seams (`lib/session*`, `lib/guards*`) that LZFE002 already blesses as client consumers.
+ * Without the doors, the session hooks (`useMe`/`useRefresh`/`useLogout`) report loose from day one — wallpaper
+ * that buries the real gaps the metric exists to reveal.
+ */
+export function isDataDoor(filePath) {
+  const p = filePath.replace(/\\/g, "/");
+  return p.endsWith(".viewModel.ts") || /(^|\/)lib\/(session|guards)($|[./])/.test(p);
+}
+
+/**
  * Back->front coverage of the generated hooks against the ViewModel layer (the only legal data door).
  * @param {string[]} hooks - hook names (from extractHooks)
  * @param {string} wiredText - concatenated source of every *.viewModel.ts
@@ -48,11 +59,13 @@ function walk(dir, pred) {
   return out;
 }
 
-// CLI: node tools/endpoint-coverage.mjs <client.gen file> <featuresDir>
+// CLI: node tools/endpoint-coverage.mjs <client.gen file> <srcDir>
+// Pass the source ROOT (not only features/): the scan collects every data door under it — the ViewModels plus
+// the lib/session|guards infra seams — so legally-consumed session hooks never pollute the loose list.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const [, , clientFile, featuresDir] = process.argv;
-  if (!clientFile || !featuresDir) {
-    console.error("usage: node tools/endpoint-coverage.mjs <client.gen file> <featuresDir>");
+  const [, , clientFile, srcDir] = process.argv;
+  if (!clientFile || !srcDir) {
+    console.error("usage: node tools/endpoint-coverage.mjs <client.gen file> <srcDir>");
     process.exit(2);
   }
   if (!existsSync(clientFile)) {
@@ -60,7 +73,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(0);
   }
   const hooks = extractHooks(readFileSync(clientFile, "utf8"));
-  const wiredText = walk(featuresDir, (p) => p.endsWith(".viewModel.ts"))
+  const wiredText = walk(srcDir, isDataDoor)
     .map((p) => readFileSync(p, "utf8"))
     .join("\n");
   const r = checkEndpointCoverage(hooks, wiredText);
