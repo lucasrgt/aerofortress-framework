@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit -p packages/lazuli-react/tsconfig.json",
     "lint": "node packages/eslint-plugin/index.test.cjs",
     "scaffold": "node tools/scaffold-feature.mjs",
+    "scaffold:design": "node tools/design-scaffold.mjs",
     "assemble-i18n": "node tools/assemble-i18n.mjs",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run test"
