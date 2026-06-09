@@ -108,26 +108,36 @@ framework source (several apparent gaps turned out already owned: `ClaimsCurrent
 `Lazuli.Auth`; refresh rotation + theft detection and `TenantDbContext` ship as `lazuli g auth`
 scaffold templates — the lazuli way, app-owned by construction).
 
+**Progress — 2026-06-09 (same day):** all six findings attacked. Scalar VO transparency →
+`ScalarJsonConverter<TVo,TPrim>` (Abstractions) + automatic schema mirroring in `AddLazuliOpenApi`,
+dogfooded on the sample's `Money`. Postgres harness → `Lazuli.Testing.Postgres` (`PostgresTestDatabase`).
+Rate-limit bridge → `RejectAsLazuliError()` + the framework's `PlatformErrorCodes`. Session seam →
+`createSessionSeam` + `useSession` in `@lazuli/react` (cache reset paired by construction). Error-copy
+bridge → `apiErrorCode`/`apiErrorCopy` in the spine (structural i18n). Mutator → `tools/client-scaffold.mjs`
+(mutator + orval config, LZFE020-conformant). Pilot mirror rebased to plugin 0.4.0 with LZFE021/022 adopted —
+zero new errors, full lint chain + typecheck + 125 tests green. Still open from the reverse-drift item: the
+app adopting the spine unions themselves (blocked on `@lazuli/react` publish, tracked in P2).
+
 ### Backend
 
-- [ ] **Scalar VO wire transparency has no framework mechanism.** Every scalar `[ValueObject]` the
+- [x] **Scalar VO wire transparency has no framework mechanism.** Every scalar `[ValueObject]` the
   pilot adds needs a hand-written `[JsonConverter]` + a per-type branch in the `Web.cs` OpenAPI
   schema transformer (`hostpoint/src/Hostpoint.Api/Platform/Web.cs:52`, `Money.cs:54`, `Slug.cs:46`)
   or the contract emits an empty object and the generated client breaks. The mechanism is generic:
   a `Lazuli.AspNetCore` schema-transformer that maps a `[ValueObject]` with a primitive-writing
   converter to its primitive schema (`Money`→`int64`, `Slug`→`string`). _FRAMEWORK-GAP — this is the
   pilot's most repeated per-feature toll._
-- [ ] **Testcontainers Postgres harness with template-database cloning.**
+- [x] **Testcontainers Postgres harness with template-database cloning.**
   (`hostpoint/tests/Hostpoint.Tests/TestDatabase.cs`) One container, one migration into a template DB,
   then `CREATE DATABASE … TEMPLATE` per test/keyed group, pooling off. `Lazuli.Testing` ships only the
   WebApplicationFactory harness + InMemory; the real-database leg every serious pilot needs lives in
   the app. Candidate: `Lazuli.Testing.Postgres`. _FRAMEWORK-GAP._
-- [ ] **Rate-limiting wired to the error envelope.** The pilot wires ASP.NET's limiter and renders 429
+- [x] **Rate-limiting wired to the error envelope.** The pilot wires ASP.NET's limiter and renders 429
   as the framework's `ErrorBody` with a `platform.rate_limited` registry code
   (`hostpoint/src/Hostpoint.Api/Platform/RateLimiting.cs`). The framework owns `ErrorKind.RateLimit` and
   the envelope but ships no limiter↔envelope bridge; each app re-derives the `OnRejected` glue. Port the
   bridge (policies stay app-owned). _FRAMEWORK-GAP (the glue), policies APP-SPECIFIC._
-- [ ] _(convention, doc-only)_ **`PlatformErrorCodes` registry** — platform-tier codes (rate limit, etc.)
+- [x] _(convention, doc-only)_ **`PlatformErrorCodes` registry** — platform-tier codes (rate limit, etc.)
   live in one `*ErrorCodes` class so LZ0018/19 + the OpenAPI enum pick them up like module codes.
   Document in CONVENTIONS (platform layer section); no code needed.
 - [ ] _(hold, 1-pilot)_ JSON-list `ValueConverter`+`ValueComparer` helper; sandbox env-gated vendor
@@ -136,23 +146,23 @@ scaffold templates — the lazuli way, app-owned by construction).
 
 ### Frontend
 
-- [ ] **The session seam has no framework home.** `onAuthenticated` / `bootstrapSession` /
+- [x] **The session seam has no framework home.** `onAuthenticated` / `bootstrapSession` /
   `clearSession` + the `useSession` boot hook + the `refresh-token.ts`/`.web.ts` platform-seam pair
   (`hostpoint/clients/app-core/src/lib/session/*`) are the generic mechanics LZFE016/017 *steer
   toward*, yet the spine ships only the read-side (`SessionState`). The write-side trio (token write
   paired with `me`-cache reset by construction) belongs in `@lazuli/react` (storage injected as a
   port). _FRAMEWORK-GAP — the harness polices a seam the framework doesn't ship._
-- [ ] **`apiErrorCopy()` — the error-code→copy bridge.**
+- [x] **`apiErrorCopy()` — the error-code→copy bridge.**
   (`hostpoint/clients/app-core/src/lib/api-error.ts`) Reads `ErrorBody.code` off an axios error, looks
   up the `api-errors` i18n namespace, falls back to a generic key. It is the runtime half of the
   `error-code-coverage` loop (the tool proves the catalog is complete; this consumes it). Generic —
   graduate to the spine or ship in the scaffold. _FRAMEWORK-GAP._
-- [ ] **Mutator/`configureClient` template.** The orval mutator (`lazuli-client.ts`: auth injection,
+- [x] **Mutator/`configureClient` template.** The orval mutator (`lazuli-client.ts`: auth injection,
   base-URL port, `Result` envelope) + boot-time `configureClient()` exist only in the pilot; the SDK's
   `generate.mjs` scaffolds features against a client whose mutator nothing scaffolds. Folds into the
   tracked **`lazuli gen client`** item — listed here so the mutator template isn't forgotten when that
   lands.
-- [ ] **Reverse drift (pilot behind framework).** The hostpoint `eslint-plugin-lazuli` mirror is
+- [~] **Reverse drift (pilot behind framework).** The hostpoint `eslint-plugin-lazuli` mirror is
   v0.3.0 — missing LZFE021/022 and the hardened LZFE002/011/013/016/018 — and the app forks
   `AsyncState` locally while not using the spine's `SessionState`/`requiredParam`/`combineAsyncStates`
   at all (guards still branch on a raw `session.ready` boolean — exactly what LZFE017 exists to
