@@ -106,8 +106,8 @@ Screen({ children })                                                  // page co
 Stack({ children, gap = "md", direction = "vertical", align, padding }: {
   gap?: SpaceToken; direction?: "vertical" | "horizontal";
   align?: "start" | "center" | "end" | "stretch"; padding?: SpaceToken })
-Text({ children, role = "body", tone = "default" }: {
-  role?: TextRole; tone?: "default" | "muted" | "danger" | "inverse" })
+Text({ children, role = "body", tone = "default", alert }: {
+  role?: TextRole; tone?: "default" | "muted" | "danger" | "inverse"; alert?: boolean })
 Button({ label, onPress, variant = "primary", disabled, loading }: {
   label: string; onPress: () => void;
   variant?: "primary" | "secondary" | "danger"; disabled?: boolean; loading?: boolean })
@@ -154,7 +154,8 @@ Field
 
 - Field-level validation errors render **inside the Field** — never as a toast, never only at the top.
 - The **mutation error** (the command failed) is a separate `role="alert"` block rendered above the
-  submit — the visible half of the `LZFE013` discipline (every mutation surfaces its error).
+  submit (`Text role="label" tone="danger" alert`) — the visible half of the `LZFE013` discipline
+  (every mutation surfaces its error).
 - The submit `Button` carries `loading` while the mutation is pending. Double-submit is a kit
   guarantee (loading blocks), not a per-form fix.
 - Forms follow the blessed shape ([FRONTEND-CONVENTIONS.md §Forms](FRONTEND-CONVENTIONS.md)):
@@ -249,8 +250,8 @@ the recipe's job, binding is yours.
 
 | Archetype | Canonical unit | Use for |
 |-----------|---------------|---------|
-| **list** | `examples/sample-app/frontend/core/src/items/` | a server collection: `<Resource>` with ready/empty/error/loading rendered through kit states |
-| **form** | `examples/sample-app/frontend/core/src/itemForm/` *(lands with the canonical-screens stage)* | a create/edit command: Field anatomy, zod validation surfaced per-field, mutation error block, submit states |
+| **list** | `examples/sample-app/frontend/core/src/items/` | a server collection: `<Resource>` with ready/empty/error/loading rendered through kit states (`EmptyState`, `ErrorState` + retry), title + `Card` rows |
+| **form** | `examples/sample-app/frontend/core/src/deposit/` | a create/edit command (mirrors the backend's real `Deposit` slice): Field anatomy, zod validation surfaced per-field, the `role="alert"` command error, submit loading states, declarative success |
 
 Archetypes earn recipes through pilot demand (two independent requests for the same archetype =
 spec the recipe) — dashboards, wizards, settings screens arrive that way, never speculatively.

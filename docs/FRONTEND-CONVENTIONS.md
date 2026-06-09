@@ -380,10 +380,9 @@ Both are **warn-first** — a revealed backlog promoted to error per-rule once c
 `has-accessibility-hint` **off**: a hint is supplementary (only for non-obvious actions), and on by
 default it buries the high-signal rules under noise. This is the same posture as the curated
 community kit (`sonarjs`, `no-secrets`, `@tanstack/query`): external rules wired *alongside* the LZFE
-plugin, never reinvented inside it. The design layer raises this bar exactly once: when the
-canonical screens land (the recipes — [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md)), **web
-jsx-a11y promotes to error** for the sample tree — the exemplar proves green is reachable, so the
-bar rises then, not before.
+plugin, never reinvented inside it. The design layer raised this bar exactly once: with the
+canonical screens (the recipes — [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md)), **web jsx-a11y
+runs at error** for the sample tree — the exemplar proved green reachable, so the bar rose with it.
 
 ## Scope — and non-goals
 

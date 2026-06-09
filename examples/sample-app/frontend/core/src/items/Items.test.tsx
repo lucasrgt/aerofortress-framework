@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { describe, it, expect } from "vitest";
-import { render, renderHook } from "@testing-library/react";
+import { afterEach, describe, it, expect } from "vitest";
+import { cleanup, render, renderHook, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useItemsModel } from "./Items.viewModel";
 import { ItemsView } from "./Items.view";
@@ -15,6 +15,8 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
+afterEach(cleanup);
+
 describe("Items", () => {
   it("starts its resource in loading while the list is fetched (LZFE005)", () => {
     const { result } = renderHook(() => useItemsModel(), { wrapper });
@@ -24,5 +26,10 @@ describe("Items", () => {
   it("renders the View without crashing (LZFE006)", () => {
     const { container } = render(<ItemsView />, { wrapper });
     expect(container).toBeTruthy();
+  });
+
+  it("renders the empty branch through the kit when the list settles empty", async () => {
+    render(<ItemsView />, { wrapper });
+    expect(await screen.findByText("Nothing here yet")).toBeTruthy();
   });
 });

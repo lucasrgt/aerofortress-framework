@@ -69,10 +69,10 @@ export default [
       "lazuli/no-raw-html": "error",
       "lazuli/no-open-redirect": "error",
       // The design band (LZFE024–026, DESIGN-CONVENTIONS.md) — views render @/ui only, spacing/typography from the
-      // scale, color by semantic role. Warn-first (the house posture); the canonical-screens stage promotes to error.
-      "lazuli/ui-door": "warn",
-      "lazuli/scale-only": "warn",
-      "lazuli/semantic-colors": "warn",
+      // scale, color by semantic role. Error-tier since the canonical screens landed (the recipes prove the bar).
+      "lazuli/ui-door": "error",
+      "lazuli/scale-only": "error",
+      "lazuli/semantic-colors": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",
@@ -80,11 +80,14 @@ export default [
       "sonarjs/cognitive-complexity": ["warn", 25],
     },
   },
-  // a11y — web (DOM): jsx-a11y. Inherits the type-aware parse setup from the {core,web} block above.
+  // a11y — web (DOM): jsx-a11y at ERROR tier — promoted with the canonical screens (the kit wires the floor:
+  // label↔control, role=alert errors, aria-busy, the focus ring), so the exemplar tree holds the bar it preaches.
+  // aria-role checks DOM elements only (ignoreNonDOM): the kit's `Text role=` is a TextRole (typography), not an
+  // ARIA role — components map their props internally; the host-element half of the check stays on.
   {
     files: ["../examples/sample-app/frontend/web/**/*.{ts,tsx}"],
     plugins: { "jsx-a11y": jsxA11y },
-    rules: toWarn(jsxA11y.flatConfigs.recommended.rules),
+    rules: { ...jsxA11y.flatConfigs.recommended.rules, "jsx-a11y/aria-role": ["error", { ignoreNonDOM: true }] },
   },
   // a11y — mobile (RN): react-native-a11y. The {core,web} block doesn't cover mobile, so this carries its own
   // (type-free) parse setup; a11y rules are AST-based and need no type info. has-accessibility-hint is off

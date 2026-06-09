@@ -67,8 +67,8 @@ Screen({ children })                                                  // page co
 Stack({ children, gap = "md", direction = "vertical", align, padding }: {
   gap?: SpaceToken; direction?: "vertical" | "horizontal";
   align?: "start" | "center" | "end" | "stretch"; padding?: SpaceToken })
-Text({ children, role = "body", tone = "default" }: {
-  role?: TextRole; tone?: "default" | "muted" | "danger" | "inverse" })
+Text({ children, role = "body", tone = "default", alert }: {
+  role?: TextRole; tone?: "default" | "muted" | "danger" | "inverse"; alert?: boolean })
 Button({ label, onPress, variant = "primary", disabled, loading }: {
   label: string; onPress: () => void;
   variant?: "primary" | "secondary" | "danger"; disabled?: boolean; loading?: boolean })

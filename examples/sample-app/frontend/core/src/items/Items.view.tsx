@@ -1,13 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { Resource } from "@lazuli/react";
-// Illustrative: the app's design-system primitives. The View reaches the design system through these names only —
-// it never imports `react-native` directly, so layout stays design-system-driven and the View tests on web.
-import { Screen, Stack, Text, EmptyState } from "@/ui";
+import { Card, EmptyState, ErrorState, Screen, Stack, Text } from "@/ui";
 import { useItemsModel } from "./Items.viewModel";
 import type { Item } from "./Items.viewModel";
 
-// CANONICAL VIEW — render only (LZFE001). It consumes the resource through <Resource>, so loading / error / empty
-// are handled by construction and the list body only ever runs with resolved data. No isPending/isError here.
+// CANONICAL LIST VIEW — THE list recipe (DESIGN-CONVENTIONS.md §Recipes): every async branch renders through the
+// kit (loading text, ErrorState with the spine's retry, EmptyState), the ready body is title + Card rows. Render
+// only (LZFE001); no isPending/isError here (LZFE010); everything visual through @/ui (LZFE024). Instantiate this
+// shape for any collection screen — never compose from blank.
 export function ItemsView() {
   const { t } = useTranslation("items");
   const { state } = useItemsModel();
@@ -15,6 +15,18 @@ export function ItemsView() {
   return (
     <Resource
       state={state.items}
+      loading={
+        <Screen>
+          <Stack gap="sm" align="center" padding="xl">
+            <Text tone="muted">{t("loading")}</Text>
+          </Stack>
+        </Screen>
+      }
+      error={(message, retry) => (
+        <Screen>
+          <ErrorState title={message} retryLabel={t("retry")} onRetry={retry} />
+        </Screen>
+      )}
       empty={
         <Screen>
           <EmptyState title={t("empty.title")} description={t("empty.description")} />
@@ -27,12 +39,18 @@ export function ItemsView() {
 }
 
 function ItemList({ items }: { items: Item[] }) {
+  const { t } = useTranslation("items");
   return (
     <Screen>
-      <Stack>
-        {items.map((item) => (
-          <Text key={item.id}>{item.name}</Text>
-        ))}
+      <Stack gap="lg">
+        <Text role="title">{t("title")}</Text>
+        <Stack gap="sm">
+          {items.map((item) => (
+            <Card key={item.id} padding="md">
+              <Text>{item.name}</Text>
+            </Card>
+          ))}
+        </Stack>
       </Stack>
     </Screen>
   );

@@ -79,10 +79,14 @@ export function Text({
   children,
   role = "body",
   tone = "default",
+  alert = false,
 }: {
   children: ReactNode;
   role?: TextRole;
   tone?: "default" | "muted" | "danger" | "inverse";
+  // Announces the text to assistive tech (role="alert") — the command-error surface a form renders
+  // above its submit (DESIGN-CONVENTIONS.md §Form anatomy).
+  alert?: boolean;
 }) {
   const Tag = TAG[role];
   const t = text[role];
@@ -91,6 +95,7 @@ export function Text({
     <Tag
       data-ui="text"
       data-role={role}
+      role={alert ? "alert" : undefined}
       style={{
         // Margins belong to the container (Stack gap), so the element defaults are zeroed.
         margin: 0,

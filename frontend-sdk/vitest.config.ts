@@ -35,6 +35,9 @@ export default defineConfig({
       i18next: r("./node_modules/i18next"),
       "@testing-library/react": r("./node_modules/@testing-library/react"),
       "@tanstack/react-query": r("./node_modules/@tanstack/react-query"),
+      "react-hook-form": r("./node_modules/react-hook-form"),
+      zod: r("./node_modules/zod"),
+      "@hookform/resolvers": r("./node_modules/@hookform/resolvers"),
     },
   },
 });

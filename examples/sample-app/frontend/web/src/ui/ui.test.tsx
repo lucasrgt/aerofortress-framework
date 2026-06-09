@@ -106,6 +106,15 @@ describe("Text — typography is one decision", () => {
     render(<Text tone="muted">m</Text>);
     sameColor(screen.getByText("m").style.color, color.textMuted);
   });
+
+  it("announces as an alert when asked — the command-error surface", () => {
+    render(
+      <Text role="label" tone="danger" alert>
+        Failed
+      </Text>,
+    );
+    expect(screen.getByRole("alert").textContent).toBe("Failed");
+  });
 });
 
 describe("Stack — rhythm from the scale", () => {
