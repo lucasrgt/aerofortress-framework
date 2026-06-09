@@ -108,20 +108,13 @@ function returnsRedirect(stmt) {
   return body.some((s) => s.type === "ReturnStatement" && isRedirectElement(s.argument));
 }
 
-/** Whether `fn`'s body contains `if (!name) return <Redirect/Navigate …/>` — the param presence guard. */
-function hasPresenceGuard(fn, name) {
-  let found = false;
+/** Walk every node under `root` (skipping `parent` back-edges), calling `fn`; `fn` returning true stops the walk. */
+function walk(root, fn) {
+  let stop = false;
   const visit = (node) => {
-    if (found || !node || typeof node.type !== "string") return;
-    if (
-      node.type === "IfStatement" &&
-      node.test.type === "UnaryExpression" &&
-      node.test.operator === "!" &&
-      node.test.argument.type === "Identifier" &&
-      node.test.argument.name === name &&
-      returnsRedirect(node.consequent)
-    ) {
-      found = true;
+    if (stop || !node || typeof node.type !== "string") return;
+    if (fn(node) === true) {
+      stop = true;
       return;
     }
     for (const key of Object.keys(node)) {
@@ -131,7 +124,58 @@ function hasPresenceGuard(fn, name) {
       else if (v && typeof v.type === "string") visit(v);
     }
   };
-  if (fn.body) visit(fn.body);
+  visit(root);
+}
+
+/** Whether the identifier `name` appears anywhere in `node`'s subtree (a value reference). */
+function identifierAppears(node, name) {
+  let found = false;
+  walk(node, (n) => (n.type === "Identifier" && n.name === name ? (found = true) : false));
+  return found;
+}
+
+/**
+ * The names that stand in for a param in a presence guard: the param itself plus any local initialized from it —
+ * a coalesce (`const x = a ?? param`) or a rename (`const x = param`). Guarding any of them guards the param, so a
+ * `const id = a ?? b; if (!id) return <Redirect/>` is recognized, not falsely flagged.
+ */
+function aliasesOf(fn, base) {
+  const names = new Set([base]);
+  walk(fn.body, (n) => {
+    if (
+      n.type === "VariableDeclarator" &&
+      n.id.type === "Identifier" &&
+      n.init &&
+      !names.has(n.id.name) &&
+      [...names].some((nm) => identifierAppears(n.init, nm))
+    )
+      names.add(n.id.name);
+    return false;
+  });
+  return names;
+}
+
+/**
+ * Whether an `if` test guarantees a redirect when some name in `names` is absent: a bare `!X`, or a `||`-chain
+ * with `!X` as a disjunct (`!a || !b` redirects when either is missing). `&&` is rejected — `!X && y` does NOT
+ * redirect on `X` alone, so it is not a sound presence guard.
+ */
+function testGuardsAny(test, names) {
+  if (test.type === "UnaryExpression" && test.operator === "!" && test.argument.type === "Identifier")
+    return names.has(test.argument.name);
+  if (test.type === "LogicalExpression" && test.operator === "||")
+    return testGuardsAny(test.left, names) || testGuardsAny(test.right, names);
+  return false;
+}
+
+/** Whether `fn`'s body contains `if (<guards X>) return <Redirect/Navigate …/>` for any name X in `names`. */
+function hasPresenceGuard(fn, names) {
+  let found = false;
+  walk(fn.body, (node) => {
+    if (node.type === "IfStatement" && testGuardsAny(node.test, names) && returnsRedirect(node.consequent))
+      return (found = true);
+    return false;
+  });
   return found;
 }
 
@@ -759,7 +803,7 @@ const rules = {
           for (const prop of node.id.properties) {
             if (prop.type !== "Property" || prop.key.type !== "Identifier" || !ID_PARAM.test(prop.key.name)) continue;
             const local = prop.value.type === "Identifier" ? prop.value.name : prop.key.name;
-            if (!hasPresenceGuard(fn, local))
+            if (!hasPresenceGuard(fn, aliasesOf(fn, local)))
               context.report({ node: prop, messageId: "unguarded", data: { name: local } });
           }
         },

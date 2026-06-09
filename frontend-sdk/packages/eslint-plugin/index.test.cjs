@@ -276,6 +276,12 @@ ruleTester.run("route-param-guard", plugin.rules["route-param-guard"], {
   valid: [
     // The param is guarded before the View renders.
     { filename: "src/app/messaging/chat.tsx", code: `function R() { const { chatId } = useLocalSearchParams(); if (!chatId) return <Redirect href="/messaging" />; return <Chat chatId={chatId} />; }` },
+    // Guarding a COALESCED value covers every param feeding it — `const id = a ?? b; if (!id) …` is not flagged.
+    { filename: "src/app/x.tsx", code: `function R() { const { propertyId, id } = useLocalSearchParams(); const resolved = propertyId ?? id; if (!resolved) return <Redirect href="/" />; return <V propertyId={resolved} />; }` },
+    // Guarding a renamed param covers it.
+    { filename: "src/app/y.tsx", code: `function R() { const { id } = useLocalSearchParams(); const propertyId = id; if (!propertyId) return <Redirect href="/" />; return <V propertyId={propertyId} />; }` },
+    // Two required params guarded together by a `||`-chain — both covered (redirects if either is missing).
+    { filename: "src/app/z.tsx", code: `function R() { const { id, propertyId } = useLocalSearchParams(); if (!id || !propertyId) return <Redirect href="/" />; return <V id={id} propertyId={propertyId} />; }` },
     // A non-id param (an optional filter) does not ghost — not required.
     { filename: "src/app/list.tsx", code: `function R() { const { tab } = useLocalSearchParams(); return <List tab={tab} />; }` },
     // out of scope: not a route file.
