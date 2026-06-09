@@ -42,6 +42,8 @@ ruleTester.run("data-door", plugin.rules["data-door"], {
   valid: [
     { filename: "Foo.viewModel.ts", code: `import { useThing } from "@/client.gen/sample";` },
     { filename: "src/lib/session/session.ts", code: `import { refresh } from "@/client.gen/sample";` },
+    // The seam may be a single FILE, not only a directory (lib/session.ts) — both are the auth/routing infra door.
+    { filename: "src/lib/session.ts", code: `import { useMe, getMeQueryKey } from "@/client.gen/sample";` },
     { filename: "src/lib/guards/RouteGuard.tsx", code: `import { useMe } from "@/client.gen/sample";` },
     { filename: "Foo.view.tsx", code: `import type { Thing } from "@/client.gen/model";` },
   ],
@@ -210,22 +212,96 @@ ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
   ],
 });
 
-// LZFE015 — no router.replace inside useEffect (a guard redirect must be declarative <Redirect>, not an effect that
-// loops on web). Only effect-driven `replace` is banned; user-action push/back and onPress replace stay allowed.
+// LZFE015 — no imperative redirect inside useEffect (a guard redirect must be declarative <Redirect>/<Navigate>, not
+// an effect that loops on web). Recognizes both router idioms; user-action push/back and onPress redirect stay allowed.
 ruleTester.run("no-router-replace-in-effect", plugin.rules["no-router-replace-in-effect"], {
   valid: [
-    // Declarative redirect — the correct shape.
+    // Declarative redirect — the correct shape (both idioms).
     { filename: "Foo.view.tsx", code: `export const F = () => (done ? <Redirect href="/home" /> : null);` },
+    { filename: "src/app/x.tsx", code: `export const F = () => (done ? <Navigate to="/home" /> : null);` },
     // Imperative replace on a user action (not in an effect) — a navigation completion, allowed.
     { filename: "Foo.view.tsx", code: `export const F = () => { const onPress = () => router.replace("/home"); return null; };` },
+    // A TanStack navigate() on a user action is allowed.
+    { filename: "src/app/x.tsx", code: `export const F = () => { const navigate = useNavigate(); const onPress = () => navigate({ to: "/home" }); return null; };` },
     // push/back inside an effect are not the banned call.
     { filename: "Foo.view.tsx", code: `export const F = () => { useEffect(() => { router.push("/home"); }, []); };` },
-    // out of scope: not a View.
+    // out of scope: not a View or route.
     { filename: "Foo.viewModel.ts", code: `useEffect(() => { router.replace("/home"); }, []);` },
   ],
   invalid: [
+    // expo-router: router.replace / router.navigate in an effect.
     { filename: "Foo.view.tsx", code: `export const F = () => { useEffect(() => { router.replace("/home"); }, []); };`, errors: [{ messageId: "effectReplace" }] },
-    { filename: "Foo.view.tsx", code: `export const F = () => { useLayoutEffect(() => { if (x) router.replace("/x"); }, [x]); };`, errors: [{ messageId: "effectReplace" }] },
+    { filename: "Foo.view.tsx", code: `export const F = () => { useLayoutEffect(() => { if (x) router.navigate("/x"); }, [x]); };`, errors: [{ messageId: "effectReplace" }] },
+    // TanStack: a useNavigate() binding called in an effect.
+    { filename: "src/app/x.tsx", code: `export const F = () => { const navigate = useNavigate(); useEffect(() => { navigate({ to: "/home" }); }, []); };`, errors: [{ messageId: "effectReplace" }] },
+  ],
+});
+
+// LZFE016 — the session token is written through one seam (lib/session); a viewModel/view importing the token setter
+// directly is the scattered-write bug that forgets the cache reset.
+ruleTester.run("session-one-door", plugin.rules["session-one-door"], {
+  valid: [
+    // The seam itself legitimately imports the setter (it pairs the write with the reset) — directory or file form.
+    { filename: "src/lib/session/session.ts", code: `import { setAccessToken } from "@/lib/lazuli-client";` },
+    { filename: "src/lib/session.ts", code: `import { setAccessToken } from "@/lib/lazuli-client";` },
+    // A viewModel going through the seam is correct.
+    { filename: "Login.viewModel.ts", code: `import { useSignIn } from "@/lib/session";` },
+    // The client that DEFINES the setter exports it — it does not import it, so it is never flagged.
+    { filename: "src/lib/lazuli-client.ts", code: `export function setAccessToken(t) {}` },
+  ],
+  invalid: [
+    { filename: "Login.viewModel.ts", code: `import { setAccessToken } from "@/lib/lazuli-client";`, errors: [{ messageId: "offdoor" }] },
+    { filename: "SignupWizard.viewModel.ts", code: `import { setToken } from "@/lib/lazuli-client";`, errors: [{ messageId: "offdoor" }] },
+  ],
+});
+
+// LZFE017 — a guard redirects on a tri-state SessionState, not a raw isAuthenticated boolean.
+ruleTester.run("guard-tristate", plugin.rules["guard-tristate"], {
+  valid: [
+    // Branch on the union — loading is a distinct, handled case.
+    { filename: "src/app/routes/index.tsx", code: `function H() { if (session.status === "anonymous") return <Navigate to="/login" />; return null; }` },
+    // A non-auth presence guard (a param) is LZFE018's domain, not this rule's.
+    { filename: "src/app/routes/index.tsx", code: `function H() { if (!chatId) return <Redirect href="/m" />; return null; }` },
+    // out of scope: a plain feature view is not a route/guard.
+    { filename: "Foo.view.tsx", code: `function H() { if (!isAuthenticated) return <Navigate to="/login" />; return null; }` },
+  ],
+  invalid: [
+    { filename: "src/app/routes/index.tsx", code: `function H() { if (!session.isAuthenticated) return <Navigate to="/login" />; return null; }`, errors: [{ messageId: "boolRedirect" }] },
+    { filename: "src/lib/guards/Admin.tsx", code: `function H() { if (!isAuthenticated) return <Redirect href="/login" />; return null; }`, errors: [{ messageId: "boolRedirect" }] },
+  ],
+});
+
+// LZFE018 — a route reading a required id param must guard its absence with a declarative redirect.
+ruleTester.run("route-param-guard", plugin.rules["route-param-guard"], {
+  valid: [
+    // The param is guarded before the View renders.
+    { filename: "src/app/messaging/chat.tsx", code: `function R() { const { chatId } = useLocalSearchParams(); if (!chatId) return <Redirect href="/messaging" />; return <Chat chatId={chatId} />; }` },
+    // A non-id param (an optional filter) does not ghost — not required.
+    { filename: "src/app/list.tsx", code: `function R() { const { tab } = useLocalSearchParams(); return <List tab={tab} />; }` },
+    // out of scope: not a route file.
+    { filename: "Foo.view.tsx", code: `function R() { const { chatId } = useLocalSearchParams(); return <Chat chatId={chatId} />; }` },
+  ],
+  invalid: [
+    { filename: "src/app/messaging/chat.tsx", code: `function R() { const { chatId } = useLocalSearchParams(); return <Chat chatId={chatId} />; }`, errors: [{ messageId: "unguarded" }] },
+    { filename: "src/app/property/detail.tsx", code: `function R() { const { id } = useLocalSearchParams(); return <Detail id={id} />; }`, errors: [{ messageId: "unguarded" }] },
+  ],
+});
+
+// LZFE019 — no bare router.back() / history.back(); route Back through a guarded helper.
+ruleTester.run("safe-back", plugin.rules["safe-back"], {
+  valid: [
+    // The guarded helper — the correct shape.
+    { filename: "Header.view.tsx", code: `const onBack = useGoBack("/");` },
+    // An inline canGoBack-guarded back() is fine (the file references canGoBack).
+    { filename: "Header.view.tsx", code: `const onBack = () => { if (router.canGoBack()) router.back(); else router.replace("/"); };` },
+    // The nav seam (where the helper lives) is exempt.
+    { filename: "src/lib/useGoBack.ts", code: `export const useGoBack = () => () => router.back();` },
+    // push is not the banned call.
+    { filename: "Header.view.tsx", code: `const onNext = () => router.push("/x");` },
+  ],
+  invalid: [
+    { filename: "Header.view.tsx", code: `const onBack = () => router.back();`, errors: [{ messageId: "bareBack" }] },
+    { filename: "src/app/notifications.tsx", code: `const onBack = () => window.history.back();`, errors: [{ messageId: "bareBack" }] },
   ],
 });
 

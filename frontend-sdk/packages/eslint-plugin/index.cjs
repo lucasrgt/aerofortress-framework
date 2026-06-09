@@ -21,7 +21,7 @@ const isGenerated = (f) => GENERATED_CLIENT.test(f.replace(/\\/g, "/"));
 // lifecycle); screens still may NOT bypass their ViewModel. Scoped to lib/session + lib/guards so it stays a
 // principled allowance, not a general escape hatch. (This is the cross-cutting infra Angular puts behind
 // CanActivate / an AuthService — framework primitives the app composes, not a DSL.)
-const isInfraDataDoor = (f) => /(^|\/)lib\/(session|guards)\//.test(f.replace(/\\/g, "/"));
+const isInfraDataDoor = (f) => /(^|\/)lib\/(session|guards)(\.|\/)/.test(f.replace(/\\/g, "/"));
 
 // A type-only import (`import type { X }`) is erased at runtime — it is the shared contract vocabulary, not
 // data access. A View taking `kind: LegalDocKind` is wired correctly; only a *value* import (a hook, the
@@ -39,6 +39,100 @@ function forbidImport(context, pattern, messageId) {
       }
     },
   };
+}
+
+// ── Routing vocabulary (recognized for BOTH expo-router and TanStack Router) ────────────────────────────────────
+// The routing rules police a SHAPE (declarative redirect, guarded back, param presence), not a router runtime —
+// so they recognize each router's idiom but depend on neither. "Ship the standard, not the adapter."
+
+// A route file — the navigation layer (expo-router `app/`, TanStack `app/routes/`). The only layer that may
+// redirect or read route params; both routers live under an `app/` tree, so one test covers them.
+const isRoute = (f) => /(^|\/)app\//.test(f.replace(/\\/g, "/"));
+// The nav seam — the single guarded back handler (safeBack / useGoBack). The one place a bare back() is allowed.
+const isNavSeam = (f) => /(^|\/)lib\/(nav|useGoBack)(\.|\/)/.test(f.replace(/\\/g, "/"));
+// The "am I signed in?" boolean a guard must NOT branch a redirect on: it collapses the tri-state (loading vs
+// anonymous) into one bit, so the redirect fires before the session settles. Branch on a SessionState instead.
+const AUTH_BOOL = /^(is)?(authenticated|authed|loggedin|signedin)$/i;
+// A route param whose ABSENCE yields a ghost screen — an id the View needs. Optional filter/search params don't
+// qualify; only id-shaped names render an empty detail when missing.
+const ID_PARAM = /(^id$)|Id$/;
+
+/** Whether `node` sits lexically inside a useEffect / useLayoutEffect callback (where a redirect re-fires every render). */
+function inEffect(node) {
+  for (let p = node.parent; p; p = p.parent) {
+    if (
+      p.type === "CallExpression" &&
+      p.callee.type === "Identifier" &&
+      (p.callee.name === "useEffect" || p.callee.name === "useLayoutEffect")
+    )
+      return true;
+  }
+  return false;
+}
+
+/** The nearest enclosing function of `node` (the component body), or null. */
+function enclosingFunction(node) {
+  for (let p = node.parent; p; p = p.parent) {
+    if (
+      p.type === "FunctionDeclaration" ||
+      p.type === "FunctionExpression" ||
+      p.type === "ArrowFunctionExpression"
+    )
+      return p;
+  }
+  return null;
+}
+
+/** The leaf name of `x` / `x.y` when it reads as an auth boolean (AUTH_BOOL), else null. */
+function authBoolName(expr) {
+  if (expr.type === "Identifier" && AUTH_BOOL.test(expr.name)) return expr.name;
+  if (
+    expr.type === "MemberExpression" &&
+    expr.property.type === "Identifier" &&
+    AUTH_BOOL.test(expr.property.name)
+  )
+    return expr.property.name;
+  return null;
+}
+
+/** Whether a JSX element is a declarative redirect — `<Redirect>` (expo-router) or `<Navigate>` (TanStack). */
+function isRedirectElement(arg) {
+  if (!arg || arg.type !== "JSXElement") return false;
+  const name = arg.openingElement.name;
+  return name.type === "JSXIdentifier" && (name.name === "Redirect" || name.name === "Navigate");
+}
+
+/** Whether a statement (or block) returns a declarative redirect element. */
+function returnsRedirect(stmt) {
+  const body = stmt.type === "BlockStatement" ? stmt.body : [stmt];
+  return body.some((s) => s.type === "ReturnStatement" && isRedirectElement(s.argument));
+}
+
+/** Whether `fn`'s body contains `if (!name) return <Redirect/Navigate …/>` — the param presence guard. */
+function hasPresenceGuard(fn, name) {
+  let found = false;
+  const visit = (node) => {
+    if (found || !node || typeof node.type !== "string") return;
+    if (
+      node.type === "IfStatement" &&
+      node.test.type === "UnaryExpression" &&
+      node.test.operator === "!" &&
+      node.test.argument.type === "Identifier" &&
+      node.test.argument.name === name &&
+      returnsRedirect(node.consequent)
+    ) {
+      found = true;
+      return;
+    }
+    for (const key of Object.keys(node)) {
+      if (key === "parent") continue;
+      const v = node[key];
+      if (Array.isArray(v)) v.forEach(visit);
+      else if (v && typeof v.type === "string") visit(v);
+    }
+  };
+  if (fn.body) visit(fn.body);
+  return found;
 }
 
 const rules = {
@@ -513,52 +607,199 @@ const rules = {
     },
   },
 
-  // LZFE015 — no router.replace inside useEffect. A redirect-on-state belongs in a DECLARATIVE <Redirect>, never an
-  // effect: on web expo-router FREEZES the source screen instead of unmounting it, so an effect-driven replace
-  // re-fires on every frozen re-render -> remount the target -> refetch (e.g. a guard's my-X 404) -> re-render ->
-  // replace again -> an infinite navigation/refetch loop that crashes the screen. (This shipped twice in the pilot:
-  // via Splash, then ChooseRole + 5 screens; the fix is `if (terminal) return <Redirect href={…} />`.) Only
-  // effect-driven `replace` (a guard redirect) is banned; `push`/`back` for a user action stay allowed (imperative
-  // completions, not render loops). Scoped to *.view.tsx — the only layer that may navigate.
+  // LZFE015 — no imperative redirect inside useEffect. A redirect-on-state belongs in a DECLARATIVE element returned
+  // from render (<Redirect> on expo-router, <Navigate> on TanStack), never an effect: an effect runs AFTER paint and
+  // re-fires on every re-render. On expo-router web it is catastrophic — the router FREEZES the source screen instead
+  // of unmounting it, so the effect loops (replace -> remount target -> refetch a guard's my-X 404 -> re-render ->
+  // replace …) into an infinite navigation/refetch loop that crashes the screen (shipped twice in the pilot: Splash,
+  // then ChooseRole + 5 screens). On TanStack it is "merely" a post-paint flash + redundant nav. Either way the fix
+  // is the same: `if (<terminal state>) return <Redirect/Navigate … />`. Recognizes both idioms — `router.replace` /
+  // `router.navigate` (a router instance) and `navigate(...)` bound from TanStack's `useNavigate()`. Imperative
+  // push/back on a USER action stay allowed (completions, not render loops). Scoped to the navigating layer.
   "no-router-replace-in-effect": {
     meta: {
       type: "problem",
       docs: {
         description:
-          "No router.replace inside useEffect — redirect declaratively with <Redirect> (expo-router freezes the source screen on web, so an effect-driven replace loops).",
+          "No imperative redirect (router.replace / router.navigate / a useNavigate() call) inside useEffect — redirect declaratively with <Redirect>/<Navigate> from render (an effect runs after paint and re-fires every render: a flash on TanStack, an infinite loop on expo-router web).",
       },
       messages: {
         effectReplace:
-          "LZFE015: no `router.replace(...)` inside useEffect — on web expo-router freezes the source screen, so the effect re-fires every render into an infinite navigation/refetch loop. Redirect declaratively instead: `if (<terminal state>) return <Redirect href={…} />;`.",
+          "LZFE015: no imperative redirect (`{{call}}`) inside useEffect — it runs after render and re-fires on every re-render (a flash on TanStack; on expo-router web an infinite navigation/refetch loop that crashes the screen). Redirect declaratively instead: `if (<terminal state>) return <Redirect href={…} />;` (expo) / `<Navigate to={…} />` (TanStack).",
       },
     },
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
-      if (!isView(f)) return {};
+      if (!isView(f) && !isRoute(f)) return {};
+      // Identifiers bound from `useNavigate()` (TanStack) — so a bare `navigate(...)` in an effect is recognized.
+      const navigators = new Set();
+      return {
+        VariableDeclarator(node) {
+          if (
+            node.id.type === "Identifier" &&
+            node.init &&
+            node.init.type === "CallExpression" &&
+            node.init.callee.type === "Identifier" &&
+            node.init.callee.name === "useNavigate"
+          )
+            navigators.add(node.id.name);
+        },
+        CallExpression(node) {
+          const callee = node.callee;
+          let call = null;
+          // expo-router / a router instance: router.replace(...) / router.navigate(...)
+          if (
+            callee.type === "MemberExpression" &&
+            !callee.computed &&
+            callee.object.type === "Identifier" &&
+            callee.object.name === "router" &&
+            callee.property.type === "Identifier" &&
+            (callee.property.name === "replace" || callee.property.name === "navigate")
+          )
+            call = `router.${callee.property.name}`;
+          // TanStack: navigate({ to }) where navigate = useNavigate()
+          else if (callee.type === "Identifier" && navigators.has(callee.name)) call = `${callee.name}(...)`;
+          // Flag only inside an effect. A user-action push/back/replace is a completion, not a render loop.
+          if (call && inEffect(node)) context.report({ node, messageId: "effectReplace", data: { call } });
+        },
+      };
+    },
+  },
+
+  // LZFE016 — the session is written through ONE seam (lib/session). The bug: token writes scattered across
+  // viewModels (login, signup, impersonate), each of which must REMEMBER to reset the `me` cache — and the one that
+  // forgets bounces the just-authenticated user back to login (a stale anonymous `me` error survives the sign-in).
+  // Centralizing the write in the seam pairs token + cache-reset by construction. Same "one door" shape as LZFE002:
+  // only the seam may import the token setter; everywhere else goes through the seam's signIn/signOut.
+  "session-one-door": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "Write the session token through one seam (lib/session) — a scattered token write that forgets to reset the session cache bounces the just-authenticated user back to login.",
+      },
+      messages: {
+        offdoor:
+          "LZFE016: write the session only through the seam — import the token setter (`{{name}}`) into `lib/session` and expose signIn/signOut, not here. A scattered token write that forgets to reset the `me` query bounces the just-authenticated user back to login.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (isInfraDataDoor(f)) return {}; // the seam (lib/session) legitimately imports the setter
+      return {
+        ImportDeclaration(node) {
+          for (const s of node.specifiers) {
+            if (s.type === "ImportSpecifier" && /^set(Access)?(Token|Session)$/.test(s.imported.name))
+              context.report({ node: s, messageId: "offdoor", data: { name: s.imported.name } });
+          }
+        },
+      };
+    },
+  },
+
+  // LZFE017 — a route guard branches its redirect on a tri-state SessionState, NEVER a raw `isAuthenticated`
+  // boolean. The boolean has no "still loading" — it is false while the session is in flight, so the guard fires its
+  // redirect before the answer settles (the canonical bounce-to-login). Branch on `session.status` instead, where
+  // `loading` is a distinct case you must handle. The read-side twin of LZFE010 (a View routes state through the
+  // spine's union, not raw `isPending`). Scoped to route/guard files — where redirects live.
+  "guard-tristate": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "A guard redirects on a tri-state SessionState (loading | authenticated | anonymous), not a raw isAuthenticated boolean (which reads 'still loading' as 'signed out' and bounces a not-yet-settled user to login).",
+      },
+      messages: {
+        boolRedirect:
+          "LZFE017: don't redirect on a raw `{{name}}` boolean — it reads 'still loading' as 'signed out', bouncing a not-yet-settled user to login. Branch on a tri-state session: handle `loading` (defer), then `if (session.status === 'anonymous') return <Navigate…/>` (use the spine's SessionState).",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isRoute(f) && !isInfraDataDoor(f)) return {};
+      return {
+        IfStatement(node) {
+          // `if (!<authBool>) return <Redirect/Navigate …/>` — the boolean-collapse redirect.
+          if (node.test.type !== "UnaryExpression" || node.test.operator !== "!") return;
+          const name = authBoolName(node.test.argument);
+          if (name && returnsRedirect(node.consequent))
+            context.report({ node: node.test, messageId: "boolRedirect", data: { name } });
+        },
+      };
+    },
+  },
+
+  // LZFE018 — a route that reads a REQUIRED id param must guard its absence with a declarative redirect. Hitting the
+  // route param-less (a bookmark, a stale/mis-wired link) otherwise renders a "ghost" screen bound to an empty id —
+  // the pilot's empty "Propriedade" thread. The fix is `if (!id) return <Redirect href={…} />` before the View. Scoped
+  // to expo-router's `useLocalSearchParams` (the one router where a path/search param can be absent at render; on
+  // TanStack a matched route guarantees its path param) and to id-shaped names (optional filter params don't ghost).
+  "route-param-guard": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "A route reading a required id param (useLocalSearchParams) must guard its absence with a declarative redirect — a param-less hit otherwise renders a ghost screen on an empty id.",
+      },
+      messages: {
+        unguarded:
+          "LZFE018: the route reads `{{name}}` from useLocalSearchParams but never guards its absence — a param-less hit (bookmark / stale link) renders a ghost screen on an empty id. Add `if (!{{name}}) return <Redirect href={…} />;` before rendering the View.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isRoute(f)) return {};
+      return {
+        VariableDeclarator(node) {
+          if (!node.init || node.init.type !== "CallExpression") return;
+          if (node.init.callee.type !== "Identifier" || node.init.callee.name !== "useLocalSearchParams") return;
+          if (node.id.type !== "ObjectPattern") return;
+          const fn = enclosingFunction(node);
+          if (!fn) return;
+          for (const prop of node.id.properties) {
+            if (prop.type !== "Property" || prop.key.type !== "Identifier" || !ID_PARAM.test(prop.key.name)) continue;
+            const local = prop.value.type === "Identifier" ? prop.value.name : prop.key.name;
+            if (!hasPresenceGuard(fn, local))
+              context.report({ node: prop, messageId: "unguarded", data: { name: local } });
+          }
+        },
+      };
+    },
+  },
+
+  // LZFE019 — no bare `router.back()` / `history.back()`. On web a deep-linked / refreshed screen has no in-app
+  // history, so back() is a no-op and the "Back" button is dead (the pilot migrated ~13 screens off it). Route every
+  // Back affordance through a guarded helper — the spine's `safeBack(router, fallback)` / an app `useGoBack` — that
+  // pops when it can and otherwise replaces to a parent. A file that already guards with `canGoBack` is fine; the
+  // nav seam (where the helper lives) is exempt. Scoped to the screens/routes that hold Back buttons.
+  "safe-back": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "No bare router.back() — on web a deep-linked screen has no in-app history, so it is a no-op (a dead Back button). Use a guarded helper (safeBack / useGoBack) that falls back to a parent.",
+      },
+      messages: {
+        bareBack:
+          "LZFE019: no bare `{{call}}` — on web a deep-linked / refreshed screen has no in-app history, so it does nothing (a dead 'Back' button). Use a guarded helper: `useGoBack(fallback)` / `safeBack(router, fallback)` (pops when it can, else replaces to a parent).",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if ((!isView(f) && !isRoute(f)) || isNavSeam(f)) return {};
+      // An inline `canGoBack`-guarded back() is the safe shape — exempt files that already do it.
+      if (/canGoBack/.test((context.sourceCode ?? context.getSourceCode()).getText())) return {};
       return {
         CallExpression(node) {
           const callee = node.callee;
-          if (
-            callee.type !== "MemberExpression" ||
-            callee.computed ||
-            callee.object.type !== "Identifier" ||
-            callee.object.name !== "router" ||
-            callee.property.type !== "Identifier" ||
-            callee.property.name !== "replace"
-          )
-            return;
-          // Flag only when lexically inside a useEffect / useLayoutEffect callback. An onPress `router.replace(...)`
-          // is user-triggered, not a render loop, and stays allowed.
-          for (let p = node.parent; p; p = p.parent) {
-            if (
-              p.type === "CallExpression" &&
-              p.callee.type === "Identifier" &&
-              (p.callee.name === "useEffect" || p.callee.name === "useLayoutEffect")
-            ) {
-              context.report({ node, messageId: "effectReplace" });
-              return;
-            }
-          }
+          if (callee.type !== "MemberExpression" || callee.computed) return;
+          if (callee.property.type !== "Identifier" || callee.property.name !== "back") return;
+          const obj = callee.object;
+          const isRouterBack = obj.type === "Identifier" && obj.name === "router";
+          const isHistoryBack =
+            obj.type === "MemberExpression" && obj.property.type === "Identifier" && obj.property.name === "history";
+          if (!isRouterBack && !isHistoryBack) return;
+          context.report({ node, messageId: "bareBack", data: { call: isRouterBack ? "router.back()" : "history.back()" } });
         },
       };
     },
@@ -566,6 +807,6 @@ const rules = {
 };
 
 module.exports = {
-  meta: { name: "eslint-plugin-lazuli", version: "0.1.0" },
+  meta: { name: "eslint-plugin-lazuli", version: "0.2.0" },
   rules,
 };
