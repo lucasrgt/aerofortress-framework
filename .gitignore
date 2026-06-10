@@ -41,3 +41,6 @@ frontend/tools/.e2e-doctor-tmp-*/
 ## OS
 .DS_Store
 Thumbs.db
+
+# vitest/vite dev cache (repo-root runs)
+.vite/
