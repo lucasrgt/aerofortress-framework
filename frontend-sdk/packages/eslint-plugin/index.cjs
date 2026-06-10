@@ -1164,7 +1164,13 @@ const rules = {
       if (isTest(f) || isUiKit(f) || TOKEN_FILES.test(f) || !/\.(ts|tsx)$/.test(f)) return {};
       const SPACING_KEYS = /^((padding|margin)([A-Z][a-zA-Z]*)?|gap|rowGap|columnGap|borderRadius|fontSize|lineHeight)$/;
       const PX_STRING = /^\d+(\.\d+)?(px|rem|em)$/;
-      const ARBITRARY = /\[\d+(\.\d+)?(px|rem|em|%)\]/;
+      // The Tailwind half mirrors the style-object half EXACTLY: an arbitrary value is off-scale only when it
+      // rides a SPACING/TYPOGRAPHY utility (p-/m-/gap-/space-/text-/leading-/rounded-). Layout dimensions
+      // (`max-w-[560px]`, `h-[80vh]`) are none of this rule's business — the style half deliberately allows
+      // `width: 320`, and flagging the class spelling of the same decision was an asymmetry a pilot dogfood
+      // caught (the hostpoint-os modals).
+      const ARBITRARY =
+        /(^|[\s:"'`])-?(p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap(-[xy])?|space-[xy]|text|leading|rounded(-(ss|se|es|ee|t|r|b|l|tl|tr|br|bl))?)-\[\d+(\.\d+)?(px|rem|em|%)\]/;
 
       // A Property is a style declaration when its nearest JSX attribute is `style` or its nearest call is
       // `StyleSheet.create` — plain data objects (a config, a payload) are none of lint's business.
@@ -1481,6 +1487,6 @@ const rules = {
 };
 
 module.exports = {
-  meta: { name: "eslint-plugin-lazuli", version: "0.7.0" },
+  meta: { name: "eslint-plugin-lazuli", version: "0.7.1" },
   rules,
 };

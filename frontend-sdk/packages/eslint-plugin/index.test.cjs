@@ -472,6 +472,8 @@ ruleTester.run("scale-only", plugin.rules["scale-only"], {
     // Non-spacing numerics (layout, stacking) and plain data objects are none of this rule's business.
     { filename: "Foo.tsx", code: `export const X = () => <div style={{ width: 320, zIndex: 2, flex: 1 }} />;` },
     { filename: "Foo.tsx", code: `const payload = { gap: 7, fontSize: 13 };` },
+    // Arbitrary LAYOUT values mirror the style half's width allowance — only spacing/typography utilities gate.
+    { filename: "Foo.tsx", code: `export const X = () => <div className="max-w-[560px] max-h-[80vh] w-[300px]" />;` },
   ],
   invalid: [
     {
@@ -482,6 +484,9 @@ ruleTester.run("scale-only", plugin.rules["scale-only"], {
     { filename: "Foo.tsx", code: `const styles = StyleSheet.create({ card: { marginTop: 7 } });`, errors: [{ messageId: "offscale" }] },
     { filename: "Foo.tsx", code: `export const X = () => <div style={{ fontSize: "13px" }} />;`, errors: [{ messageId: "offscale" }] },
     { filename: "Foo.tsx", code: `export const X = () => <div className="p-[13px]" />;`, errors: [{ messageId: "arbitrary" }] },
+    // Typography spelled as a class + a variant-prefixed spacing arbitrary — both still the rhythm leak.
+    { filename: "Foo.tsx", code: `export const X = () => <div className="block text-[14px]" />;`, errors: [{ messageId: "arbitrary" }] },
+    { filename: "Foo.tsx", code: `export const X = () => <div className="sm:gap-[7px]" />;`, errors: [{ messageId: "arbitrary" }] },
   ],
 });
 

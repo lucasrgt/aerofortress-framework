@@ -192,6 +192,14 @@ Field
   where contrast is decided, once.
 - Status communication: `danger`/`success`/`warning` with their `*Surface` tints for banners and
   badges. Color is never the only signal (icon or text accompanies it).
+- **Color that is DATA is not a theme decision.** A value carried by content — a kanban column's
+  user-picked color, a service category's catalog color — is data, not vocabulary, and it does not
+  belong in the tokens file (it varies per row, not per theme). The shape: a **kit component takes
+  the color as a typed prop** (`<ServiceChip color={service.color}>`), and the raw lookup/inline
+  style lives inside `ui/` — the band's exemption boundary — never in a screen. The screen passes
+  data; the kit decides how data becomes paint (including the contrast treatment). Two-pilot
+  evidence: hostpoint's service chips and pauta's kanban step colors both hit this case
+  independently.
 
 ## Responsiveness — three breakpoints, compact-first
 
@@ -233,7 +241,7 @@ undecidable properties teaches agents to suppress, the worst harness outcome.
 |------|----------|--------|--------|
 | `LZFE012` | **Design tokens (hex half)** — no inline hex outside token/theme/palette files | **shipped** | one palette; theming survives |
 | `LZFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui`. A missing primitive is extended in the app's `ui/`, never inlined. The `LZFE002` one-door pattern applied to paint | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every decision |
-| `LZFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`, `margin*`, `gap`, `rowGap`, `columnGap`, `borderRadius`, `fontSize`, `lineHeight`; `0` allowed), no Tailwind arbitrary values (`[13px]`) in `className` strings | planned (design band) | off-scale values are how rhythm dies one screen at a time |
+| `LZFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`, `margin*`, `gap`, `rowGap`, `columnGap`, `borderRadius`, `fontSize`, `lineHeight`; `0` allowed), and no Tailwind arbitrary value on a **spacing/typography utility** (`p-[13px]`, `text-[14px]`, `gap-[7px]`). Layout dimensions (`max-w-[560px]`, `h-[80vh]`) are deliberately free — the style half allows `width: 320`, and the class spelling of the same decision must agree (asymmetry caught by the hostpoint-os dogfood) | **shipped** | off-scale values are how rhythm dies one screen at a time |
 | `LZFE026` | **Semantic colors** — outside token files: no `rgb()/rgba()/hsl()/hsla()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `LZFE012` (hex) — together: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
 
 Exemption boundaries, locked: the app's `ui/` folder (the kit implements the vocabulary, so it
