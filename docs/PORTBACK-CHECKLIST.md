@@ -214,6 +214,13 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
 - [ ] _(hold)_ `IUserScoped` (global user-owned data) — generic in shape, 1-pilot evidence.
 - [ ] _(hold)_ blanket `Money`→bigint converter + a VO↔EF-converter analyzer — 1 instance each.
 - [ ] _(hold)_ CI workflow template / starter Dockerfile / `dotnet-tools.json` in scaffold — judgment.
+- [ ] **Scaffold interceptor: adopt hostpoint's injected-refresher shape.** The scaffolded mutator's 401
+  interceptor (plugin-0.7.0 wave) bakes a cookie-mode `REFRESH_PATH` post — web-only. Hostpoint's
+  generalization is better: the client exposes `setTokenRefresher(fn)` and the session seam registers its
+  `bootstrapSession` (single-flight AT THE DOOR — several callers share one in-flight rotation), so the same
+  interceptor serves cookie AND body modes and the rotation logic stays in the seam. 2-pilot evidence
+  (pauta = direct-post shape, hostpoint = injected shape); graduate the injected shape into
+  `client-scaffold.mjs` when touched next.
 
 ## Correctly app-owned (NOT gaps — must stay in the pilot)
 
