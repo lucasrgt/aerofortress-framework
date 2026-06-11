@@ -9,6 +9,7 @@
     <Project Path="src/Lazuli.Auth/Lazuli.Auth.csproj" />
     <Project Path="src/Lazuli.Cli/Lazuli.Cli.csproj" />
     <Project Path="src/Lazuli.AspNetCore/Lazuli.AspNetCore.csproj" />
+    <Project Path="src/Lazuli.EntityFrameworkCore/Lazuli.EntityFrameworkCore.csproj" />
     <Project Path="src/Lazuli.Mail/Lazuli.Mail.csproj" />
     <Project Path="src/Lazuli.Sms/Lazuli.Sms.csproj" />
     <Project Path="src/Lazuli.Identity/Lazuli.Identity.csproj" />
@@ -21,6 +22,7 @@
     <Project Path="tests/Lazuli.Abstractions.Tests/Lazuli.Abstractions.Tests.csproj" />
     <Project Path="tests/Lazuli.Cli.Tests/Lazuli.Cli.Tests.csproj" />
     <Project Path="tests/Lazuli.Doctor.Tests/Lazuli.Doctor.Tests.csproj" />
+    <Project Path="tests/Lazuli.EntityFrameworkCore.Tests/Lazuli.EntityFrameworkCore.Tests.csproj" />
     <Project Path="tests/Lazuli.SelfHarness.Tests/Lazuli.SelfHarness.Tests.csproj" />
     <Project Path="tests/Lazuli.Testing.Postgres.Tests/Lazuli.Testing.Postgres.Tests.csproj" />
     <Project Path="tests/Lazuli.AspNetCore.Tests/Lazuli.AspNetCore.Tests.csproj" />

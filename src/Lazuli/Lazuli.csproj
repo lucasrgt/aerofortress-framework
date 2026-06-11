@@ -7,7 +7,9 @@
     framework: the spine, the ASP.NET wiring, the auth/identity/mail/sms/storage ports, and the doctor analyzer.
     It carries no code of its own (IncludeBuildOutput=false) — it is purely the dependency graph, so the focused
     Lazuli.* packages stay available a la carte. Test helpers (Lazuli.Testing*) are intentionally NOT here: they
-    belong in a test project, not an app's runtime.
+    belong in a test project, not an app's runtime. Lazuli.EntityFrameworkCore is intentionally not here either:
+    it is the one runtime package that references EF Core, and the meta must not impose a persistence stack —
+    an app that queries through EF opts into the satellite à la carte.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
