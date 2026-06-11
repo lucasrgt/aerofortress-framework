@@ -157,8 +157,10 @@ and compose. The pieces:
   tiebreaker make page boundaries non-deterministic (rows repeat and vanish between pages). *(A doctor
   warn for a non-unique final sort key without a `ThenBy` is planned as a follow-up rule.)*
 - **The idiom: page the ordered entity, project the page in memory.** `.Select(...)` erases the
-  `IOrderedQueryable<T>` the extension requires — by design. Page first, then project the (small) page
-  with `Page<T>.Select`:
+  `IOrderedQueryable<T>` the extension requires — by design. Ordering *after* a `.Select` compiles but is
+  not the way out: EF does not translate an `OrderBy` over a positional-record projection (it inlines the
+  constructor into the OrderBy and gives up at runtime — pauta hit this). Page first, then project the
+  (small) page with `Page<T>.Select`; aggregates join the page's ids afterwards:
 
   ```csharp
   var wallets = await db.Wallets.OrderBy(w => w.Id).ToPageAsync(input.Page, input.PageSize, MaxPageSize, ct);
