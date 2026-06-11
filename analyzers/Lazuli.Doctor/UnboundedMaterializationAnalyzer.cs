@@ -13,6 +13,13 @@ namespace Lazuli.Doctor;
 /// fast — and degrades in production as the tenant's data grows, months later. Warning tier on purpose:
 /// legitimately small sets exist (lookup tables, the lines of one order), and the fix is also the
 /// documentation — <c>.Take(n)</c> writes the bound down, <c>ToPageAsync</c> pages it.
+///
+/// A <b>parent-scoped</b> query is exempt: a <c>Where</c> equating (or <c>Contains</c>-matching) a member
+/// whose name ends in <c>Id</c> — <c>s =&gt; s.JobId == id</c>, the steps of ONE job, the sessions of ONE
+/// user — is bounded by the parent aggregate's cardinality, not by the tenant's growth, and a synthetic
+/// <c>.Take(n)</c> there would document a bound that isn't the real rule (the pauta 0.3.0 adoption surfaced
+/// ~16 such sites). <c>OrgId</c>/<c>TenantId</c> equality is NOT parent scoping — that is exactly the
+/// grows-with-the-tenant set the rule exists for — so those two names stay flagged.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class UnboundedMaterializationAnalyzer : DiagnosticAnalyzer
@@ -67,9 +74,11 @@ public sealed class UnboundedMaterializationAnalyzer : DiagnosticAnalyzer
                 rootsInDbSet = true;
                 break;
             }
-            if (expression is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax inner })
+            if (expression is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax inner } step)
             {
                 if (Bounds.Contains(inner.Name.Identifier.Text))
+                    return;
+                if (inner.Name.Identifier.Text == "Where" && step.ArgumentList.Arguments.Any(a => ParentScopes(a.Expression)))
                     return;
                 expression = inner.Expression;
                 continue;
@@ -138,5 +147,24 @@ public sealed class UnboundedMaterializationAnalyzer : DiagnosticAnalyzer
     private static bool ContainsBound(ExpressionSyntax expression) =>
         expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>()
             .Any(invocation => invocation.Expression is MemberAccessExpressionSyntax member
-                && Bounds.Contains(member.Name.Identifier.Text));
+                && (Bounds.Contains(member.Name.Identifier.Text)
+                    || (member.Name.Identifier.Text == "Where"
+                        && invocation.ArgumentList.Arguments.Any(a => ParentScopes(a.Expression)))));
+
+    // A Where predicate that pins the set to one parent aggregate: an equality (or a Contains match) on a
+    // member named *Id. OrgId/TenantId are the tenant scope itself — the set the rule is about — never a parent.
+    private static bool ParentScopes(ExpressionSyntax predicate) =>
+        predicate.DescendantNodesAndSelf().Any(node => node switch
+        {
+            BinaryExpressionSyntax { RawKind: (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.EqualsExpression } eq =>
+                IsParentKey(eq.Left) || IsParentKey(eq.Right),
+            InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "Contains" } } contains =>
+                contains.ArgumentList.Arguments.Any(a => IsParentKey(a.Expression)),
+            _ => false,
+        });
+
+    private static bool IsParentKey(ExpressionSyntax side) =>
+        side is MemberAccessExpressionSyntax { Name.Identifier.Text: var name }
+        && name.EndsWith("Id", System.StringComparison.Ordinal)
+        && name is not ("OrgId" or "TenantId");
 }

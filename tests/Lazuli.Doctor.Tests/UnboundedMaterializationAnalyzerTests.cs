@@ -93,6 +93,75 @@ public class UnboundedMaterializationAnalyzerTests
             """ + Stubs);
 
     [Fact]
+    public Task A_parent_scoped_where_is_the_bound() =>
+        Harness<UnboundedMaterializationAnalyzer>.Verify("""
+            using System.Linq;
+            using Lazuli.Abstractions;
+            using Microsoft.EntityFrameworkCore;
+
+            [Slice]
+            static class StepsOfOneJob
+            {
+                static async System.Threading.Tasks.Task Handle(Db db, System.Guid jobId, System.Threading.CancellationToken ct)
+                {
+                    var steps = await db.Wallets.Where(w => w.OwnerId == jobId && w.Id != jobId).ToListAsync(ct);
+                }
+            }
+            """ + Stubs);
+
+    [Fact]
+    public Task A_contains_match_on_a_parent_key_is_the_bound() =>
+        Harness<UnboundedMaterializationAnalyzer>.Verify("""
+            using System.Linq;
+            using System.Collections.Generic;
+            using Lazuli.Abstractions;
+            using Microsoft.EntityFrameworkCore;
+
+            [Slice]
+            static class NamesForThePage
+            {
+                static async System.Threading.Tasks.Task Handle(Db db, List<System.Guid> ids, System.Threading.CancellationToken ct)
+                {
+                    var rows = await db.Wallets.Where(w => ids.Contains(w.OwnerId)).ToListAsync(ct);
+                }
+            }
+            """ + Stubs);
+
+    [Fact]
+    public Task Tenant_scope_equality_is_not_a_parent_bound() =>
+        Harness<UnboundedMaterializationAnalyzer>.Verify("""
+            using System.Linq;
+            using Lazuli.Abstractions;
+            using Microsoft.EntityFrameworkCore;
+
+            [Slice]
+            static class WholeTenant
+            {
+                static async System.Threading.Tasks.Task Handle(Db db, System.Guid org, System.Threading.CancellationToken ct)
+                {
+                    var all = await db.Wallets.Where(w => w.OrgId == org).{|LZ0027:ToListAsync|}(ct);
+                }
+            }
+            """ + Stubs);
+
+    [Fact]
+    public Task A_non_key_filter_is_not_a_bound() =>
+        Harness<UnboundedMaterializationAnalyzer>.Verify("""
+            using System.Linq;
+            using Lazuli.Abstractions;
+            using Microsoft.EntityFrameworkCore;
+
+            [Slice]
+            static class LiveRows
+            {
+                static async System.Threading.Tasks.Task Handle(Db db, System.Threading.CancellationToken ct)
+                {
+                    var all = await db.Wallets.Where(w => w.DeletedAt == null).{|LZ0027:ToListAsync|}(ct);
+                }
+            }
+            """ + Stubs);
+
+    [Fact]
     public Task Outside_a_slice_the_rule_stays_silent() =>
         Harness<UnboundedMaterializationAnalyzer>.Verify("""
             using Microsoft.EntityFrameworkCore;
@@ -142,6 +211,9 @@ public class UnboundedMaterializationAnalyzerTests
         class Wallet
         {
             public System.Guid Id { get; set; }
+            public System.Guid OwnerId { get; set; }
+            public System.Guid OrgId { get; set; }
+            public System.DateTime? DeletedAt { get; set; }
         }
         """;
 }
