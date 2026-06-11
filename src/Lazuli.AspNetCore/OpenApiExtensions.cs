@@ -35,10 +35,44 @@ public static class OpenApiExtensions
     public static IServiceCollection AddLazuliOpenApi(this IServiceCollection services) =>
         services.AddOpenApi(options =>
         {
+            // The same qualification, extended to the canonical page: Page<T>'s default reference id uses
+            // T's SHORT name ("PageOfWalletView"), so two slices nesting a same-named item view would
+            // collide onto one page schema — the exact disease the slice-qualified ids exist to cure.
             options.CreateSchemaReferenceId = type =>
-                type.Type.DeclaringType is { } slice
-                    ? slice.Name + type.Type.Name
-                    : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+                PageItemOf(type.Type) is { } item
+                    ? "PageOf" + (item.DeclaringType is { } itemSlice ? itemSlice.Name + item.Name : item.Name)
+                    : type.Type.DeclaringType is { } slice
+                        ? slice.Name + type.Type.Name
+                        : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
+
+            // Pin the page contract the frontend spine matches structurally. Out of the box the four
+            // members are already required, but the web serializer's read-from-string tolerance
+            // (NumberHandling) leaks into the document as `type: ["integer","string"]` — and a client
+            // generator faithfully types totalCount as `number | string`, breaking the spine's
+            // Page<T> { totalCount: number } match (the pilots' ViewModels coerced with Number(...) to
+            // live with it). The server only ever WRITES numbers; the page schema says so.
+            options.AddSchemaTransformer((schema, context, _) =>
+            {
+                if (PageItemOf(context.JsonTypeInfo.Type) is null || schema.Properties is not { Count: > 0 } pageProperties)
+                    return Task.CompletedTask;
+
+                schema.Required = new HashSet<string>(pageProperties.Keys, StringComparer.Ordinal);
+                foreach (var property in pageProperties.Values.OfType<OpenApiSchema>())
+                {
+                    if (property.Type is not { } propertyType)
+                        continue;
+                    if (propertyType.HasFlag(JsonSchemaType.Integer))
+                    {
+                        property.Type = JsonSchemaType.Integer;
+                        property.Pattern = null;
+                    }
+                    else
+                    {
+                        property.Type = propertyType & ~JsonSchemaType.Null;
+                    }
+                }
+                return Task.CompletedTask;
+            });
 
             // Enumerate the error codes (every *ErrorCodes registry constant, gathered by reflection) into the
             // ErrorBody.Code schema, so the generated client is typed on the closed set and the frontend can be
@@ -75,6 +109,13 @@ public static class OpenApiExtensions
                 return Task.CompletedTask;
             });
         });
+
+    // The item type when `type` is a constructed Lazuli page (Page<T>), else null — the one test both the
+    // reference-id naming and the page-pinning transformer share.
+    private static Type? PageItemOf(Type type) =>
+        type is { IsGenericType: true } && type.GetGenericTypeDefinition() == typeof(Abstractions.Page<>)
+            ? type.GetGenericArguments()[0]
+            : null;
 
     // The TPrimitive of the ScalarJsonConverter<TVo, TPrimitive> subclass the type's [JsonConverter] points at,
     // or null when the type carries no such converter.
