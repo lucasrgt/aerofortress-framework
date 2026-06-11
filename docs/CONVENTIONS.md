@@ -135,6 +135,48 @@ public static class Deposit
   rule belongs), never to extract a `Validate` method. Validation's complexity lives in the
   types, so the inline part stays a short list — there is nothing big to extract.
 
+### Pagination — the canonical page
+
+A paginated list slice returns the framework's one page shape, the collection analogue of `Result<T>`:
+without it every slice invents its own output, the generated client gets an ad-hoc type per list, and
+nothing downstream (the typed client, the frontend spine's pager hooks) can recognize "this is a page"
+and compose. The pieces:
+
+- **`Page<T>(Items, TotalCount, PageNumber, PageSize)`** lives in `Lazuli.Abstractions` beside `Result<T>`.
+  The numbers are the **effective** values after server-side clamping, echoed — the contract never reports
+  a page that was not actually served. `AddLazuliOpenApi` pins the schema (four members required, plainly
+  numeric, a collision-free slice-qualified id), so the spine's structural `Page<T>` match holds end-to-end.
+- **`ToPageAsync(pageNumber, pageSize, maxPageSize = 100, ct)`** lives in the **`Lazuli.EntityFrameworkCore`
+  satellite** (the only runtime package that references EF Core — an app opts in à la carte; it is not in
+  the `Lazuli` meta-package). The receiver is **`IOrderedQueryable<T>`, not `IQueryable<T>`**: paginating
+  without an `OrderBy` does not compile — an unordered Skip/Take has no stable meaning in SQL — and that
+  enforcement is the type system's, so it survives even with the doctor removed. Count and page run over
+  the **same queryable**, so a count taken before a tenant filter (leaking other orgs' existence into the
+  total) cannot be written. Filter first — `AcrossOrgs()`, `Where(...)` — then order, then page.
+- **Order by a unique key.** `OrderBy(x => x.Name).ThenBy(x => x.Id)` — equal sort values with no
+  tiebreaker make page boundaries non-deterministic (rows repeat and vanish between pages). *(A doctor
+  warn for a non-unique final sort key without a `ThenBy` is planned as a follow-up rule.)*
+- **The idiom: page the ordered entity, project the page in memory.** `.Select(...)` erases the
+  `IOrderedQueryable<T>` the extension requires — by design. Page first, then project the (small) page
+  with `Page<T>.Select`:
+
+  ```csharp
+  var wallets = await db.Wallets.OrderBy(w => w.Id).ToPageAsync(input.Page, input.PageSize, MaxPageSize, ct);
+  return new Output(wallets.Select(w => new WalletView(w.Id, w.Balance.Amount)));
+  ```
+
+- **The slice's `Input` stays flat** (`int Page = 1, int PageSize = 20`) — the visible contract; there is
+  no `PageRequest` envelope on the wire, and `MaxPageSize` is the server's policy (a slice-local const),
+  never a payload. Aggregates beside the list travel by **composition** —
+  `record Output(Page<ReviewView> Reviews, double AverageRating)` — never record inheritance.
+- **The count is explicit in the contract.** `TotalCount` exists ⇒ a `COUNT(*)` ran; that is the deal a
+  numbered pager needs ("1–20 of 87") and it is deliberately visible, not hidden behind a flag. When a
+  pilot one day needs a high-volume infinite feed, cursor pagination arrives as a **second** primitive
+  (`CursorPage<T>`), never unified with the offset shape into one premature abstraction.
+- The canonical slice is the sample's `ListWallets`; the doctor's `LZ0027` (warning) flags a
+  `DbSet`-rooted query materialized with no `Take`/`ToPageAsync` — the list that ships fine at ten
+  development rows and degrades as a tenant's data grows.
+
 ---
 
 ## The domain — entities & value objects
@@ -374,6 +416,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0024` | **Raw SQL never absorbs runtime values as text**: a `*Raw` EF call (`FromSqlRaw`, `ExecuteSqlRaw`/`Async`, `SqlQueryRaw`) whose SQL argument interpolates or concatenates a non-literal is flagged — the SQL-injection shape. The fix is one token: `FromSql`/`ExecuteSql`/`SqlQuery` take the same interpolated string and turn every hole into a `DbParameter`. Constant SQL through `*Raw` stays legal | **shipped** | injection hides in the one raw query an app eventually needs — the safe twin costs nothing |
 | `LZ0025` | **A held `Result<T>` is checked before it is unwrapped**: reading `.Value`/`.Error` on a result stored in a local or parameter with no earlier outcome consult in the same member (`IsSuccess`/`IsFailure`, an `is { IsSuccess: … }` pattern, or a `Validation.Collect` fold) is flagged — on the wrong outcome the access throws. Unwrapping *inline* on a fresh construction (`Money.From(10m).Value` in a seed/test) stays legal: it is the deliberate known-valid idiom | **shipped** | the type's number-one misuse — `result.Value` straight through, an exception where an `Error` was supposed to flow |
 | `LZ0026` | **A `[Critical]` write declares its concurrency posture**: a `[Critical]` slice whose `Handle` saves changes against an entity with no visible concurrency token (no `[Timestamp]`/`[ConcurrencyCheck]` member, no `RowVersion` property) is flagged — concurrent requests are last-write-wins on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration is invisible to the doctor; name the property `RowVersion` or tune the severity | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
+| `LZ0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. Warning-tier: legitimately small sets exist (lookup tables, the lines of one order), and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; the defect only shows months later, as a tenant's data grows |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
