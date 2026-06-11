@@ -1,6 +1,6 @@
 {
   "name": "@lazuli/react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lazuli frontend spine — platform/design-system-agnostic React primitives (AsyncState, Resource, …) the app composes.",
   "private": true,
   "type": "module",
