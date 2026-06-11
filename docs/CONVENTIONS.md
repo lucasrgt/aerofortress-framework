@@ -178,6 +178,29 @@ and compose. The pieces:
 - The canonical slice is the sample's `ListWallets`; the doctor's `LZ0027` (warning) flags a
   `DbSet`-rooted query materialized with no `Take`/`ToPageAsync` — the list that ships fine at ten
   development rows and degrades as a tenant's data grows.
+- **When `LZ0027` fires, the remediation ladder** (one answer per shape — never a third invention):
+  1. **The set has a domain bound you can name** → `.Take(N)` where `N` is that bound as a named
+     const (`MaxQueue`), the comment saying *why* the set is small. A generous cap you cannot
+     justify is not a fix — it is silent truncation at overflow with no UI affordance, a lie with
+     a green build. If the only honest comment is "probably small", it is not a `Take` site.
+  2. **The set accretes with usage** (an inbox, an agenda, a history, "my reservations") →
+     migrate to `ToPageAsync`/`Page<T>` **even before any paging UI exists**. Page 1 at a generous
+     size is the same response the client gets today with the contract made honest; the spine's
+     pager hooks (`usePager`, `useAccumulatedPages`) are already waiting when the UI catches up.
+  3. **A write path over a set that is not aggregate-scoped** (purge expired rows, bulk
+     re-status) → the materialization is still the defect, but the remedy is set-based
+     `ExecuteUpdateAsync`/`ExecuteDeleteAsync` (or a batched job) — never a synthetic `Take`,
+     which would simply *not perform* part of the write.
+  4. **None of the above yet** → leave the warning standing. Warning tier *is* the adoption
+     ledger: an open `LZ0027` is a decision still pending, and a release may ship with pending
+     decisions. Suppressing the rule is never the move.
+- **What the parent-scope exemption deliberately does not see**: `Where(m => m.ChatId == id)` is
+  exempt because most child sets are bounded by their parent's cardinality (the steps of one job,
+  the sessions of one user) — but an **accreting child** (one chat's messages, one aggregate's
+  audit trail) grows without bound and passes silently. The exemption trades that recall for
+  precision (a false positive teaches suppression; a false negative merely doesn't teach). Paging
+  an accreting child is a design call the doctor cannot make for you — make it at design time,
+  rung 2 of the ladder.
 
 ---
 
