@@ -164,6 +164,63 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
 
 ---
 
+## Pagination — one page shape, two pager hooks
+
+The backend's canonical `Page<T>` (see `CONVENTIONS.md` — `AddLazuliOpenApi` pins the four members
+required and plainly numeric) is what makes a page *recognizable* on this side of the wire. The spine's
+`Page<T>` — `{ items, totalCount, pageNumber, pageSize }` — is **structural on purpose**, like
+`QueryLike`: it imports nothing from `client.gen/`, so any generated response carrying the shape matches,
+whatever the slice, whatever the app. On top of it the spine ships one pure deriver and two stateful
+hooks:
+
+- **`toPageInfo(page)`** — the render facts (`pageCount`, `from`–`to`, `totalCount`, `hasPrev`/`hasNext`),
+  pure, so the View renders "21–40 de 87" without arithmetic. `undefined` propagates: no page yet → no
+  info → no clamp.
+- **`usePager()`** — the **numbered pager** (the admin-table case — hostpoint's `PointsList`): owns `page`
+  plus a debounced, trimmed search term; a *settled* term change rewinds to page 1 atomically (retyping
+  the same term does not); `next(pageCount?)` clamps once the total is known, `prev` floors at 1.
+- **`useAccumulatedPages({ keyOf, resetKey })`** — the **load-more fold** (the feed case — hostpoint's
+  `PublicPointReviews`): folds arriving pages into one growing list — REPLACE on page 1, APPEND with
+  per-key dedupe on the rest (the absorber for items that slide across a page boundary between requests;
+  the fresh copy wins in place). `resetKey` scopes the accumulation (a different parent id starts from
+  scratch); `hasMore` compares the accumulation against `totalCount`; `reset()` rewinds to page 1 and
+  lets the refetched head replace the list, blink-free.
+
+**The golden rule: the hooks are fetch-agnostic — they own STATE, never the request.** Neither hook
+wraps, imports, or calls the generated client; the ViewModel remains the one data door (`LZFE002`) and
+wires the two ends itself:
+
+```ts
+// numbered (admin list)
+const pager = usePager();
+const query = useListWallets(
+  { page: pager.page, pageSize: PAGE_SIZE, q: pager.debouncedQ || undefined },
+  { query: { placeholderData: keepPreviousData } }, // rows stay put while the next page loads
+);
+const info = toPageInfo(query.data?.wallets);
+// …return pager + info + toAsyncState(query…); clamp at the seam: next: () => pager.next(info?.pageCount)
+
+// accumulated (load-more feed)
+const acc = useAccumulatedPages<ReviewView>({ keyOf: (r) => r.id, resetKey: pointId });
+const query = useListPointReviews(pointId, { page: acc.page, pageSize: PAGE_SIZE }, /* … */);
+const { items, hasMore } = acc.fold(query.data?.reviews);
+```
+
+- **The two-step `fold` is the acyclic wiring**: the hook (above the query) owns the `page` the query
+  needs; the query owns the response the fold needs. Hand `fold` the page **straight off `query.data`**
+  (a stable cache identity — a page object rebuilt inline every render re-folds forever) and project
+  items for display *after* folding, never before.
+- **Guard the load-more button with `isFetching`** (the pilot's `loadingMore`): the fetch-agnostic hook
+  cannot see in-flight state, and a double-tap would otherwise skip a page.
+- **Which hook**: the numbered pager when the user *navigates* the set (admin tables, search — `q`
+  belongs here); the accumulated fold when the user *consumes* the set head-first (feeds, reviews,
+  mobile sheets).
+- `keepPreviousData` is the default posture for both — no blink to a spinner between pages — and it is
+  exactly why `useAccumulatedPages` keeps the identity of the last folded page across a `resetKey`
+  change: the lingering placeholder page must not fold into the new accumulation.
+
+---
+
 ## Forms — react-hook-form, validation grounded in the contract
 
 Multi-field forms (the property/service editors) use **react-hook-form**, not a hand-rolled
