@@ -6,6 +6,7 @@
          compiles and runs (Law 2) — you only lose the enforcement. -->
     <ProjectReference Include="..\..\..\..\analyzers\Lazuli.Doctor\Lazuli.Doctor.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\..\..\src\Lazuli.AspNetCore\Lazuli.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Lazuli.EntityFrameworkCore\Lazuli.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
   <ItemGroup>

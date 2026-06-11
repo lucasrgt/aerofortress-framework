@@ -2,8 +2,10 @@
 
 ## Boundaries
 
-Owns a `Wallet` and its running `Balance`. Three slices: `GetBalance` (read), `Deposit` (the only inflow
-that grows a balance) and `Withdraw` (the only outflow). Persistence is the shared `AppDb` — slices talk to
+Owns a `Wallet` and its running `Balance`. Four slices: `GetBalance` (read), `ListWallets` (the canonical
+paginated list — ordered by a unique key, paged with `ToPageAsync` into the framework's `Page` shape),
+`Deposit` (the only inflow that grows a balance) and `Withdraw` (the only outflow). Persistence is the
+shared `AppDb` — slices talk to
 it directly, no repository or unit-of-work layer. The module is a logical bounded context: it writes only
 its own `Wallet`, so it stays liftable later even though it shares the one store. The entity and its slices
 live here, never in a root `Domain/` folder.

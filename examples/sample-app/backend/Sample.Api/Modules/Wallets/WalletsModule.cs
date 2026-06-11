@@ -36,5 +36,6 @@ public static class WalletsModule
         Deposit.Map(wallets);
         Withdraw.Map(wallets);
         GetBalance.Map(wallets);
+        ListWallets.Map(wallets);
     }
 }
