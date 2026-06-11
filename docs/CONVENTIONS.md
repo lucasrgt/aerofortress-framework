@@ -146,6 +146,10 @@ and compose. The pieces:
   The numbers are the **effective** values after server-side clamping, echoed — the contract never reports
   a page that was not actually served. `AddLazuliOpenApi` pins the schema (four members required, plainly
   numeric, a collision-free slice-qualified id), so the spine's structural `Page<T>` match holds end-to-end.
+  Since 0.4.0 the plain-numeric pin covers the **whole document**: `NumberHandling`'s read-from-string
+  tolerance is a runtime affordance the serializer never writes, so every numeric schema — body property,
+  query parameter, inline sub-schema — declares the plain number the wire actually speaks (nullability
+  survives). No more `number | string` unions pushing `Number(x) || 0` coercions into ViewModels.
 - **`ToPageAsync(pageNumber, pageSize, maxPageSize = 100, ct)`** lives in the **`Lazuli.EntityFrameworkCore`
   satellite** (the only runtime package that references EF Core — an app opts in à la carte; it is not in
   the `Lazuli` meta-package). The receiver is **`IOrderedQueryable<T>`, not `IQueryable<T>`**: paginating
@@ -154,8 +158,12 @@ and compose. The pieces:
   the **same queryable**, so a count taken before a tenant filter (leaking other orgs' existence into the
   total) cannot be written. Filter first — `AcrossOrgs()`, `Where(...)` — then order, then page.
 - **Order by a unique key.** `OrderBy(x => x.Name).ThenBy(x => x.Id)` — equal sort values with no
-  tiebreaker make page boundaries non-deterministic (rows repeat and vanish between pages). *(A doctor
-  warn for a non-unique final sort key without a `ThenBy` is planned as a follow-up rule.)*
+  tiebreaker make page boundaries non-deterministic (rows repeat and vanish between pages). The doctor's
+  `LZ0028` (warning) reads the ordering chain feeding `ToPageAsync` and flags the final key when no key
+  in the chain is the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id`
+  declared on the queried entity itself. A *foreign* `*Id` (`CustomerId` on a Wallet) is many-rows-shared
+  and earns nothing. An ordering the analyzer cannot read (a pre-ordered local crossing the statement)
+  stays silent — the warn speaks only when it can see the keys.
 - **The idiom: page the ordered entity, project the page in memory.** `.Select(...)` erases the
   `IOrderedQueryable<T>` the extension requires — by design. Ordering *after* a `.Select` compiles but is
   not the way out: EF does not translate an `OrderBy` over a positional-record projection (it inlines the
@@ -442,6 +450,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0025` | **A held `Result<T>` is checked before it is unwrapped**: reading `.Value`/`.Error` on a result stored in a local or parameter with no earlier outcome consult in the same member (`IsSuccess`/`IsFailure`, an `is { IsSuccess: … }` pattern, or a `Validation.Collect` fold) is flagged — on the wrong outcome the access throws. Unwrapping *inline* on a fresh construction (`Money.From(10m).Value` in a seed/test) stays legal: it is the deliberate known-valid idiom | **shipped** | the type's number-one misuse — `result.Value` straight through, an exception where an `Error` was supposed to flow |
 | `LZ0026` | **A `[Critical]` write declares its concurrency posture**: a `[Critical]` slice whose `Handle` saves changes against an entity with no visible concurrency token (no `[Timestamp]`/`[ConcurrencyCheck]` member, no `RowVersion` property) is flagged — concurrent requests are last-write-wins on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration is invisible to the doctor; name the property `RowVersion` or tune the severity | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
 | `LZ0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
+| `LZ0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
