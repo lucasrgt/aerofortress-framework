@@ -12,7 +12,9 @@ public static class ListWallets
 {
     public record Input(int Page = 1, int PageSize = 20);
 
-    public record WalletView(Guid WalletId, decimal Balance);
+    // LastDeposit stays the Money? it is on the entity: a nullable scalar value object in a view is the
+    // contract case the OpenAPI mirror must unwrap (Nullable<Money> carries no [JsonConverter]).
+    public record WalletView(Guid WalletId, decimal Balance, Money? LastDeposit);
 
     public record Output(Page<WalletView> Wallets);
 
@@ -22,7 +24,7 @@ public static class ListWallets
     {
         var wallets = await db.Wallets.OrderBy(w => w.Id)
             .ToPageAsync(input.Page, input.PageSize, MaxPageSize, ct);
-        return new Output(wallets.Select(w => new WalletView(w.Id, w.Balance.Amount)));
+        return new Output(wallets.Select(w => new WalletView(w.Id, w.Balance.Amount, w.LastDeposit)));
     }
 
     public static void Map(IEndpointRouteBuilder app) =>

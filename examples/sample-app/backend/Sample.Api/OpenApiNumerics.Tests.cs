@@ -28,6 +28,23 @@ public class OpenApiNumerics
     }
 
     [Fact]
+    public async Task A_scalar_value_object_reached_only_through_a_nullable_property_still_mirrors_its_primitive()
+    {
+        await using var app = new TestApp();
+        var client = app.CreateClient();
+
+        // WalletView.LastDeposit is the document's ONLY Money occurrence and it is Money?, so the Money
+        // component is created from the Nullable<Money> visit — the case where the mirror must unwrap
+        // Nullable to find the ScalarJsonConverter (a pilot's nullable-only scalars leaked as bare {}).
+        using var document = JsonDocument.Parse(await client.GetStringAsync("/openapi/v1.json"));
+        var money = document.RootElement
+            .GetProperty("components").GetProperty("schemas").GetProperty("Money");
+
+        Assert.Equal("number", money.GetProperty("type").GetString());
+        Assert.False(money.TryGetProperty("properties", out _));
+    }
+
+    [Fact]
     public async Task A_numeric_query_parameter_is_plainly_typed()
     {
         await using var app = new TestApp();

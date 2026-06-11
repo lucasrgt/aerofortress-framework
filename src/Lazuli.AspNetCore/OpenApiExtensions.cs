@@ -155,9 +155,13 @@ public static class OpenApiExtensions
             : null;
 
     // The TPrimitive of the ScalarJsonConverter<TVo, TPrimitive> subclass the type's [JsonConverter] points at,
-    // or null when the type carries no such converter.
+    // or null when the type carries no such converter. Nullable<T> unwraps first: the schema component is
+    // created by whichever occurrence the generator visits FIRST, and when that occurrence is a `Money?`
+    // property the attribute lives on Money, not on Nullable<Money> — without the unwrap the component
+    // leaks as a bare {} (a pilot found exactly this on its nullable-only scalars).
     private static Type? ScalarPrimitiveOf(Type type)
     {
+        type = Nullable.GetUnderlyingType(type) ?? type;
         var converter = type.GetCustomAttribute<System.Text.Json.Serialization.JsonConverterAttribute>()?.ConverterType;
         for (var t = converter; t is not null; t = t.BaseType)
             if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Abstractions.ScalarJsonConverter<,>))

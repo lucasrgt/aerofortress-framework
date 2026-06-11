@@ -16,6 +16,10 @@ public class Wallet
     /// <summary>The running balance — changed only through <see cref="Deposit"/> / <see cref="Withdraw"/>.</summary>
     public Money Balance { get; private set; }
 
+    /// <summary>The last credited amount — null until the first deposit. Doubles as the contract's
+    /// nullable-scalar case: a <c>Money?</c> in a view exercises the OpenAPI mirror's Nullable unwrap.</summary>
+    public Money? LastDeposit { get; private set; }
+
     /// <summary>
     /// The optimistic-concurrency token (LZ0026). Money is [Critical]: without this, two concurrent
     /// deposits read the same row and the second save silently erases the first. With it, the loser gets
@@ -40,7 +44,11 @@ public class Wallet
     /// Credit the wallet. <see cref="Money"/> already guarantees a non-negative amount, so a deposit can
     /// only grow the balance — there is no failure path here, hence no <see cref="Result{T}"/>.
     /// </summary>
-    public void Deposit(Money amount) => Balance = Balance.Add(amount);
+    public void Deposit(Money amount)
+    {
+        Balance = Balance.Add(amount);
+        LastDeposit = amount;
+    }
 
     /// <summary>
     /// Debit the wallet, refusing to overdraw. The overdraw surfaces as <see cref="Money.Subtract"/>
