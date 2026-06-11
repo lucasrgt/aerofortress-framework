@@ -45,12 +45,9 @@ public static class OpenApiExtensions
                         ? slice.Name + type.Type.Name
                         : OpenApiOptions.CreateDefaultSchemaReferenceId(type);
 
-            // Pin the page contract the frontend spine matches structurally. Out of the box the four
-            // members are already required, but the web serializer's read-from-string tolerance
-            // (NumberHandling) leaks into the document as `type: ["integer","string"]` — and a client
-            // generator faithfully types totalCount as `number | string`, breaking the spine's
-            // Page<T> { totalCount: number } match (the pilots' ViewModels coerced with Number(...) to
-            // live with it). The server only ever WRITES numbers; the page schema says so.
+            // Pin the page contract the frontend spine matches structurally: the four members required
+            // and non-null. Their plain-numeric types are the document-wide numeric pin's job (below) —
+            // the page adds only the required/non-null half the structural Page<T> match needs.
             options.AddSchemaTransformer((schema, context, _) =>
             {
                 if (PageItemOf(context.JsonTypeInfo.Type) is null || schema.Properties is not { Count: > 0 } pageProperties)
@@ -58,19 +55,37 @@ public static class OpenApiExtensions
 
                 schema.Required = new HashSet<string>(pageProperties.Keys, StringComparer.Ordinal);
                 foreach (var property in pageProperties.Values.OfType<OpenApiSchema>())
-                {
-                    if (property.Type is not { } propertyType)
-                        continue;
-                    if (propertyType.HasFlag(JsonSchemaType.Integer))
-                    {
-                        property.Type = JsonSchemaType.Integer;
-                        property.Pattern = null;
-                    }
-                    else
-                    {
+                    if (property.Type is { } propertyType)
                         property.Type = propertyType & ~JsonSchemaType.Null;
+                return Task.CompletedTask;
+            });
+
+            // The numeric pin, document-wide. NumberHandling=AllowReadingFromString (the Web defaults) is
+            // a READ tolerance only — the serializer always WRITES numbers — but the generator projects it
+            // into every numeric schema as `type: ["integer","string"]` / `["number","string"]` plus a
+            // digit pattern for the string form, and a client generator faithfully types every count and
+            // rating as `number | string` (the pilots' ViewModels grew `Number(x) || 0` casts to live with
+            // it). The document declares what the wire actually speaks: every numeric schema — component,
+            // parameter, request or response body, inline sub-schema — comes out plainly numeric.
+            // Nullability survives; only the string tolerance (and its pattern) is stripped.
+            options.AddDocumentTransformer((document, _, _) =>
+            {
+                if (document.Components?.Schemas is { } schemas)
+                    foreach (var schema in schemas.Values)
+                        PinNumerics(schema);
+                if (document.Paths is not { } paths)
+                    return Task.CompletedTask;
+                foreach (var pathItem in paths.Values)
+                    foreach (var operation in pathItem.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>())
+                    {
+                        foreach (var parameter in operation.Parameters ?? [])
+                            PinNumerics(parameter.Schema);
+                        foreach (var body in operation.RequestBody?.Content?.Values ?? [])
+                            PinNumerics(body.Schema);
+                        foreach (var response in operation.Responses?.Values ?? Enumerable.Empty<IOpenApiResponse>())
+                            foreach (var content in response.Content?.Values ?? [])
+                                PinNumerics(content.Schema);
                     }
-                }
                 return Task.CompletedTask;
             });
 
@@ -109,6 +124,28 @@ public static class OpenApiExtensions
                 return Task.CompletedTask;
             });
         });
+
+    // Strips the read-from-string union off one schema and every inline sub-schema it carries. Reference
+    // nodes are skipped on purpose: a $ref is pinned where its component is defined.
+    private static void PinNumerics(IOpenApiSchema? node)
+    {
+        if (node is not OpenApiSchema schema)
+            return;
+        if (schema.Type is { } type
+            && type.HasFlag(JsonSchemaType.String)
+            && (type.HasFlag(JsonSchemaType.Integer) || type.HasFlag(JsonSchemaType.Number)))
+        {
+            schema.Type = type & ~JsonSchemaType.String;
+            schema.Pattern = null;
+        }
+        if (schema.Properties is { } properties)
+            foreach (var property in properties.Values)
+                PinNumerics(property);
+        PinNumerics(schema.Items);
+        PinNumerics(schema.AdditionalProperties);
+        foreach (var composed in (schema.AllOf ?? []).Concat(schema.AnyOf ?? []).Concat(schema.OneOf ?? []))
+            PinNumerics(composed);
+    }
 
     // The item type when `type` is a constructed Lazuli page (Page<T>), else null — the one test both the
     // reference-id naming and the page-pinning transformer share.
