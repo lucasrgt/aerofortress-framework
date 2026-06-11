@@ -42,7 +42,9 @@ public sealed class UnboundedMaterializationAnalyzer : DiagnosticAnalyzer
     private static readonly ImmutableHashSet<string> Materializers =
         ImmutableHashSet.Create("ToListAsync", "ToArrayAsync", "ToList", "ToArray");
 
-    private static readonly ImmutableHashSet<string> Bounds = ImmutableHashSet.Create("Take", "ToPageAsync");
+    // GroupBy is a bound of its own kind: what materializes is the aggregated groups, not the table's rows —
+    // the dashboard rollup shape (counts per status), not the serve-the-whole-list defect.
+    private static readonly ImmutableHashSet<string> Bounds = ImmutableHashSet.Create("Take", "ToPageAsync", "GroupBy");
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
@@ -152,19 +154,34 @@ public sealed class UnboundedMaterializationAnalyzer : DiagnosticAnalyzer
                         && invocation.ArgumentList.Arguments.Any(a => ParentScopes(a.Expression)))));
 
     // A Where predicate that pins the set to one parent aggregate: an equality (or a Contains match) on a
-    // member named *Id. OrgId/TenantId are the tenant scope itself — the set the rule is about — never a parent.
-    private static bool ParentScopes(ExpressionSyntax predicate) =>
-        predicate.DescendantNodesAndSelf().Any(node => node switch
+    // *Id member OF THE QUERIED ENTITY — the member access must root in the lambda's parameter, so the value
+    // side of the comparison (input.AgencyId, caller.UserId) never grants the exemption by itself.
+    // OrgId/TenantId are the tenant scope, the set the rule is about — never a parent.
+    private static bool ParentScopes(ExpressionSyntax predicate)
+    {
+        var parameter = predicate switch
+        {
+            SimpleLambdaExpressionSyntax simple => simple.Parameter.Identifier.Text,
+            ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters: { Count: > 0 } parameters } =>
+                parameters[0].Identifier.Text,
+            _ => null,
+        };
+        if (parameter is null)
+            return false;
+
+        return predicate.DescendantNodesAndSelf().Any(node => node switch
         {
             BinaryExpressionSyntax { RawKind: (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.EqualsExpression } eq =>
-                IsParentKey(eq.Left) || IsParentKey(eq.Right),
+                IsParentKey(eq.Left, parameter) || IsParentKey(eq.Right, parameter),
             InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "Contains" } } contains =>
-                contains.ArgumentList.Arguments.Any(a => IsParentKey(a.Expression)),
+                contains.ArgumentList.Arguments.Any(a => IsParentKey(a.Expression, parameter)),
             _ => false,
         });
+    }
 
-    private static bool IsParentKey(ExpressionSyntax side) =>
-        side is MemberAccessExpressionSyntax { Name.Identifier.Text: var name }
+    private static bool IsParentKey(ExpressionSyntax side, string parameter) =>
+        side is MemberAccessExpressionSyntax { Name.Identifier.Text: var name, Expression: IdentifierNameSyntax root }
+        && root.Identifier.Text == parameter
         && name.EndsWith("Id", System.StringComparison.Ordinal)
         && name is not ("OrgId" or "TenantId");
 }

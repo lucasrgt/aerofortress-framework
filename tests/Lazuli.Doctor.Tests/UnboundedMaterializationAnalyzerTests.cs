@@ -162,6 +162,43 @@ public class UnboundedMaterializationAnalyzerTests
             """ + Stubs);
 
     [Fact]
+    public Task A_parent_key_on_the_value_side_grants_nothing() =>
+        Harness<UnboundedMaterializationAnalyzer>.Verify("""
+            using System.Linq;
+            using Lazuli.Abstractions;
+            using Microsoft.EntityFrameworkCore;
+
+            [Slice]
+            static class TenantRoster
+            {
+                public record Input(System.Guid AgencyId);
+
+                static async System.Threading.Tasks.Task Handle(Db db, Input input, System.Threading.CancellationToken ct)
+                {
+                    // The ENTITY side is the tenant scope (OrgId); input.AgencyId ending in Id must not exempt it.
+                    var all = await db.Wallets.Where(w => w.OrgId == input.AgencyId).{|LZ0027:ToListAsync|}(ct);
+                }
+            }
+            """ + Stubs);
+
+    [Fact]
+    public Task A_group_by_aggregation_is_its_own_bound() =>
+        Harness<UnboundedMaterializationAnalyzer>.Verify("""
+            using System.Linq;
+            using Lazuli.Abstractions;
+            using Microsoft.EntityFrameworkCore;
+
+            [Slice]
+            static class Rollup
+            {
+                static async System.Threading.Tasks.Task Handle(Db db, System.Threading.CancellationToken ct)
+                {
+                    var counts = await db.Wallets.GroupBy(w => w.OrgId).Select(g => g.Count()).ToListAsync(ct);
+                }
+            }
+            """ + Stubs);
+
+    [Fact]
     public Task Outside_a_slice_the_rule_stays_silent() =>
         Harness<UnboundedMaterializationAnalyzer>.Verify("""
             using Microsoft.EntityFrameworkCore;
