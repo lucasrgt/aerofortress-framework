@@ -1,6 +1,7 @@
 import { useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { submitOrReveal } from "@lazuli/react";
 import { useDeposit, type DepositOutput } from "@/client.gen/sample";
 import i18n from "@/i18n";
 
@@ -38,8 +39,13 @@ export function useDepositModel(): DepositModel {
     defaultValues: { walletId: "", amount: "" },
   });
 
-  const submit = form.handleSubmit((values) =>
-    mutation.mutate({ walletId: values.walletId, amount: Number(values.amount) }),
+  // The submit always carries its invalid path (LZFE031): submitOrReveal forces the surface and resolves the
+  // first invalid field. On this single-screen form the reveal is a focus — the inline field errors (LZFE032's
+  // fieldState surface in the View) do the showing; a multi-tab shell would map the field to its tab instead.
+  const submit = submitOrReveal(
+    form.handleSubmit,
+    (values) => mutation.mutate({ walletId: values.walletId, amount: Number(values.amount) }),
+    { onInvalid: (first) => form.setFocus(first), order: ["walletId", "amount"] },
   );
 
   return {
