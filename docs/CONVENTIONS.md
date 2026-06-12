@@ -210,6 +210,32 @@ and compose. The pieces:
   an accreting child is a design call the doctor cannot make for you — make it at design time,
   rung 2 of the ladder.
 
+### The contract never mints a client route
+
+When a slice's output drives a navigation (a pending-task card, a CTA, a "go fix this" affordance),
+the backend decides **which action exists** — never **where the client navigates**. The payload
+carries a **closed enum** (`PendingKind`-style, a plain C# enum in the `Output`); the client owns the
+kind→route map over the *generated* enum (see FRONTEND-CONVENTIONS.md — server-driven actions). A
+route string minted server-side (`CtaTarget = "/host/properties/new"`) is the documented
+anti-pattern: it is runtime data, invisible to OpenAPI, to `tsc`, and to the router's typed routes —
+**no gate closes that contract**, and a pilot shipped exactly this bug to prod (two server-minted
+routes didn't exist in the app → 404 on tap). With the enum, the same drift is a compile error on
+both sides: a new kind breaks the client's exhaustive `Record` until it is mapped, and the mapped
+value is a typed route.
+
+The same boundary line generalizes: the server speaks **domain vocabulary** (kinds, statuses, codes —
+closed enums and registry constants); the client owns the **presentation mapping** (route, copy,
+icon). It is the error-code discipline (`LZ0018`/`LZ0019`: stable code on the wire, copy in i18n)
+applied to navigation.
+
+*Analyzer decision (2026-06): evaluated and **not shipped**.* The heuristic — flag a `"/"`-prefixed
+string literal in a slice-payload property named `*Target`/`*Route`/`*Href`/`*Path` — has plausible
+false positives that are themselves legitimate contract data (API paths, storage object paths,
+webhook URLs), and the consumption side is already gated mechanically: the client cannot navigate to
+an arbitrary server string without a cast, and `LZFE030` makes that cast an error. A false positive
+teaches suppression; the convention + the front-side gate close the loop. Revisit only if a pilot
+ships another server-minted route *after* this convention landed.
+
 ---
 
 ## The domain — entities & value objects
