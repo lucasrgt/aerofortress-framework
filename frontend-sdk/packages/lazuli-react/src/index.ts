@@ -14,6 +14,7 @@ export {
 } from "./session-seam";
 export { useSession } from "./useSession";
 export { type BackRouter, safeBack } from "./nav";
+export { type HandleSubmitLike, type SubmitOrRevealOptions, submitOrReveal } from "./submit";
 export { type RequiredParam, requiredParam } from "./params";
 export { type ApiErrorCopyOptions, type I18nLike, apiErrorCode, apiErrorCopy } from "./api-error";
 export { type Page, type PageInfo, toPageInfo } from "./page";
