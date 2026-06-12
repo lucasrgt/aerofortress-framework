@@ -74,4 +74,39 @@ describe("createSessionSeam", () => {
 
     expect(await seam.bootstrapSession()).toBe(true);
   });
+
+  it("onSignedIn persists the new identity's tokens AND fires the full-cache wipe", async () => {
+    const setAccessToken = vi.fn();
+    const onSessionChanged = vi.fn();
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({ setAccessToken, onSessionChanged, onIdentityChanged, refresh: async () => null });
+
+    await seam.onSignedIn({ accessToken: "jwt-b" });
+
+    expect(setAccessToken).toHaveBeenCalledWith("jwt-b");
+    expect(onIdentityChanged).toHaveBeenCalledOnce();
+  });
+
+  it("a rotation never fires the identity wipe — a 15-min re-mint must not nuke warm screens", async () => {
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({
+      setAccessToken: vi.fn(),
+      onIdentityChanged,
+      refresh: async () => ({ accessToken: "jwt" }),
+    });
+
+    await seam.bootstrapSession();
+    await seam.onAuthenticated({ accessToken: "jwt-2" });
+
+    expect(onIdentityChanged).not.toHaveBeenCalled();
+  });
+
+  it("clearSession fires the identity wipe — a sign-out leaves nothing for the next account to inherit", async () => {
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({ setAccessToken: vi.fn(), onIdentityChanged, refresh: async () => null });
+
+    await seam.clearSession();
+
+    expect(onIdentityChanged).toHaveBeenCalledOnce();
+  });
 });

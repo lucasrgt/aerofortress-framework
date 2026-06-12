@@ -793,22 +793,26 @@ const rules = {
   },
 
   // LZFE016 — the session is written through ONE seam (lib/session). The bug: token writes scattered across
-  // viewModels (login, signup, impersonate), each of which must REMEMBER to reset the `me` cache — and the one that
-  // forgets bounces the just-authenticated user back to login (a stale anonymous `me` error survives the sign-in).
-  // Centralizing the write in the seam pairs token + cache-reset by construction. Same "one door" shape as LZFE002:
-  // only the seam may import the token setter; everywhere else goes through the seam's signIn/signOut.
+  // viewModels (login, signup, impersonate), each of which must REMEMBER the paired cache move — a forgotten
+  // `me` reset bounces the just-authenticated user back to login, and a forgotten FULL wipe on an identity
+  // change serves the previous account's cached rows to the new one (the hostpoint pilot's "fresh traveler
+  // skipped onboarding straight to the map": a sign-in without a prior sign-out kept a stale COMPLETE
+  // my-traveler that fed the route guards). Centralizing the write in the seam pairs token + cache handling
+  // by construction: a rotation resets the session shape, a sign-in/out wipes everything (the spine's
+  // onSignedIn/onIdentityChanged). Same "one door" shape as LZFE002: only the seam may import the token
+  // setter; everywhere else goes through the seam's signIn/signOut.
   "session-one-door": {
     meta: {
       type: "problem",
       docs: {
         description:
-          "Write the session token through one seam (lib/session) — a scattered token write that forgets to reset the session cache bounces the just-authenticated user back to login.",
+          "Write the session token through one seam (lib/session) — a scattered token write skips the paired cache move: a forgotten `me` reset bounces the user back to login, and a forgotten full wipe on sign-in serves the previous account's cached rows to the new identity.",
       },
       messages: {
         offdoor:
-          "LZFE016: write the session only through the seam — import the token setter (`{{name}}`) into `lib/session` and expose signIn/signOut, not here. A scattered token write that forgets to reset the `me` query bounces the just-authenticated user back to login.",
+          "LZFE016: write the session only through the seam — import the token setter (`{{name}}`) into `lib/session` and expose signIn/signOut, not here. A scattered token write skips the paired cache move: a forgotten `me` reset bounces the sign-in back to login, and a forgotten full wipe hands the new identity the previous account's cached rows.",
         storage:
-          "LZFE016: don't write the token to storage here (`{{call}}(\"{{key}}\", …)`) — that is a session write outside the seam, and it skips the `me`-cache reset the seam pairs with it. Call the seam's signIn/signOut instead; only `lib/session` touches token storage.",
+          "LZFE016: don't write the token to storage here (`{{call}}(\"{{key}}\", …)`) — that is a session write outside the seam, and it skips the cache move the seam pairs with it (the `me` reset on a rotation, the full wipe on a sign-in/out). Call the seam's signIn/signOut instead; only `lib/session` touches token storage.",
       },
     },
     create(context) {
