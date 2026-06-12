@@ -56,13 +56,21 @@ export default [
       "lazuli/design-tokens": "error",
       "lazuli/mutation-error-handled": "error",
       "lazuli/no-hardcoded-copy": "error",
-      // The routing harness (LZFE015–019) — declarative redirects, one session seam, a tri-state guard, guarded
-      // params + Back. Error-tier (correctness), router-agnostic (expo + TanStack). The default a generated app gets.
+      // The routing harness (LZFE015–019 + 030) — declarative redirects, one session seam, a tri-state guard,
+      // guarded params + Back, and no cast on a navigation target (the typed-routes mute button). Error-tier
+      // (correctness), router-agnostic (expo + TanStack). The default a generated app gets.
       "lazuli/no-router-replace-in-effect": "error",
       "lazuli/session-one-door": "error",
       "lazuli/guard-tristate": "error",
       "lazuli/route-param-guard": "error",
       "lazuli/safe-back": "error",
+      "lazuli/no-cast-navigation": "error",
+      // The form-validation pair (LZFE031–032) — every validation failure has a surface: the submit carries its
+      // invalid path (the spine's submitOrReveal), and a <Controller> surfaces its field's error. Warn-tier on
+      // entry (a single-screen form with all errors visible inline is legitimate); promote together once the
+      // primitive absorbs the common case.
+      "lazuli/submit-handles-invalid": "warn",
+      "lazuli/controller-field-state": "warn",
       "lazuli/no-hardcoded-base-url": "error",
       // The security pair (LZFE021–022) — the XSS door stays behind one sanitizing seam; a URL-supplied value
       // never becomes a navigation target without an allowlist. Error-tier (correctness, same bar as routing).

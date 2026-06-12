@@ -653,5 +653,97 @@ ruleTester.run("refresh-one-door", plugin.rules["refresh-one-door"], {
   ],
 });
 
+// LZFE030 — no `as never`/`as any`/`as unknown` on a navigation target: the cast silences typed routes, and a
+// silenced router lets a drifted route literal compile clean and 404 in prod (the pilot's server-minted routes).
+ruleTester.run("no-cast-navigation", plugin.rules["no-cast-navigation"], {
+  valid: [
+    // Typed route literal — the correct shape (typed routes check it at compile time).
+    { filename: "Foo.view.tsx", code: `router.push("/host/settings");` },
+    // The typed dynamic shape: a { pathname, params } object, no cast.
+    { filename: "Foo.view.tsx", code: `router.push({ pathname: "/host/[id]", params: { id } });` },
+    // A cast outside navigation is other rules' business (or none).
+    { filename: "Foo.view.tsx", code: `const x = parse(data as any); router.push("/home");` },
+    // A non-silencing cast (a concrete type) is not the typed-routes mute button.
+    { filename: "Foo.view.tsx", code: `router.push(target as Href);` },
+    // Declarative redirect with a literal — fine.
+    { filename: "src/app/index.tsx", code: `const F = () => <Redirect href="/login" />;` },
+    // Tests may cast freely.
+    { filename: "Foo.test.tsx", code: `router.push("/x" as never);` },
+  ],
+  invalid: [
+    // The pilot's exact shape: the cast that muted typed routes while a server-minted route drifted.
+    { filename: "Foo.view.tsx", code: `router.push("/host/properties/new" as never);`, errors: [{ messageId: "castNav" }] },
+    { filename: "Foo.view.tsx", code: `router.replace(target as any);`, errors: [{ messageId: "castNav" }] },
+    // The double cast — the inner `as unknown` is the silencer.
+    { filename: "Foo.view.tsx", code: `router.navigate(target as unknown as Href);`, errors: [{ messageId: "castNav" }] },
+    // The cast buried inside the typed object shape.
+    { filename: "Foo.view.tsx", code: `router.push({ pathname: p as never, params: { id } });`, errors: [{ messageId: "castNav" }] },
+    // TanStack: a useNavigate() binding with a cast argument.
+    { filename: "src/app/x.tsx", code: `const navigate = useNavigate(); navigate({ to: "/x" } as never);`, errors: [{ messageId: "castNav" }] },
+    // The declarative half: href/to on Redirect/Navigate/Link.
+    { filename: "Foo.view.tsx", code: `const F = () => <Redirect href={target as never} />;`, errors: [{ messageId: "castHref" }] },
+    { filename: "Foo.view.tsx", code: `const F = () => <Link href={route as any}>x</Link>;`, errors: [{ messageId: "castHref" }] },
+    { filename: "src/app/x.tsx", code: `const F = () => <Navigate to={next as never} />;`, errors: [{ messageId: "castHref" }] },
+  ],
+});
+
+// LZFE031 — handleSubmit(onValid) without the invalid path is a silent validation failure (the mute Save button:
+// the failure happens BEFORE the mutation, so LZFE013/027 never see it). submitOrReveal or a second arg passes.
+ruleTester.run("submit-handles-invalid", plugin.rules["submit-handles-invalid"], {
+  valid: [
+    // Both paths passed by hand.
+    { filename: "Foo.viewModel.ts", code: `const submit = form.handleSubmit(onValid, onInvalid);` },
+    { filename: "Foo.viewModel.ts", code: `const submit = handleSubmit(save, reveal);` },
+    // The blessed shape: the spine's primitive takes handleSubmit by REFERENCE (never a one-arg call).
+    { filename: "Foo.viewModel.ts", code: `const submit = submitOrReveal(form.handleSubmit, save, { onInvalid: (f) => form.setFocus(f) });` },
+    // out of scope: only the ViewModel owns the form logic.
+    { filename: "Foo.view.tsx", code: `const submit = form.handleSubmit(onValid);` },
+    // an unrelated one-arg call is not the RHF submit.
+    { filename: "Foo.viewModel.ts", code: `const x = handle(onValid);` },
+  ],
+  invalid: [
+    // The pilot's exact bug: one argument — a hidden tab's validation failure left Save completely mute.
+    { filename: "Foo.viewModel.ts", code: `const submit = form.handleSubmit((values) => mutation.mutate(values));`, errors: [{ messageId: "silent" }] },
+    { filename: "Foo.viewModel.ts", code: `const submit = handleSubmit(save);`, errors: [{ messageId: "silent" }] },
+  ],
+});
+
+// LZFE032 — a <Controller> render that never reads fieldState leaves a validated error with no surface on its
+// field (the pilot's Description input). Destructured or accessed both count; only inline functions are analyzed.
+ruleTester.run("controller-field-state", plugin.rules["controller-field-state"], {
+  valid: [
+    // fieldState destructured and surfaced — the blessed shape.
+    {
+      filename: "panels/GeneralPanel.view.tsx",
+      code: `const P = () => <Controller control={control} name="description" render={({ field, fieldState }) => <Input value={field.value} error={fieldState.error?.message} />} />;`,
+    },
+    // accessed without destructuring still counts as reading.
+    {
+      filename: "panels/GeneralPanel.view.tsx",
+      code: `const P = () => <Controller control={control} name="description" render={(props) => <Input value={props.field.value} error={props.fieldState.error?.message} />} />;`,
+    },
+    // a referenced render component is visible in review — not analyzed.
+    { filename: "panels/GeneralPanel.view.tsx", code: `const P = () => <Controller control={control} name="x" render={renderDescription} />;` },
+    // a non-Controller render prop is out of scope.
+    { filename: "Foo.view.tsx", code: `const P = () => <List render={({ item }) => <Row item={item} />} />;` },
+    // tests compose freely.
+    { filename: "Foo.test.tsx", code: `render(<Controller name="x" render={({ field }) => <Input {...field} />} />);` },
+  ],
+  invalid: [
+    // The pilot's exact bug: only { field } destructured — the field's validation error had no surface at all.
+    {
+      filename: "panels/GeneralPanel.view.tsx",
+      code: `const P = () => <Controller control={control} name="description" render={({ field }) => <Input value={field.value} onChangeText={field.onChange} />} />;`,
+      errors: [{ messageId: "blind" }],
+    },
+    // a props param that never touches fieldState is the same blindness.
+    {
+      filename: "Foo.view.tsx",
+      code: `const P = () => <Controller control={control} name="amount" render={(props) => <Input {...props.field} />} />;`,
+      errors: [{ messageId: "blind" }],
+    },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
