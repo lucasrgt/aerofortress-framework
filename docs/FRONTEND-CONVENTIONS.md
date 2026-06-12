@@ -249,6 +249,39 @@ Big forms decompose **panel-per-tab**: a hand-written spine (the ViewModel + the
 with a panel registry) plus one pure `panels/<X>Panel.view.tsx` per tab, each a function of the
 shared `control`. The panels are independent, so they migrate as panel-granularity fan-out.
 
+### Validation is never silent — `submitOrReveal` (LZFE031/032)
+
+`LZFE013`/`LZFE027` guarantee a **failed mutation** surfaces — but a validation failure happens
+*before* the mutation, and RHF's `handleSubmit(onValid)` without the second argument runs **no code
+at all** on it. On a multi-tab editor that is the mute Save button shipped to prod: a field failing
+on a hidden tab (cep/lat/long on the Address tab) left the button doing literally nothing — no
+mutation, no toast, no visible error. Two rules + one primitive close the cycle "a validation error
+always shows":
+
+- **The submit always carries its invalid path** (`LZFE031`, warn). The blessed shape is the spine's
+  `submitOrReveal`, which makes the surface impossible to omit (the `onInvalid` option is required)
+  and resolves the **first invalid field** so the shell can navigate to it:
+
+  ```ts
+  // ViewModel — the surface is forced at construction; `order` = the form's visual order.
+  const submit = submitOrReveal(form.handleSubmit, (values) => mutation.mutate(toInput(values)), {
+    onInvalid: (first) => feedback.error(t("validation.fixHighlighted")),
+    order: FIELD_ORDER,
+  });
+  // Single-screen form: reveal = focus. Multi-tab shell: the resolved field picks the tab.
+  const first = await submit();
+  if (first) setTab(FIELD_TAB[first]);
+  ```
+
+- **Every `<Controller>` surfaces its `fieldState`** (`LZFE032`, warn). A render prop that only
+  destructures `{ field }` leaves that field's error with no surface even when the form-level toast
+  fires — pass it through: `render={({ field, fieldState }) => <Input … error={fieldState.error?.message} />}`.
+  Passing `error` on a field without validation is inert, so the rule is near-noise-free.
+
+Both enter **warn** (a single-screen form whose inline errors are all visible is a legitimate
+`handleSubmit(onValid)` consumer) and are promoted to error together once the primitive absorbs the
+common case. The canonical instance is the sample's `Deposit.viewModel.ts`.
+
 ---
 
 ## Mutations — the write-side defaults (invalidate + feedback)
@@ -352,6 +385,38 @@ it says "this endpoint *is* a webhook", and the harness derives that a webhook h
 
 ---
 
+## Server-driven actions — a closed kind, never a client route
+
+When the backend drives a navigation (a pending-task card, a CTA), the contract carries **which
+action** as a closed enum; the client owns **where that goes**. A route string crossing the
+server→client boundary (`ctaTarget: "/host/properties/new"`) is the documented anti-pattern: it is
+runtime data — invisible to OpenAPI, to `tsc`, and to typed routes — and a pilot shipped it to prod
+(two server-minted routes didn't exist in the app → 404 on tap; the backend half of this convention
+lives in [CONVENTIONS.md](CONVENTIONS.md) §"The contract never mints a client route").
+
+The client-side shape is a `Record` over the **generated** enum, so both failure modes die in the
+typecheck:
+
+```ts
+import { PendingKind } from "@/client.gen/model"; // the closed enum, generated from the contract
+
+const PENDING_ROUTE: Record<PendingKind, Href> = {
+  [PendingKind.CompleteListing]: "/host/properties/new",
+  [PendingKind.AcceptTerms]: "/onboarding/host/intermediation-terms",
+};
+// exhaustiveness: a NEW kind breaks this Record until it is mapped (no silent dead card);
+// validity: each value is a typed route (typed routes on), so a drifted literal does not compile.
+const openPending = (p: Pending) => router.push(PENDING_ROUTE[p.kind]);
+```
+
+This composes with `LZFE030`: typed routes make the `Record`'s values compile-checked, and the
+no-cast rule keeps anyone from smuggling a raw server string into `router.push` anyway. **The
+config pair matters** — expo-router needs `experiments.typedRoutes` on (TanStack gets it from its
+generated route tree); without typed routes the rule still bans the cast, but the literal degrades
+to an unchecked `string`.
+
+---
+
 ## The bright line — generate vs scaffold (the law)
 
 This is the whole game. Cross it wrong and the harness becomes the Lazuli-2 vector.
@@ -421,6 +486,9 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE027` | **QueryClient carries the mutation defaults** — every production `new QueryClient(...)` wires `mutationCache: new MutationCache({ onSuccess, onError })`: success invalidates every active query + posts the success note (`meta.silent` opts out of the note), failure routes through the feedback seam unconditionally. Tests and the shared test harness (`test/`, `test-utils/`) build bare clients freely. Scaffolded as `lib/query.ts` | **shipped** | pauta: a created category only appeared after F5, with no toast — 13 of 43 ViewModels had no invalidation at all |
 | `LZFE028` | **No manual refetch ritual** — an `onSuccess` whose entire body is refetch/invalidate calls (inline, named, or `useCallback`-wrapped) duplicates the `LZFE027` defaults; delete it. A handler that does *more* than refetch (navigate, reset, hand off an id) is behavior — never flagged. Warn-tier: reveals, does not gate | **shipped** | pauta: 30 of 43 ViewModels hand-rolled `onSuccess: refetch` — the convention the majority groped toward, pinned so the minority can't forget it |
 | `LZFE029` | **Refresh one-door** — the refresh hook/operation (and any hand-rolled `POST` to a refresh route) is consumed only inside the rotation doors (`lib/lazuli-client`, `lib/session`); anywhere else is a second rotation path. Type-only imports stay free | **shipped** | pauta near-miss: a session-seam refresh bootstrap and a client 401 interceptor landed the same week from different branches — two cold-load rotations would have tripped the backend's theft detection and burned the session family |
+| `LZFE030` | **No cast on a navigation target** — no `as never`/`as any`/`as unknown` on the argument of `router.push`/`replace`/`navigate` (or a `useNavigate()` call), nor on the `href`/`to` of `<Redirect>`/`<Navigate>`/`<Link>`. The cast exists to silence typed routes; silenced, a drifted route literal compiles clean and 404s in prod. Pass a typed literal or the `{ pathname, params }` object. **Config pair**: typed routes ON (expo-router `experiments.typedRoutes` / TanStack's route tree) — without it the removed cast merely degrades to `string`. Error-tier, routing family | **shipped** | hostpoint: ~8 call sites cast `router.push(x as never)`; when the backend minted two routes that didn't exist (the sibling convention), the muted router compiled them clean → prod 404 |
+| `LZFE031` | **Submit handles the invalid path** — in a `*.viewModel.ts`, a one-argument `handleSubmit(onValid)` is flagged: a validation failure runs no code (it happens *before* the mutation, so `LZFE013`/`LZFE027` never see it). Use the spine's `submitOrReveal(form.handleSubmit, onValid, { onInvalid })` — it forces the surface and resolves the first invalid field for the shell to navigate to — or pass `onInvalid` by hand. Warn-tier on entry (a single-screen form with visible inline errors is legitimate); promotes with `LZFE032` | **shipped** | hostpoint: a 9-tab property editor's Save went completely mute when a hidden tab's field failed — no mutation, no toast, no error ("não está salvando a propriedade", in prod) |
+| `LZFE032` | **Controller surfaces its fieldState** — a `<Controller>` whose inline `render` never reads `fieldState` (destructured or accessed) leaves that field's validation error with no surface; pass `error={fieldState.error?.message}` to the field component. Near-zero false positives (`error` on an unvalidated field is inert); a deliberately surface-less control eslint-disables with its justification. Warn-tier, promoted together with `LZFE031` — the pair makes "a validation error always shows" hold by construction | **shipped** | hostpoint: the Description input destructured only `{ field }` — its validation failure had no surface at all (same incident as LZFE031) |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
