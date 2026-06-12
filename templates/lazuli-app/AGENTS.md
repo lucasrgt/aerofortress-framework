@@ -94,8 +94,8 @@ A screen is a triple: a **View** that renders, a **ViewModel** that owns data, a
   hardcoded host (`LZFE020`).
 - **Security** (`LZFE021–022`): no `dangerouslySetInnerHTML` outside the one audited `lib/html` seam (the XSS
   door); never navigate to a value that arrived in the URL — allowlist it first (open redirect).
-- **Routing & session** (`LZFE015–019`) — the navigation harness, born from real pilot bugs and router-agnostic
-  (recognizes expo-router ↔ TanStack):
+- **Routing & session** (`LZFE015–019`, `LZFE030`) — the navigation harness, born from real pilot bugs and
+  router-agnostic (recognizes expo-router ↔ TanStack):
   - **`LZFE015`** — a redirect-on-state is declarative (`return <Redirect/Navigate …/>`), never `router.replace`
     / `router.navigate` / a `useNavigate()` call inside a `useEffect`.
   - **`LZFE016`** — the bearer token is written through **one seam** (`lib/session`) that pairs the write with a
@@ -107,8 +107,22 @@ A screen is a triple: a **View** that renders, a **ViewModel** that owns data, a
     screen on an empty id); the spine's `requiredParam()` union (`missing | ready`) is the blessed guard shape.
   - **`LZFE019`** — no bare `router.back()`/`history.back()`; Back goes through a guarded helper
     (`safeBack`/`useGoBack`) that falls back to a parent when there is no in-app history.
+  - **`LZFE030`** — no `as never`/`as any`/`as unknown` on a navigation target (a `router.push`/`replace`/
+    `navigate` argument, a `useNavigate()` call, or the `href`/`to` of `<Redirect>`/`<Navigate>`/`<Link>`).
+    The cast silences typed routes; silenced, a drifted route literal compiles clean and 404s in prod. Keep
+    typed routes ON (expo-router `experiments.typedRoutes` / TanStack's route tree) — the rule's config pair.
+  - When the **backend drives a navigation** (a pending card, a CTA), the contract carries a **closed kind
+    enum**, never a route string — the client owns the `Record<Kind, Href>` map over the generated enum, so a
+    new kind is a compile error until mapped and every target is a typed route.
+- **Forms & validation** (`LZFE031–032`, warn-tier) — a validation failure always has a surface:
+  - **`LZFE031`** — a one-argument `handleSubmit(onValid)` in a ViewModel swallows validation failures (the
+    mute submit button: the failure happens *before* the mutation, so `LZFE013/027` never see it). Use the
+    spine's `submitOrReveal(form.handleSubmit, onValid, { onInvalid })` — it forces the surface and resolves
+    the first invalid field so a tab/step shell can navigate to it — or pass `onInvalid` by hand.
+  - **`LZFE032`** — a `<Controller>` render must read `fieldState` and surface the field's error
+    (`error={fieldState.error?.message}`); a render that only takes `{ field }` leaves the error invisible.
   - The spine `@lazuli/react` ships the primitives these steer toward: `SessionState`/`toSessionState`,
-    `AsyncState`/`Resource`/`combineAsyncStates`, `safeBack`, `requiredParam`.
+    `AsyncState`/`Resource`/`combineAsyncStates`, `safeBack`, `requiredParam`, `submitOrReveal`.
 - **Contract freshness** — the typed client is pinned to the spec it was generated from: the codegen tail stamps
   `client.gen/.spec-hash` and the doctor compares it against the live OpenAPI document. A moved contract is a
   build-time "regenerate", never a runtime 404.
