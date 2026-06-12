@@ -16,6 +16,12 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
+  "comment-overrides-a11y": "eslint-plugin-react-native-a11y@3.5.1 caps its eslint peer at ^8 but runs clean on eslint 9 — the overly-strict range was the only thing forcing --legacy-peer-deps (same fix as the hostpoint pilot's root package.json). Override it to the sdk's eslint so a plain `npm ci`/`npm install` resolves cleanly. Drop this when a11y ships an eslint-9 peer.",
+  "overrides": {
+    "eslint-plugin-react-native-a11y": {
+      "eslint": "$eslint"
+    }
+  },
   "devDependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/eslint-plugin-query": "^5.62.16",
