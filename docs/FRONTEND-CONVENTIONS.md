@@ -436,6 +436,42 @@ so the guest-guard stops being something to remember and becomes a flag on a sha
 
 ---
 
+## Session resilience — the four ways an auth session breaks, and the spine's answer
+
+Auth is treacherous on the read path too: a session expires, a network flaps on an F5, a cold start
+double-fires, a role gate is forgotten. Four spine primitives, each born from a confirmed pilot failure,
+each **opt-in** so an app upgrades without a rewrite:
+
+- **A transient `me` failure is not a sign-out.** `toSessionState` folded *every* error into `anonymous`,
+  so a `5xx`/timeout on the `me` query during an F5 over a shaky network bounced an authenticated user to
+  login (where re-login also failed). Wire the optional classifier `isUnauthorized` from the failed request
+  (`isUnauthorized: error?.response?.status === 401`): a classified non-auth error ⇒ `loading` (defer, let
+  react-query retry, recover to `authenticated`), only a real `401/403` ⇒ `anonymous`. Omitted ⇒ the legacy
+  "any error ⇒ anonymous". Pair it with the boot timeout below so a permanently-down API can't pin the splash.
+
+- **A hung bootstrap must not pin the splash forever.** `useSession(bootstrap, { timeoutMs })` arms a
+  fallback: a boot rotation that never settles (a dead socket on cold-start) would otherwise hold the
+  navigator on the splash with no path to login. After `timeoutMs` the gate opens and the guard decides; a
+  late success still set its token first. Omitted ⇒ the original wait-forever.
+
+- **A cold start fires one rotation, not two.** `bootstrapSession` is now wrapped in `singleFlight`: React
+  StrictMode double-invokes effects in dev, and the boot can race the client's 401-interceptor — two refresh
+  rotations replay the spent token and the backend's theft-detection burns the whole family (the `LZFE029`
+  hazard, at boot). `singleFlight(fn)` collapses concurrent callers into one in-flight execution (the gate
+  reopens on settle, resolve *or* reject). It is exported for the app's own `refreshAccessToken` interceptor
+  too — the single-flight refresh gate is now a spine primitive, not a per-app hand-roll. Coalesced callers
+  share the first call's result, which is exactly right for a rotation (the credential rides the cookie/store,
+  not the argument) — never wrap a per-argument operation with it.
+
+- **A role gate is the same guard, carrying a predicate.** `guardSession`'s `allow` now also accepts
+  `(user) => boolean` — a capability/role gate (`allow: (u) => u.role === "admin"`). Authorization is a fact
+  about the user **data**, not a second identity axis (the invariant: *auth = one identity, authz =
+  capability*), so a role-guarded route is one flag on the shared primitive, never a bespoke hand-rolled
+  check that the next screen forgets. An anonymous visitor has no user to inspect, so they redirect like any
+  rejected visitor — the predicate is never even called.
+
+---
+
 ## Endpoint kinds — the wiring vocabulary
 
 Not every endpoint should have a frontend wiring, and that is not a rare exception (webhooks, internal
