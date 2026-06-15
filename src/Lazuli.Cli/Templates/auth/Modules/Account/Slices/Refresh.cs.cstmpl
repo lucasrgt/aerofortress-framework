@@ -79,7 +79,8 @@ public static class Refresh
     //<lz:cookies>
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/refresh", async (Input? body, HttpContext http, AppDb db, IAccessTokens tokens, RefreshCookie cookies, TimeProvider clock, CancellationToken ct) =>
-            Respond(await Handle(new Input(cookies.RefreshFrom(http.Request, body?.RefreshToken)), db, tokens, clock, ct), http, cookies, clock));
+            Respond(await Handle(new Input(cookies.RefreshFrom(http.Request, body?.RefreshToken)), db, tokens, clock, ct), http, cookies, clock))
+            .AllowAnonymous();   // public: the refresh token IS the credential, the access token is expired (LZ0022)
 
     private static IResult Respond(Result<Output> result, HttpContext http, RefreshCookie cookies, TimeProvider clock)
     {
@@ -95,6 +96,7 @@ public static class Refresh
     //<lz:!cookies>
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/refresh", async (Input body, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct) =>
-            (await Handle(body, db, tokens, clock, ct)).ToHttp());
+            (await Handle(body, db, tokens, clock, ct)).ToHttp())
+            .AllowAnonymous();   // public: the refresh token IS the credential, the access token is expired (LZ0022)
     //</lz:!cookies>
 }

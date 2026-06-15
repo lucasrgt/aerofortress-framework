@@ -38,5 +38,6 @@ public static class LoginWithGoogle
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/login/google", async (Input input, AppDb db, IExternalIdentity oauth, IAccessTokens tokens, TimeProvider clock, CancellationToken ct) =>
-            (await Handle(input, db, oauth, tokens, clock, ct)).ToHttp());
+            (await Handle(input, db, oauth, tokens, clock, ct)).ToHttp())
+            .AllowAnonymous();   // public: signing in with Google is how you get a token (LZ0022 — the decision, made visible)
 }

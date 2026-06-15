@@ -50,5 +50,6 @@ public static class Register
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/register", async (Input input, AppDb db, TimeProvider clock, CancellationToken ct) =>
-            (await Handle(input, db, clock, ct)).ToHttp());
+            (await Handle(input, db, clock, ct)).ToHttp())
+            .AllowAnonymous();   // public: registering is pre-identity (LZ0022 — the decision, made visible)
 }
