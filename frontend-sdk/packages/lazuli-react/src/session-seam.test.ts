@@ -74,4 +74,74 @@ describe("createSessionSeam", () => {
 
     expect(await seam.bootstrapSession()).toBe(true);
   });
+
+  // The split that kills the hostpoint cache-leak: a sign-in is an IDENTITY change (total wipe), a bootstrap is a
+  // ROTATION of the same identity (light reset). Conflating them leaked user A's cache into user B's session.
+  it("signIn fires the IDENTITY reset (total wipe), not the rotation reset", async () => {
+    const onSessionChanged = vi.fn();
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({
+      setAccessToken: vi.fn(),
+      refresh: async () => null,
+      onSessionChanged,
+      onIdentityChanged,
+    });
+
+    await seam.signIn({ accessToken: "jwt" });
+
+    expect(onIdentityChanged).toHaveBeenCalledOnce();
+    expect(onSessionChanged).not.toHaveBeenCalled();
+  });
+
+  it("bootstrap (rotation) fires only the LIGHT reset — never the identity wipe", async () => {
+    const onSessionChanged = vi.fn();
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({
+      setAccessToken: vi.fn(),
+      refresh: async () => ({ accessToken: "jwt" }),
+      onSessionChanged,
+      onIdentityChanged,
+    });
+
+    await seam.bootstrapSession();
+
+    expect(onSessionChanged).toHaveBeenCalledOnce();
+    expect(onIdentityChanged).not.toHaveBeenCalled();
+  });
+
+  it("clearSession (sign-out) fires the IDENTITY reset — the next user starts clean", async () => {
+    const onSessionChanged = vi.fn();
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({
+      setAccessToken: vi.fn(),
+      refresh: async () => null,
+      onSessionChanged,
+      onIdentityChanged,
+    });
+
+    await seam.clearSession();
+
+    expect(onIdentityChanged).toHaveBeenCalledOnce();
+    expect(onSessionChanged).not.toHaveBeenCalled();
+  });
+
+  it("omitting onIdentityChanged falls back to onSessionChanged — retrocompat, no crash", async () => {
+    const onSessionChanged = vi.fn();
+    const seam = createSessionSeam({ setAccessToken: vi.fn(), refresh: async () => null, onSessionChanged });
+
+    await seam.signIn({ accessToken: "jwt" });
+
+    expect(onSessionChanged).toHaveBeenCalledOnce(); // identity path falls back to the only reset wired
+  });
+
+  it("onAuthenticated stays a working alias of signIn (deprecated, identity semantics)", async () => {
+    const onIdentityChanged = vi.fn();
+    const setAccessToken = vi.fn();
+    const seam = createSessionSeam({ setAccessToken, refresh: async () => null, onIdentityChanged });
+
+    await seam.onAuthenticated({ accessToken: "jwt" });
+
+    expect(setAccessToken).toHaveBeenCalledWith("jwt");
+    expect(onIdentityChanged).toHaveBeenCalledOnce();
+  });
 });
