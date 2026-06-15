@@ -89,6 +89,27 @@ the live one, so a second use of a rotated one is **theft**. The response is to 
 family too. (Tokens are Base64Url so they are cookie/URL-safe; the chain grows append-only — pruning
 spent/expired rows is a future job.)
 
+A family also has an **absolute ceiling** (`SessionToken.FamilyMaxAge`, 90 days): a session may slide
+(rotate) freely within that window, but `Refresh` retires the family once its first token is older than
+the ceiling — so a silently-rotating session cannot live forever, no matter how often it refreshes.
+
+### Security posture (the deliberate choices)
+- **No user enumeration by timing.** `Login` verifies the password against a fixed dummy argon2 hash when
+  no account matches, so a missing email costs the same work as a wrong one, and the two return the *same*
+  error. The absence of an account is observable through neither the response nor its timing.
+- **A credential change ends every session.** When the email flow's `ResetPassword` (or any future
+  password change) succeeds, it revokes **all** of the user's refresh families (`Refresh.RevokeAllForUser`),
+  not just the caller's — so a takeover recovery also evicts the attacker.
+- **OTP codes are brute-force-capped.** The phone flow's `VerifyPhone` locks a 6-digit code after
+  `MaxAttempts` wrong guesses (consuming the OTP), so the 10⁶ space cannot be walked.
+- **Registration accepts email-existence disclosure.** A duplicate registration returns `409 Conflict`
+  (an explicit `EmailTaken`) rather than masking it — a conscious UX trade-off; the mitigation for
+  enumeration/abuse is edge rate-limiting, not a vague error.
+- **Rate limiting is platform infra, not slice shape.** Brute-force / spam protection on the auth
+  endpoints (login, register, refresh, password-reset request, OTP) is ASP.NET rate-limiter middleware
+  wired in `Platform/Security`, surfacing `platform.rate_limited` — it does not belong in a slice's
+  `Handle`. See the platform/security guidance in `docs/CONVENTIONS.md`.
+
 ### The session id (sid)
 A "session" is a refresh family. The access token carries that family id as the `sid` claim, so a
 request can name *its own* session without a DB lookup. That is what lets `ListMySessions` flag the

@@ -410,6 +410,7 @@ public static class AuthFlowGenerator
             [
                 ("NoActiveCode", "auth.no_active_code", "The phone has no active OTP code."),
                 ("InvalidCode", "auth.invalid_code", "The submitted OTP code is wrong."),
+                ("TooManyAttempts", "auth.too_many_attempts", "The OTP code was guessed wrong too many times and is now locked."),
             ],
             Summary: "auth:otp generated — phone verification by SMS code (ConsoleSmsSender in dev). "
                 + "Run `lazuli doctor` then `lazuli test`."),

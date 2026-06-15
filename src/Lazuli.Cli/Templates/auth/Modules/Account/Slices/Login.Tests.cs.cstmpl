@@ -52,6 +52,27 @@ public class LoginTests
         Assert.Equal(ErrorKind.Unauthorized, result.Error.Kind);
     }
 
+    [Unit]
+    [Fact]
+    public async Task Unknown_email_and_wrong_password_are_indistinguishable()
+    {
+        // User-enumeration guard: a missing account and a wrong password must return the SAME error — no
+        // signal (kind or code) that reveals whether the email exists. (Timing is equalized in Handle by
+        // verifying against a fixed dummy hash on the no-account path; a wall-clock assertion would be flaky,
+        // so the structural pin is response-indistinguishability.)
+        var store = Guid.NewGuid().ToString();
+        await SeedUser(store, "a@x.com", "password1");
+
+        await using var db1 = NewDb(store);
+        var wrongPassword = await Login.Handle(new Login.Input("a@x.com", "nope-nope1"), db1, Tokens(), TimeProvider.System, default);
+        await using var db2 = NewDb(store);
+        var unknownEmail = await Login.Handle(new Login.Input("ghost@x.com", "nope-nope1"), db2, Tokens(), TimeProvider.System, default);
+
+        Assert.True(wrongPassword.IsFailure && unknownEmail.IsFailure);
+        Assert.Equal(wrongPassword.Error.Kind, unknownEmail.Error.Kind);
+        Assert.Equal(wrongPassword.Error.Code, unknownEmail.Error.Code);
+    }
+
     //<lz:tenancy>
     [Unit]
     [Fact]

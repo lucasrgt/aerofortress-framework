@@ -73,6 +73,28 @@ public class RefreshTests
 
     [Unit]
     [Fact]
+    public async Task Rejects_a_family_past_the_absolute_max_age()
+    {
+        var store = Guid.NewGuid().ToString();
+        var refresh = await SeedAndLogin(store);
+
+        // Age the family past the ceiling: backdate its only slot's first-seen time beyond FamilyMaxAge.
+        await using (var db = NewDb(store))
+        {
+            var slot = await db.UserSessions.FirstAsync();
+            slot.CreatedAt = DateTime.UtcNow - SessionToken.FamilyMaxAge - TimeSpan.FromDays(1);
+            await db.SaveChangesAsync();
+        }
+
+        await using var aged = NewDb(store);
+        var result = await Refresh.Handle(new Refresh.Input(refresh), aged, Tokens(), TimeProvider.System, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorKind.Unauthorized, result.Error.Kind);
+    }
+
+    [Unit]
+    [Fact]
     public async Task Rejects_an_unknown_token()
     {
         await using var db = NewDb();

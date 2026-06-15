@@ -17,6 +17,11 @@ public static class Login
 
     public record Output(string AccessToken, string RefreshToken, RegistrationStep Step, Role? Role);
 
+    // A fixed argon2 hash for the no-account branch of the timing-equalizing credential check (see Handle).
+    // Computed once at startup; the plaintext is irrelevant — it exists only to make Verify do real work so a
+    // login for an unknown email costs the same as one with a wrong password.
+    internal static readonly PasswordHash DummyHash = PasswordHash.Create("lazuli-login-timing-equalizer");
+
     public static async Task<Result<Output>> Handle(Input input, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct)
     {
         var email = Email.From(input.Email);
@@ -30,7 +35,11 @@ public static class Login
             .IgnoreQueryFilters()
             //</lz:tenancy>
             .FirstOrDefaultAsync(u => u.Email == email.Value, ct);
-        if (user is null || !user.PasswordHash.Verify(input.Password))
+        // Constant-time identity check: verify against the found user's hash, or a fixed dummy hash when no
+        // account exists, so a missing email costs the same argon2 work as a wrong password — the absence of
+        // an account is not observable by response timing (user enumeration).
+        var passwordOk = (user?.PasswordHash ?? DummyHash).Verify(input.Password);
+        if (user is null || !passwordOk)
             return Error.Unauthorized(AccountErrorCodes.InvalidCredentials, "invalid email or password");
 
         var now = clock.GetUtcNow().UtcDateTime;

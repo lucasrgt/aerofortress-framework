@@ -43,6 +43,32 @@ public class VerifyPhoneTests
         Assert.Equal(ErrorKind.Unauthorized, result.Error.Kind);
     }
 
+    [Unit]
+    [Fact]
+    public async Task Locks_the_code_after_five_wrong_attempts()
+    {
+        var org = Guid.NewGuid();
+        var store = Guid.NewGuid().ToString();
+        var userId = await SeedUser(org, store);
+        await SeedOtp(org, store, userId, "123456");
+
+        // Five wrong guesses against a 6-digit code: the fifth trips the brute-force lock.
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            await using var db = NewDb(org, store);
+            await VerifyPhone.Handle(new VerifyPhone.Input("000000"), db, new FakeUser(userId), TimeProvider.System, default);
+        }
+
+        // The correct code now fails — the locked code was consumed, so no active OTP remains to verify.
+        await using var after = NewDb(org, store);
+        var result = await VerifyPhone.Handle(new VerifyPhone.Input("123456"), after, new FakeUser(userId), TimeProvider.System, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ErrorKind.Unauthorized, result.Error.Kind);
+        var user = await after.Users.FirstAsync(u => u.Id == userId);
+        Assert.False(user.IsPhoneVerified);
+    }
+
     private static async Task SeedOtp(Guid org, string store, Guid userId, string code)
     {
         var now = DateTime.UtcNow;

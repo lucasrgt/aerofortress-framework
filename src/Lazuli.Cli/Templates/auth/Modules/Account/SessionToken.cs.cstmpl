@@ -16,6 +16,12 @@ public static class SessionToken
     /// expiry and the web cookie's Max-Age, so they can never drift apart.</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromDays(14);
 
+    /// <summary>The absolute ceiling on a session's age, measured from the family's first token. A family
+    /// may rotate (slide) freely within this window, but once its lineage is older than this it is retired
+    /// on the next refresh — forcing a fresh login. Caps how long a silently-rotating session can live no
+    /// matter how often it refreshes.</summary>
+    public static readonly TimeSpan FamilyMaxAge = TimeSpan.FromDays(90);
+
     /// <summary>Mint a fresh token: the raw value (returned to the client once) and its stored hash.
     /// Base64Url, so the token is safe to carry in a cookie or URL without escaping (no <c>+ / =</c>).</summary>
     public static (string Raw, string Hash) Issue()

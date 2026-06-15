@@ -17,6 +17,10 @@ public static class VerifyPhone
 
     public record Output();
 
+    // A 6-digit code spans only 10^6 values, so unbounded guessing is a brute-force. Lock the code once it
+    // has been guessed wrong this many times — the locked code is consumed and can never be tried again.
+    private const int MaxAttempts = 5;
+
     public static async Task<Result<Output>> Handle(Input input, AppDb db, ICurrentUser current, TimeProvider clock, CancellationToken ct)
     {
         var now = clock.GetUtcNow().UtcDateTime;
@@ -27,9 +31,17 @@ public static class VerifyPhone
         if (otp is null)
             return Error.Unauthorized(AccountErrorCodes.NoActiveCode, "no active code");
 
+        // Count this attempt first. A correct code within the limit always wins; a wrong code that hits the
+        // ceiling consumes the OTP (UsedAt) so no further guess — right or wrong — can ever be tried.
+        otp.Attempts++;
         if (!PasswordHash.FromStored(otp.CodeHash).Verify(input.Code))
         {
-            otp.Attempts++;
+            if (otp.Attempts >= MaxAttempts)
+            {
+                otp.UsedAt = now;
+                await db.SaveChangesAsync(ct);
+                return Error.Unauthorized(AccountErrorCodes.TooManyAttempts, "too many attempts");
+            }
             await db.SaveChangesAsync(ct);
             return Error.Unauthorized(AccountErrorCodes.InvalidCode, "invalid code");
         }
