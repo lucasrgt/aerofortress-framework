@@ -111,7 +111,9 @@ public static class AuthGenerator
     }
 
     // Two clean lines in Program.cs: builder.AddAccount(); before Build(), and AccountModule.Map(app)
-    // before app.Run(). Plus UseAuthentication/UseAuthorization, which the auth routes need.
+    // before app.Run(). No middleware wiring leaks here: WebApplication auto-adds UseAuthentication /
+    // UseAuthorization once AddAccount has registered the auth + authorization services, so the composition
+    // root stays the thin index LZ0017 requires.
     private static void WireProgram(string root, string appName, bool tenancy)
     {
         var program = Path.Combine(root, "Program.cs");
@@ -135,15 +137,17 @@ public static class AuthGenerator
         {
             File.WriteAllText(program, text);
             Console.WriteLine("note: Program.cs looks unusual — add builder.AddAccount(); before Build(), then "
-                + "app.UseAuthentication(); app.UseAuthorization(); and AccountModule.Map(app); before app.Run();");
+                + "AccountModule.Map(app); before app.Run(); (WebApplication auto-adds the auth middleware).");
             return;
         }
 
         // builder.AddAccount(); just before the app is built.
         text = ReplaceFirst(text, "var app =", $"builder.AddAccount();{nl}{nl}var app =");
 
-        // The auth middleware + the module routes, just before app.Run().
-        var wiring = $"app.UseAuthentication();{nl}app.UseAuthorization();{nl}{nl}AccountModule.Map(app);{nl}{nl}app.Run();";
+        // Just the module routes before app.Run(). The auth middleware is NOT wired here: WebApplication
+        // auto-adds UseAuthentication/UseAuthorization when AddAccount has registered the auth + authorization
+        // services, so the composition root stays a thin index (LZ0017) with no Use* drift.
+        var wiring = $"AccountModule.Map(app);{nl}{nl}app.Run();";
         text = ReplaceFirst(text, "app.Run();", wiring);
 
         File.WriteAllText(program, text);

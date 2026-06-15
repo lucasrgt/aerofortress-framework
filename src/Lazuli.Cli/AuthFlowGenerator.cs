@@ -19,10 +19,11 @@ public enum AuthFlow
 /// Augments an already-scaffolded Account module (from <c>lazuli g auth</c>) with a provider-backed flow:
 /// <c>auth:otp</c> (phone code over SMS), <c>auth:oauth</c> (Google sign-in), or <c>auth:email</c> (email
 /// verification + password reset). It emits the flow's slices, tests, and entities, then best-effort
-/// edits the existing <c>User</c>, <c>AppDb</c>, <c>AccountModule</c>, <c>Program.cs</c>, and the API
+/// edits the existing <c>User</c>, <c>AppDb</c>, <c>AccountModule</c>, <c>AccountSetup</c>, and the API
 /// csproj to wire them in. Every edit is idempotent — re-running a flow never duplicates a field, DbSet,
 /// map line, DI registration, or package reference — and a missing anchor prints a precise manual-step
-/// note rather than failing the whole generator.
+/// note rather than failing the whole generator. The provider DI lands in <c>AccountSetup.AddAccount</c>
+/// (the module's composition), never in <c>Program.cs</c> — the composition root stays a thin index (LZ0017).
 /// </summary>
 /// <remarks>
 /// Targets the default multi-tenant scaffold only. An app generated with <c>--skip-tenancy</c> is rejected
@@ -69,7 +70,7 @@ public static class AuthFlowGenerator
         AugmentUser(userFile, spec);
         AugmentAppDb(Path.Combine(root, "AppDb.cs"), spec);
         AugmentAccountModule(accountModule, spec);
-        AugmentProgram(Path.Combine(root, "Program.cs"), spec);
+        AugmentAccountSetup(Path.Combine(root, "Modules", "Account", "AccountSetup.cs"), spec);
         AugmentApiProject(csproj, spec);
 
         Console.WriteLine(spec.Summary);
@@ -222,44 +223,49 @@ public static class AuthFlowGenerator
         }
     }
 
-    // Register the flow's provider DI in Program.cs, idempotently, just before the app is built. Adds the
-    // package's using at the top too. Anchored on the scaffold's "var app =" line.
-    private static void AugmentProgram(string program, FlowSpec spec)
+    // Register the flow's provider DI in the Account module's composition (AccountSetup.AddAccount),
+    // idempotently — NOT in Program.cs, which must stay a thin index (LZ0017 flags a registration that
+    // leaks into the composition root). Adds the provider package's using too. Anchored on the
+    // AddAuthorization() call that closes AddAccount's registrations.
+    private static void AugmentAccountSetup(string accountSetup, FlowSpec spec)
     {
-        if (!File.Exists(program))
+        if (!File.Exists(accountSetup))
         {
-            Console.WriteLine($"note: no Program.cs — register `{spec.DiLine.Trim()}` before the app is built.");
+            Console.WriteLine($"note: no AccountSetup.cs — register `{spec.DiLine.Trim()}` in AddAccount.");
             return;
         }
 
-        var text = File.ReadAllText(program);
+        var text = File.ReadAllText(accountSetup);
         var nl = Newline(text);
         var changed = false;
 
         var usingLine = $"using {spec.ProviderNamespace};";
         if (!text.Contains(usingLine))
         {
-            text = usingLine + nl + text;
+            // Group it with the existing usings, right after the framework's Lazuli.Auth import.
+            text = ReplaceFirst(text, "using Lazuli.Auth;", "using Lazuli.Auth;" + nl + usingLine);
             changed = true;
         }
 
         if (!text.Contains(spec.DiLine.Trim()))
         {
-            if (text.Contains("var app ="))
+            // AddAccount's last registration — the provider joins the module's services beside it.
+            var anchor = "        builder.Services.AddAuthorization();";
+            if (text.Contains(anchor))
             {
-                text = ReplaceFirst(text, "var app =", spec.DiLine + nl + nl + "var app =");
+                text = ReplaceFirst(text, anchor, anchor + nl + "        " + spec.DiLine.Trim());
                 changed = true;
             }
             else
             {
-                Console.WriteLine($"note: Program.cs looks unusual — add `{spec.DiLine.Trim()}` before the app is built.");
+                Console.WriteLine($"note: add `{spec.DiLine.Trim()}` to AddAccount in AccountSetup.cs");
             }
         }
 
         if (changed)
         {
-            File.WriteAllText(program, text);
-            Console.WriteLine($"registered {spec.ProviderNamespace} provider in Program.cs");
+            File.WriteAllText(accountSetup, text);
+            Console.WriteLine($"registered {spec.ProviderNamespace} provider in AccountSetup.cs");
         }
     }
 
