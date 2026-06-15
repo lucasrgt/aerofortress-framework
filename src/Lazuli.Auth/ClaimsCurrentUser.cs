@@ -29,11 +29,11 @@ public sealed class ClaimsCurrentUser(ClaimsPrincipal? principal) : ICurrentUser
     public Guid OrgId => Guid.TryParse(principal?.FindFirst("org")?.Value, out var id) ? id : Guid.Empty;
 
     /// <inheritdoc />
-    public string? Role => principal?.FindFirst("role")?.Value;
+    public string? Role => principal?.FindFirst("role")?.Value is { Length: > 0 } role ? role : null;
 
     /// <inheritdoc />
     public Guid SessionId => Guid.TryParse(principal?.FindFirst("sid")?.Value, out var id) ? id : Guid.Empty;
 
     /// <inheritdoc />
-    public string? Name => principal?.FindFirst("name")?.Value;
+    public string? Name => principal?.FindFirst("name")?.Value is { Length: > 0 } name ? name : null;
 }

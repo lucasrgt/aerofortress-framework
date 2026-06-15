@@ -31,20 +31,48 @@ public static class JwtAccessTokenExtensions
             .AddJwtBearer(options =>
             {
                 options.MapInboundClaims = false;   // else "sub" is remapped to NameIdentifier and the claims break
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidIssuer = issuer,
-                    ValidAudience = audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                };
+                options.TokenValidationParameters = BuildValidationParameters(secret, issuer, audience);
             });
 
         return services;
     }
+
+    /// <summary>The exact parameters the JwtBearer validator runs with — extracted so the agreement with
+    /// <see cref="AccessTokens.Issue"/> (these tokens' claim names, signing alg, lifetime) is one testable
+    /// place, not a hand-copied options lambda.</summary>
+    /// <remarks>
+    /// Three guards beyond the obvious issuer/audience/key checks:
+    /// <list type="bullet">
+    /// <item><description><c>RoleClaimType</c>/<c>NameClaimType</c> are pinned to the <c>role</c>/<c>name</c>
+    /// claims this library mints. With <c>MapInboundClaims = false</c> and no mapping, the defaults
+    /// (<c>ClaimTypes.Role</c>/<c>ClaimTypes.Name</c>) point at claim types the token never carries, so
+    /// idiomatic <c>[Authorize(Roles = …)]</c>, <c>User.IsInRole(…)</c> and <c>User.Identity!.Name</c> would
+    /// silently see nothing — a stranger-maintainable .NET app must just work.</description></item>
+    /// <item><description><c>ValidAlgorithms</c> pins HS256: the validator never accepts a token signed with
+    /// any other algorithm, closing algorithm-substitution off by construction rather than by the key type
+    /// happening to be symmetric.</description></item>
+    /// <item><description><c>ClockSkew</c> is 30 seconds, not the 5-minute default. A 15-minute token with a
+    /// 5-minute skew lives ~20 minutes and stays accepted long after it "expired"; 30 seconds tolerates
+    /// ordinary server clock drift without quietly tripling the token's effective window.</description></item>
+    /// </list>
+    /// </remarks>
+    public static TokenValidationParameters BuildValidationParameters(string secret, string issuer, string audience) =>
+        new()
+        {
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            RequireSignedTokens = true,
+            RequireExpirationTime = true,
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            RoleClaimType = "role",
+            NameClaimType = "name",
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
 
     /// <summary>Register the web refresh-cookie delivery service with the app's cookie name and path.</summary>
     /// <example>

@@ -16,20 +16,26 @@ public sealed class AccessTokens(string secret, string issuer, string audience, 
     public string Issue(Guid userId, Guid orgId, string? role, Guid sessionId, string? name)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var claims = new List<Claim>
+        {
+            new("sub", userId.ToString()),
+            new("org", orgId.ToString()),
+            new("sid", sessionId.ToString()),
+        };
+        // Absent, never empty: an empty "role"/"name" claim reads back as "" not null, so a caller's
+        // `Role is null` (no role) check would silently never fire. Omit the claim when there is nothing.
+        if (!string.IsNullOrEmpty(role))
+            claims.Add(new Claim("role", role));
+        if (!string.IsNullOrEmpty(name))
+            claims.Add(new Claim("name", name));
+
         var descriptor = new SecurityTokenDescriptor
         {
             Issuer = issuer,
             Audience = audience,
             Expires = clock.GetUtcNow().UtcDateTime.AddMinutes(15),
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256),
-            Subject = new ClaimsIdentity(
-            [
-                new Claim("sub", userId.ToString()),
-                new Claim("org", orgId.ToString()),
-                new Claim("role", role ?? string.Empty),
-                new Claim("sid", sessionId.ToString()),
-                new Claim("name", name ?? string.Empty),
-            ]),
+            Subject = new ClaimsIdentity(claims),
         };
         return new JsonWebTokenHandler().CreateToken(descriptor);
     }

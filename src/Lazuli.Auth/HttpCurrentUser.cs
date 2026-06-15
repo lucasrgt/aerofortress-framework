@@ -20,10 +20,10 @@ public sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentUse
     public Guid OrgId => Guid.TryParse(Principal?.FindFirst("org")?.Value, out var id) ? id : Guid.Empty;
 
     /// <inheritdoc />
-    public string? Role => Principal?.FindFirst("role")?.Value;
+    public string? Role => Principal?.FindFirst("role")?.Value is { Length: > 0 } role ? role : null;
 
     /// <inheritdoc />
-    public string? Name => Principal?.FindFirst("name")?.Value;
+    public string? Name => Principal?.FindFirst("name")?.Value is { Length: > 0 } name ? name : null;
 
     /// <inheritdoc />
     public Guid SessionId => Guid.TryParse(Principal?.FindFirst("sid")?.Value, out var id) ? id : Guid.Empty;
