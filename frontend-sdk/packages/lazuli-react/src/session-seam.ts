@@ -5,6 +5,8 @@
 // merely linted. Structural like the rest of the spine: the client call, the token sink, and the storage are
 // injected ports — the spine depends on no transport, no router, no storage API.
 
+import { singleFlight } from "./single-flight";
+
 /** Where the refresh token lives between runs — the platform seam. Web apps omit it entirely (the refresh
  * token is an httpOnly cookie, invisible to JS by design); native apps back it with secure storage. */
 export interface RefreshTokenStore {
@@ -107,18 +109,25 @@ export function createSessionSeam(ports: SessionSeamPorts): SessionSeam {
     onIdentityChanged?.(); // a (possibly) new identity — wipe the prior user's cache entirely
   };
 
+  // Single-flighted: a cold start that double-invokes the boot effect (React StrictMode in dev) or a bootstrap
+  // racing the client's 401-interceptor would otherwise fire TWO refresh rotations — and the backend's
+  // theft-detection burns the whole session family when it sees the spent token replayed (the LZFE029 hazard at
+  // boot). Concurrent callers share the one rotation; the gate reopens once it settles, so a later, genuine
+  // re-bootstrap still runs.
+  const bootstrapSession = singleFlight(async (): Promise<boolean> => {
+    try {
+      await persistTokens(await ports.refresh(await store.load()));
+      ports.onSessionChanged?.(); // rotation of the SAME identity — light reset, not the identity wipe
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
   return {
     signIn,
     onAuthenticated: signIn, // deprecated alias — same identity semantics
-    async bootstrapSession() {
-      try {
-        await persistTokens(await ports.refresh(await store.load()));
-        ports.onSessionChanged?.(); // rotation of the SAME identity — light reset, not the identity wipe
-        return true;
-      } catch {
-        return false;
-      }
-    },
+    bootstrapSession,
     async clearSession() {
       ports.setAccessToken(null);
       await store.clear();

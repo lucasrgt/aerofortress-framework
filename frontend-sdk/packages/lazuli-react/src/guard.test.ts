@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { guardSession } from "./guard";
 import type { SessionState } from "./session";
 
@@ -28,6 +28,35 @@ describe("guardSession", () => {
     expect(guardSession(authed, { allow: "anonymous", redirectTo: "/home" })).toEqual({
       action: "redirect",
       to: "/home",
+    });
+  });
+
+  // Seed 5 — a capability/role gate is the SAME primitive carrying a predicate over the user (authz = data),
+  // never a hand-rolled check each route re-derives.
+  describe("capability gate (predicate)", () => {
+    const isAdmin = (u: { id: string; role?: string }) => u.role === "admin";
+    const admin: SessionState<{ id: string; role?: string }> = { status: "authenticated", user: { id: "a", role: "admin" } };
+    const member: SessionState<{ id: string; role?: string }> = { status: "authenticated", user: { id: "m", role: "member" } };
+
+    it("renders when the authenticated user satisfies the predicate", () => {
+      expect(guardSession(admin, { allow: isAdmin, redirectTo: "/home" })).toEqual({ action: "render" });
+    });
+
+    it("redirects an authenticated user who lacks the capability", () => {
+      expect(guardSession(member, { allow: isAdmin, redirectTo: "/home" })).toEqual({ action: "redirect", to: "/home" });
+    });
+
+    it("redirects an anonymous visitor — no user to inspect, the predicate is never called", () => {
+      const spy = vi.fn(isAdmin);
+      expect(guardSession({ status: "anonymous" }, { allow: spy, redirectTo: "/home" })).toEqual({
+        action: "redirect",
+        to: "/home",
+      });
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("still waits while loading (a capability gate never decides before the session settles)", () => {
+      expect(guardSession({ status: "loading" }, { allow: isAdmin, redirectTo: "/home" })).toEqual({ action: "wait" });
     });
   });
 });

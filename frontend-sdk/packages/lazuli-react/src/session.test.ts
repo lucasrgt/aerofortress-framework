@@ -30,4 +30,24 @@ describe("toSessionState", () => {
       user,
     });
   });
+
+  // Seed 1 — a transient `me` failure (5xx/timeout/offline flap) on F5 must NOT log an authenticated user out.
+  // Opt-in via the isUnauthorized classifier: a non-auth error DEFERS (loading) instead of collapsing to anonymous.
+  it("is loading on a TRANSIENT error (isUnauthorized=false) — defer, don't bounce to login on a network flap", () => {
+    expect(toSessionState({ isPending: false, isError: true, data: undefined, isUnauthorized: false })).toEqual({
+      status: "loading",
+    });
+  });
+
+  it("is anonymous on an AUTH error (isUnauthorized=true) — a real 401 is 'not signed in'", () => {
+    expect(toSessionState({ isPending: false, isError: true, data: undefined, isUnauthorized: true })).toEqual({
+      status: "anonymous",
+    });
+  });
+
+  it("legacy behaviour holds when the classifier is omitted — any error ⇒ anonymous", () => {
+    // Documents the pre-0.5.0 contract (and the latent F5-logout risk): without isUnauthorized wired, a 5xx still
+    // collapses to anonymous. Apps opt into the safe behaviour by passing the classifier.
+    expect(toSessionState({ isPending: false, isError: true, data: undefined })).toEqual({ status: "anonymous" });
+  });
 });

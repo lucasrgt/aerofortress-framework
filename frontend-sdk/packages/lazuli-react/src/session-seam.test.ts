@@ -144,4 +144,23 @@ describe("createSessionSeam", () => {
     expect(setAccessToken).toHaveBeenCalledWith("jwt");
     expect(onIdentityChanged).toHaveBeenCalledOnce();
   });
+
+  // A cold start that double-invokes the boot effect (StrictMode), or a bootstrap racing the client's 401
+  // interceptor, must not fire TWO refresh rotations — the backend's theft detection burns the family on the
+  // replayed token (LZFE029 at boot). bootstrapSession is single-flighted.
+  it("concurrent bootstrapSession calls share ONE refresh rotation (no double-rotation at boot)", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const refresh = vi.fn(() => gate.then(() => ({ accessToken: "jwt" })));
+    const seam = createSessionSeam({ setAccessToken: vi.fn(), refresh });
+
+    const a = seam.bootstrapSession();
+    const b = seam.bootstrapSession();
+    release();
+
+    expect(await Promise.all([a, b])).toEqual([true, true]);
+    expect(refresh).toHaveBeenCalledOnce();
+  });
 });

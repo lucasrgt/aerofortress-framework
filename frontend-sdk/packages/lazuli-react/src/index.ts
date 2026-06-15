@@ -13,6 +13,7 @@ export {
   createSessionSeam,
 } from "./session-seam";
 export { useSession } from "./useSession";
+export { singleFlight } from "./single-flight";
 export { type GuardOutcome, type GuardOptions, guardSession } from "./guard";
 export { type BackRouter, safeBack } from "./nav";
 export { type HandleSubmitLike, type SubmitOrRevealOptions, submitOrReveal } from "./submit";

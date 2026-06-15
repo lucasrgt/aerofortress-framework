@@ -24,17 +24,24 @@ export type GuardOutcome<Href = string> =
   | { action: "redirect"; to: Href };
 
 /**
- * How a route is guarded. `allow` is the ONLY axis that differs between an auth-guard and a guest-guard, which is
- * the whole point: one primitive, one flag.
+ * How a route is guarded. `allow` is the ONLY axis that differs between an auth-guard, a guest-guard, and a
+ * capability-guard — one primitive, one flag.
  *
+ * @typeParam U - the authenticated user (what a capability predicate inspects).
  * @typeParam Href - the app's route type.
  */
-export interface GuardOptions<Href = string> {
-  /** Who may render this route: `"authenticated"` (a private screen) or `"anonymous"` (a public/guest screen such
-   * as login or sign-up, which a signed-in user must be redirected away from). */
-  allow: "authenticated" | "anonymous";
+export interface GuardOptions<U = unknown, Href = string> {
+  /** Who may render this route:
+   * - `"authenticated"` — a private screen (any signed-in user);
+   * - `"anonymous"` — a public/guest screen (login, sign-up), which a signed-in user must be redirected away from;
+   * - a **predicate over the user** — a capability/role gate (`(u) => u.role === "admin"`). Authorization is a
+   *   fact about the user DATA, not a second identity axis (the spine's invariant: auth = one identity,
+   *   authz = capability), so a role guard is the same primitive carrying a predicate — never a bespoke,
+   *   easy-to-forget hand-rolled check. An anonymous visitor never satisfies it (there is no user), so they
+   *   redirect like any rejected visitor. */
+  allow: "authenticated" | "anonymous" | ((user: U) => boolean);
   /** Where to send a visitor the guard rejects — the sign-in screen for an auth-guard, the app home for a
-   * guest-guard. */
+   * guest-guard, a "no access" / home screen for a capability-guard. */
   redirectTo: Href;
 }
 
@@ -51,12 +58,14 @@ export interface GuardOptions<Href = string> {
  * }
  * const AuthRoute = (p) => <Guard allow="authenticated" redirectTo="/login" {...p} />;
  * const GuestRoute = (p) => <Guard allow="anonymous" redirectTo="/home" {...p} />;
+ * const AdminRoute = (p) => <Guard allow={(u) => u.role === "admin"} redirectTo="/home" {...p} />;
  * ```
  *
  * - **`loading` ⇒ `wait`.** The answer is not in yet; defer (splash), never redirect — the bounce-to-login bug.
  * - **allowed ⇒ `render`.**
- * - **rejected ⇒ `redirect` to `redirectTo`.** A signed-in user on a guest route, or an anonymous one on a private
- *   route, lands on the right screen instead of seeing one they should never reach.
+ * - **rejected ⇒ `redirect` to `redirectTo`.** A signed-in user on a guest route, an anonymous one on a private
+ *   route, or a signed-in user lacking the capability, lands on the right screen instead of one they should never
+ *   reach.
  *
  * @typeParam U - the authenticated user the session carries.
  * @typeParam Href - the app's route type.
@@ -66,12 +75,15 @@ export interface GuardOptions<Href = string> {
  */
 export function guardSession<U, Href = string>(
   session: SessionState<U>,
-  options: GuardOptions<Href>,
+  options: GuardOptions<U, Href>,
 ): GuardOutcome<Href> {
   if (session.status === "loading") return { action: "wait" };
-  const allowed =
-    options.allow === "authenticated"
-      ? session.status === "authenticated"
-      : session.status === "anonymous";
+  const allow = options.allow;
+  let allowed: boolean;
+  if (typeof allow === "function")
+    // A capability gate: only an authenticated user can satisfy it; an anonymous visitor has no user to inspect.
+    allowed = session.status === "authenticated" && allow(session.user);
+  else if (allow === "authenticated") allowed = session.status === "authenticated";
+  else allowed = session.status === "anonymous";
   return allowed ? { action: "render" } : { action: "redirect", to: options.redirectTo };
 }

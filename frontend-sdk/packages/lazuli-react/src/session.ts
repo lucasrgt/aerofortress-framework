@@ -30,6 +30,12 @@ export interface SessionQueryLike<U> {
   isError: boolean;
   /** The resolved user, or `undefined` until/unless the query succeeds. */
   data: U | undefined;
+  /** OPTIONAL classifier for `isError`: whether the failure means *not signed in* (a 401/403) as opposed to a
+   * TRANSIENT failure (a 5xx, a timeout, an offline flap). Wire it from the failed request
+   * (`isUnauthorized: error?.response?.status === 401`). Omitted ⇒ legacy behaviour (every error ⇒ `anonymous`),
+   * which logs an authenticated user out on a transient `me` failure during F5 / a network flap — see
+   * {@link toSessionState}. */
+  isUnauthorized?: boolean;
 }
 
 /**
@@ -39,8 +45,14 @@ export interface SessionQueryLike<U> {
  *   the me-query (the seam pattern an app owns), it returns to pending here — so the guard waits for the
  *   authenticated fetch instead of reading the stale anonymous snapshot. This is the fix for the
  *   "register → bounced back to login" bug.
- * - **error or absent data ⇒ anonymous.** A 401/404 on `me` is not a failure surface; an unauthenticated visitor
- *   is a normal state. (So the session never routes through a `<Resource>` error slot.)
+ * - **a TRANSIENT error (`isError` with `isUnauthorized === false`) ⇒ loading.** A 5xx / timeout / offline flap on
+ *   `me` is NOT a sign-out — folding it into `anonymous` logs an authenticated user out on an F5 over a shaky
+ *   network (they bounce to login, and re-login fails too). So a classified non-auth error DEFERS: stay on the
+ *   splash, let react-query retry, recover to `authenticated` when it does. (Pair with a `useSession` timeout so a
+ *   permanently-down API can't pin the splash forever.) This branch is opt-in — it only fires when the app wires
+ *   `isUnauthorized`; without it the legacy "any error ⇒ anonymous" holds.
+ * - **an AUTH error or absent data ⇒ anonymous.** A 401/403 on `me` is not a failure surface; an unauthenticated
+ *   visitor is a normal state. (So the session never routes through a `<Resource>` error slot.)
  * - **data ⇒ authenticated**, carrying the user.
  *
  * `isFetching` is deliberately NOT folded into `loading`: a background revalidation of an already-signed-in session
@@ -53,6 +65,9 @@ export interface SessionQueryLike<U> {
  */
 export function toSessionState<U>(query: SessionQueryLike<U>): SessionState<U> {
   if (query.isPending) return { status: "loading" };
-  if (query.isError || query.data === undefined) return { status: "anonymous" };
+  // A transient failure is not a sign-out — defer instead of bouncing an authenticated user (opt-in via the
+  // classifier; absent ⇒ legacy "any error ⇒ anonymous").
+  if (query.isError) return query.isUnauthorized === false ? { status: "loading" } : { status: "anonymous" };
+  if (query.data === undefined) return { status: "anonymous" };
   return { status: "authenticated", user: query.data };
 }
