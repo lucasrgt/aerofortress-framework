@@ -354,6 +354,88 @@ applied to rotation:
 
 ---
 
+## Sign-in is an identity change, not a rotation — the seam's two resets
+
+The session seam (`lib/session`, `createSessionSeam`) writes the token through one door (`LZFE016`),
+pairing the write with a cache reset so a just-authenticated user is never bounced by a stale `me`.
+But **not every token write is the same kind of write**, and conflating the two is its own prod bug:
+
+- **Rotation** — the *same* identity gets a fresh token (a boot `bootstrapSession`, a 401-refresh).
+  The cache is still that user's; only the session-shaped queries (`me`) need re-reading. Light reset,
+  screen stays warm. → `onSessionChanged` (e.g. `resetQueries({ queryKey: getMeQueryKey() })`).
+- **Identity change** — a *different* user may now hold the session: an explicit `signIn` (sign-in /
+  sign-up) or a `clearSession` (sign-out). The prior user's entire cache must be **wiped**, or it bleeds
+  into the next session. → `onIdentityChanged` (e.g. `queryClient.clear()`).
+
+This is the **hostpoint** root cause, finally named. A sign-out→sign-in on one client (user A → user B)
+was treated as a rotation — only `me` was reset, and the rest of A's cache leaked into B's screens. The
+team's "fix" was to **split the app into two** (traveller / host); the real fix is the seam wiping on
+identity. With Augusto's httpOnly-cookie + rotation backend (0.4.2) the backend half is done; this is the
+front half.
+
+The surface makes the right reset **unskippable by entry point**, so an app cannot authenticate a user
+without the wipe:
+
+```ts
+export const session = createSessionSeam({
+  setAccessToken,
+  refresh: (token) => refresh({ refreshToken: token }),
+  onSessionChanged: () => queryClient.resetQueries({ queryKey: getMeQueryKey() }), // rotation — light
+  onIdentityChanged: () => queryClient.clear(),                                    // identity — total
+});
+
+await session.signIn(loginResult); // identity door → onIdentityChanged (the prior user's cache is gone)
+await session.bootstrapSession();  // rotation door → onSessionChanged (same user, warm screen)
+await session.clearSession();      // identity door → onIdentityChanged
+```
+
+`onAuthenticated` is **deprecated** (since `@lazuli/react` 0.4.0): it read as a neutral "the session
+changed" and was called for *both* login and bootstrap — the conflation itself. It survives as an alias
+of `signIn` (identity semantics) for the migration; move call sites to `signIn`. `onIdentityChanged`
+omitted falls back to `onSessionChanged` (retrocompat) — but then a sign-in does only the light reset and
+leaks the prior user's cache, so wire it.
+
+---
+
+## Route guards are symmetric — `guardSession`, one primitive both ways
+
+`LZFE017` polices the *shape* of a guard (branch on a tri-state `SessionState`, never a raw
+`isAuthenticated` boolean) — but it cannot catch a guard that is simply **absent**. The **pauta** bug was
+exactly that: `/login` and "create account" had *no* guest-guard, so a signed-in user reaching them was
+let straight through (and "create account" dropped them into the app). A private-route guard is a reflex;
+the guest-guard on the *public* routes is the one apps forget — because each app re-derives both from
+scratch.
+
+The spine closes that by making the guard a **pure decision primitive** — `guardSession`, router-agnostic
+(it returns data, it never navigates), so the auth-guard and the guest-guard are the **same call with
+`allow` flipped**:
+
+```ts
+export type GuardOutcome<Href> =
+  | { action: "wait" }                       // session still loading → render a splash
+  | { action: "render" }                     // allowed → render the route
+  | { action: "redirect"; to: Href };        // rejected → send them to redirectTo
+
+guardSession(session, { allow: "authenticated", redirectTo: "/login" }); // private route
+guardSession(session, { allow: "anonymous", redirectTo: "/home" });      // public/guest route
+```
+
+`loading → wait` (the bounce-to-login case `SessionState` exists to make unspellable), allowed → `render`,
+rejected → `redirect`. The app binds it to its router **once**, in a ~10-line component wiring the splash
++ the router's `<Redirect>`/`<Navigate>`, and writes `<AuthRoute>` / `<GuestRoute>` from the same body —
+so the guest-guard stops being something to remember and becomes a flag on a shared primitive.
+
+> **No LZFE rule for the *absent* guard.** A solid "this public auth route has no guest-guard" rule was
+> evaluated and **not shipped**: the signal is split across files the single-file linter can't correlate.
+> `signIn` is called in the login *ViewModel* (the data door), while the guest-guard lives in the route's
+> *layout* (`app/(auth)/_layout.tsx`) — two files away, and the idiomatic layout-guard placement means a
+> per-file rule flagging the login screen for "not self-wrapping" would false-positive every correctly
+> guarded app. `LZFE018` works only because its param read and its redirect are co-located in one route
+> file; this isn't. Forcing the heuristic would trade the framework's near-zero-false-positive bar for
+> noise — so the primitive + this convention carry it, not a rule.
+
+---
+
 ## Endpoint kinds — the wiring vocabulary
 
 Not every endpoint should have a frontend wiring, and that is not a rare exception (webhooks, internal
