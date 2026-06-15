@@ -34,5 +34,6 @@ public static class ResendPhoneCode
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/phone-code", async (Input input, AppDb db, ISmsSender sms, ICurrentUser current, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, sms, current, clock, ct)).ToHttp())
+            .WithName(nameof(ResendPhoneCode))
             .RequireAuthorization();
 }

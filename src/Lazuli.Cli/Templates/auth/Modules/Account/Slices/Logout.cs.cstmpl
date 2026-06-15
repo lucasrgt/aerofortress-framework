@@ -29,6 +29,7 @@ public static class Logout
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/logout", async (Input? body, HttpContext http, AppDb db, RefreshCookie cookies, CancellationToken ct) =>
             Respond(await Handle(new Input(cookies.RefreshFrom(http.Request, body?.RefreshToken)), db, ct), http, cookies))
+            .WithName(nameof(Logout))
             .AllowAnonymous();   // public: logout takes the refresh token, not the (possibly expired) access token (LZ0022)
 
     private static IResult Respond(Result<Output> result, HttpContext http, RefreshCookie cookies)
@@ -41,6 +42,7 @@ public static class Logout
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/logout", async (Input body, AppDb db, CancellationToken ct) =>
             (await Handle(body, db, ct)).ToHttp())
+            .WithName(nameof(Logout))
             .AllowAnonymous();   // public: logout takes the refresh token, not the (possibly expired) access token (LZ0022)
     //</lz:!cookies>
 }

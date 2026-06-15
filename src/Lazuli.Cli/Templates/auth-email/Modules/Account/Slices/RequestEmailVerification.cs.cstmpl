@@ -41,5 +41,6 @@ public static class RequestEmailVerification
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/verify-email/request", async (Input input, AppDb db, IEmailSender email, ICurrentUser current, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, email, current, clock, ct)).ToHttp())
+            .WithName(nameof(RequestEmailVerification))
             .RequireAuthorization();
 }

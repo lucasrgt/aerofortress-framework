@@ -23,5 +23,6 @@ public static class Me
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapGet("/me", async (AppDb db, ICurrentUser current, CancellationToken ct) =>
             (await Handle(new Input(), db, current, ct)).ToHttp())
+            .WithName(nameof(Me))
             .RequireAuthorization();
 }

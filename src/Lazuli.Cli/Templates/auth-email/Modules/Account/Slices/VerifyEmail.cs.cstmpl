@@ -40,5 +40,6 @@ public static class VerifyEmail
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/verify-email", async (Input input, AppDb db, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, clock, ct)).ToHttp())
+            .WithName(nameof(VerifyEmail))
             .AllowAnonymous();   // public: the verification token IS the credential (LZ0022 — the decision, made visible)
 }

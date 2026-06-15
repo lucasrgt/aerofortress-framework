@@ -68,6 +68,7 @@ public static class Login
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/login", async (Input input, HttpContext http, AppDb db, IAccessTokens tokens, RefreshCookie cookies, TimeProvider clock, CancellationToken ct) =>
             Respond(await Handle(input, db, tokens, clock, ct), http, cookies, clock))
+            .WithName(nameof(Login))
             .AllowAnonymous();   // public: logging in is how you get a token (LZ0022 — the decision, made visible)
 
     // Delivery, not logic (keeps the route thin): web gets the refresh in an httpOnly cookie and never
@@ -87,6 +88,7 @@ public static class Login
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/login", async (Input input, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, tokens, clock, ct)).ToHttp())
+            .WithName(nameof(Login))
             .AllowAnonymous();   // public: logging in is how you get a token (LZ0022 — the decision, made visible)
     //</lz:!cookies>
 }

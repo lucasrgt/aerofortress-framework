@@ -61,5 +61,6 @@ public static class VerifyPhone
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/verify-phone", async (Input input, AppDb db, ICurrentUser current, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, current, clock, ct)).ToHttp())
+            .WithName(nameof(VerifyPhone))
             .RequireAuthorization();
 }

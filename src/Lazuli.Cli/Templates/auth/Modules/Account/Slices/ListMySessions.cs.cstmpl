@@ -30,5 +30,6 @@ public static class ListMySessions
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapGet("/sessions", async (AppDb db, ICurrentUser current, TimeProvider clock, CancellationToken ct) =>
             (await Handle(new Input(), db, current, clock, ct)).ToHttp())
+            .WithName(nameof(ListMySessions))
             .RequireAuthorization();
 }

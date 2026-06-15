@@ -26,5 +26,6 @@ public static class RevokeOtherSessions
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/sessions/revoke-others", async (AppDb db, ICurrentUser current, CancellationToken ct) =>
             (await Handle(new Input(), db, current, ct)).ToHttp())
+            .WithName(nameof(RevokeOtherSessions))
             .RequireAuthorization();
 }
