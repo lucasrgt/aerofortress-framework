@@ -42,7 +42,7 @@ public class LoginWithGoogleTests
     }
 
     private static IAccessTokens Tokens() =>
-        new AccessTokens("test-secret-for-jwt-signing-please-32+chars", TimeProvider.System);
+        new AccessTokens("test-secret-for-jwt-signing-please-32+chars", "myapp", "myapp", TimeProvider.System);
 
     private static AppDb NewDb(Guid org, string? store = null) =>
         new(new DbContextOptionsBuilder<AppDb>().UseInMemoryDatabase(store ?? Guid.NewGuid().ToString()).Options, new Tenant { OrgId = org });
