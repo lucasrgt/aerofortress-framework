@@ -384,7 +384,11 @@ non-linear flow is explained in prose in the Design notes.
 
 `LZ0005` keeps it honest by **freshness as citation-resolution**, not mtime: a ctx that names a slice or
 type which no longer exists is stale. An mtime rule would be wrong here — because the ctx does not
-duplicate the code, adding a field must *not* force a ctx edit.
+duplicate the code, adding a field must *not* force a ctx edit. A citation resolves against this module's
+source, a referenced assembly, **or a co-located `*.Tests.cs`** the project feeds the doctor as an
+`AdditionalFile` — so a module ctx may name the journey that covers it (a `[Journey]` class is
+`<Compile Remove>`'d from the api compilation, hence invisible as a *symbol* but readable as text), without
+the false "no longer exists" it would otherwise raise.
 
 ---
 
@@ -453,7 +457,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0002` | Endpoint stays thin (a route handler is an expression-bodied lambda or method group, never a statement block) | **shipped** | corbanx: "business logic in routes" |
 | `LZ0003` | Every slice has a co-located `<Slice>.Tests.cs` | **shipped** | corbanx: "didn't write tests" |
 | `LZ0004` | Every module has a `<Module>.ctx.md` with the spine (`## Boundaries` + `## Design notes`, non-empty) | **shipped** | corbanx: "forgot to write ai.context" |
-| `LZ0005` | `.ctx.md` is fresh — a backticked identifier it cites resolves in source or a reference (not mtime) | **shipped** | corbanx: "ai.context drifted" |
+| `LZ0005` | `.ctx.md` is fresh — a backticked identifier it cites resolves in source, a reference, or a co-located `*.Tests.cs` (not mtime) | **shipped** | corbanx: "ai.context drifted" |
 | `LZ0006` | No `IRepository` / unit-of-work abstraction in a slice | **shipped** | clean-arch bloat cut |
 | `LZ0007` | File ≤ 500 LOC (EF `Migrations/` exempt — tool-emitted, append-only) | **shipped** | Rails-repo discipline |
 | `LZ0008` | A `[Critical]` slice has a happy **and** a sad journey covering it | **shipped** | high-stakes ops must prove failure E2E |
