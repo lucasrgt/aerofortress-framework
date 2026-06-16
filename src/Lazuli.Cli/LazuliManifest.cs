@@ -62,7 +62,25 @@ internal static class LazuliManifest
                 CheckBackendDevEnv(full, rel, messages);
         }
 
+        CheckCriticalityPolicy(text, messages);
+
         return new Outcome(Present: true, Valid: messages.Count == 0, Messages: messages);
+    }
+
+    /// <summary>
+    /// The <c>[testing] criticality</c> dial (the doctor's criticality policy) must, when present, name one of
+    /// the three known levels — <c>"opt-in"</c>, <c>"explicit"</c>, <c>"strict"</c>. A typo would otherwise
+    /// fall back silently to <c>opt-in</c> at build time (the projection only matches a known keyword), so a
+    /// misspelled <c>"strickt"</c> reads as "no policy" with no warning. The check is textual, like the rest of
+    /// this validator; an absent key is fine (absence means <c>opt-in</c>).
+    /// </summary>
+    private static void CheckCriticalityPolicy(string text, List<string> messages)
+    {
+        var match = Regex.Match(text, @"^\s*criticality\s*=\s*""([^""]*)""", RegexOptions.Multiline);
+        if (match.Success && match.Groups[1].Value is not ("opt-in" or "explicit" or "strict"))
+            messages.Add(
+                $"{FileName}: [testing] criticality must be \"opt-in\", \"explicit\", or \"strict\" (got " +
+                $"\"{match.Groups[1].Value}\") — an unknown value silently falls back to opt-in at build time.");
     }
 
     /// <summary>

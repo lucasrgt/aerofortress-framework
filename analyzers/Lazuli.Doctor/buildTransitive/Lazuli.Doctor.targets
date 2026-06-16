@@ -23,4 +23,26 @@
     <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)lazuli.globalconfig" />
   </ItemGroup>
 
+  <!--
+    Project the criticality policy onto the analyzers. The dial is one TOML key — [testing] criticality in
+    the workspace Lazuli.toml — but the analyzer never parses TOML (that would not be removable, and the
+    doctor would carry a config format). Instead this target reads the key here, in MSBuild, and hands the
+    analyzers the resolved level through a CompilerVisibleProperty (surfaced as build_property.LazuliCriticality
+    in AnalyzerConfigOptionsProvider.GlobalOptions). Absent file or key ⇒ opt-in — today's behavior, by default.
+    Ships and is removed WITH the doctor, so Law 2 holds: drop the package and the policy plumbing goes with it.
+  -->
+  <PropertyGroup Condition="'$(Language)' == 'C#'">
+    <LazuliCriticality Condition="'$(LazuliCriticality)' == ''">opt-in</LazuliCriticality>
+    <_LazuliManifestPath>$([MSBuild]::GetPathOfFileAbove('Lazuli.toml', '$(MSBuildProjectDirectory)'))</_LazuliManifestPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Language)' == 'C#' and '$(_LazuliManifestPath)' != '' and Exists('$(_LazuliManifestPath)')">
+    <_LazuliCriticalityRaw>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(_LazuliManifestPath)')), 'criticality\s*=\s*&quot;(opt-in|explicit|strict)&quot;').Groups.get_Item(1).Value)</_LazuliCriticalityRaw>
+    <LazuliCriticality Condition="'$(_LazuliCriticalityRaw)' != ''">$(_LazuliCriticalityRaw)</LazuliCriticality>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(Language)' == 'C#'">
+    <CompilerVisibleProperty Include="LazuliCriticality" />
+  </ItemGroup>
+
 </Project>

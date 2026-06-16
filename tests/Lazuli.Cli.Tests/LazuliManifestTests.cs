@@ -125,6 +125,55 @@ public class LazuliManifestTests
     }
 
     [Fact]
+    public void A_known_criticality_policy_is_valid()
+    {
+        var root = NewDir();
+        var backend = Path.Combine(root, "src", "MyApp.Api");
+        Directory.CreateDirectory(backend);
+        WriteLaunchSettings(backend, environment: "Development", applicationUrl: "http://localhost:8080");
+        File.WriteAllText(Path.Combine(root, "Lazuli.toml"), """
+            [workspace]
+            name = "MyApp"
+
+            [products.app]
+            backend = "src/MyApp.Api"
+
+            [testing]
+            criticality = "strict"
+            """);
+
+        var outcome = LazuliManifest.Validate(root);
+
+        Assert.True(outcome.Valid);
+        Assert.Empty(outcome.Messages);
+    }
+
+    [Fact]
+    public void An_unknown_criticality_policy_is_reported()
+    {
+        // A typo must not silently fall back to opt-in: the doctor names the three legal levels.
+        var root = NewDir();
+        var backend = Path.Combine(root, "src", "MyApp.Api");
+        Directory.CreateDirectory(backend);
+        WriteLaunchSettings(backend, environment: "Development", applicationUrl: "http://localhost:8080");
+        File.WriteAllText(Path.Combine(root, "Lazuli.toml"), """
+            [workspace]
+            name = "MyApp"
+
+            [products.app]
+            backend = "src/MyApp.Api"
+
+            [testing]
+            criticality = "strickt"
+            """);
+
+        var outcome = LazuliManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, m => m.Contains("criticality") && m.Contains("strickt"));
+    }
+
+    [Fact]
     public void A_manifest_without_a_workspace_section_is_reported()
     {
         var root = NewDir();

@@ -436,6 +436,21 @@ compiles them via glob. No mirror-the-architecture test tree.
   boundary leak? `Login` is trivial code but critical (a one-character inversion is an auth bypass);
   `CompleteOnboarding`, which only flips an `IsActive` flag with no guard, is **not** — its only failure is
   not-found. Don't mark a slice critical because it sounds important or sits on an important flow.
+- **The criticality *policy* is a dial — how strictly a slice must decide.** Most apps stay on the default,
+  where `[Critical]` is opt-in and silence means "not critical." A team that wants criticality treated like
+  authorization — a decision on every slice, never an omission — turns the dial up in `Lazuli.toml`:
+  ```toml
+  [testing]
+  criticality = "opt-in"   # default — only a [Critical] slice needs journeys (today's behavior)
+  #            = "explicit" # every slice must carry [Critical] or [NonCritical], else LZ0029 (mirrors LZ0022)
+  #            = "strict"   # an undecided slice is treated as [Critical] and must prove journeys
+  ```
+  Under `"explicit"` the new **`[NonCritical]`** marker is the reviewed downgrade — the positive,
+  challengeable counterpart to `[Critical]`, so a non-critical slice says so out loud instead of being silent.
+  Under `"strict"` an unmarked slice *is* critical (`LZ0008`/`LZ0010` demand its happy + sad journeys) and
+  `[NonCritical]` is the one explicit opt-out. The doctor reads the dial through MSBuild (no TOML parsing in
+  the analyzer), so the policy ships and is removed with the harness. Reach for a stricter level only when the
+  domain warrants it; the default keeps `[Critical]` the sparing, meaningful mark it is meant to be.
 - **A generator that scaffolds a `[Critical]` slice ships its journeys too.** `lazuli g auth`
   (`Login`/`Refresh`/`Register`) and every augment (`g auth:otp` → `VerifyPhone`) emit the matching
   `Journeys/*.Tests.cs` beside the slice — otherwise the generated app fails `LZ0008` on its first
@@ -481,6 +496,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0026` | **A `[Critical]` write declares its concurrency posture**: a `[Critical]` slice whose `Handle` saves changes against an entity with no visible concurrency token (no `[Timestamp]`/`[ConcurrencyCheck]` member, no `RowVersion` property) is flagged — concurrent requests are last-write-wins on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration is invisible to the doctor; name the property `RowVersion` or tune the severity | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
 | `LZ0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
 | `LZ0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
+| `LZ0029` | **A slice decides its criticality under the explicit policy**: when `Lazuli.toml`'s `[testing] criticality = "explicit"`, a `[Slice]` carrying neither `[Critical]` nor `[NonCritical]` is flagged — criticality becomes a decision on every slice, the mirror of `LZ0022`'s posture on authorization. Inert under the default `"opt-in"` (only `[Critical]` matters) and under `"strict"` (where an undecided slice is *treated as* critical and `LZ0008`/`LZ0010` demand its journeys). The dial is read from the manifest through MSBuild and projected to the analyzers — no TOML parsing in the doctor | **shipped** | criticality was opt-in-only; a team wanting it considered on every slice (like auth) had no enforcement, and a forced `[NonCritical]` is reviewable where a silent absence is not |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.

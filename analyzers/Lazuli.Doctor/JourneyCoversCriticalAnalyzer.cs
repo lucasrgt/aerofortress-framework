@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -62,12 +61,15 @@ public sealed class JourneyCoversCriticalAnalyzer : DiagnosticAnalyzer
 
     private static void OnStart(CompilationStartAnalysisContext context)
     {
+        // What counts as critical follows the active policy — so under strict, a journey on an undecided
+        // slice (now treated as critical) is valid, while a journey on a [NonCritical] slice is still inert.
+        var level = CriticalityPolicy.Read(context.Options.AnalyzerConfigOptionsProvider);
         var critical = new ConcurrentBag<string>();
 
         context.RegisterSyntaxNodeAction(syntax =>
         {
             var cls = (ClassDeclarationSyntax)syntax.Node;
-            if (HasAttribute(cls, "Slice") && HasAttribute(cls, "Critical"))
+            if (CriticalityPolicy.IsCriticalUnderPolicy(cls, level))
                 critical.Add(cls.Identifier.Text);
         }, SyntaxKind.ClassDeclaration);
 
@@ -96,11 +98,4 @@ public sealed class JourneyCoversCriticalAnalyzer : DiagnosticAnalyzer
             }
         });
     }
-
-    private static bool HasAttribute(ClassDeclarationSyntax cls, string name) =>
-        cls.AttributeLists
-            .SelectMany(list => list.Attributes)
-            .Select(attr => attr.Name.ToString())
-            .Any(n => n == name || n == name + "Attribute"
-                   || n.EndsWith("." + name) || n.EndsWith("." + name + "Attribute"));
 }
