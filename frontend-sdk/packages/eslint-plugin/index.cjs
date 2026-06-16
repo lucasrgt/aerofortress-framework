@@ -1236,6 +1236,8 @@ const rules = {
         fn: "LZFE026: raw color (`{{value}}`) — color is a semantic role (`color.*` in design/tokens.ts); raw values live only in the token file. (Hex is LZFE012's half of this pair.)",
         named: "LZFE026: named color (`{{value}}`) in `{{key}}` — use a semantic role (`color.*`), not a CSS color name.",
         palette: "LZFE026: the raw palette is private to the token file — components touch `color.*` roles; only ui/ reaches deeper.",
+        paletteClass:
+          "LZFE026: palette utility (`{{value}}`) — color is a semantic role; map the palette into a theme role and use `bg-primary`/`text-danger`/`border-muted`, never a raw `bg-red-500` outside ui/.",
       },
     },
     create(context) {
@@ -1245,7 +1247,37 @@ const rules = {
       const NAMED =
         /^(red|blue|green|white|black|gray|grey|orange|purple|pink|yellow|teal|cyan|magenta|silver|maroon|navy|olive|lime|aqua|fuchsia)$/i;
       const COLOR_KEY = /(^color$|Color$)/;
+      // The Tailwind half of the same leak: a palette-family color utility (bg-red-500, text-blue-600,
+      // hover:border-rose-400/50) forks the palette in a className exactly as a raw rgb() forks it in a style
+      // bag — and it is where the rot actually lives in a Tailwind web app. The band was blind to it (a pilot
+      // baseline of 0 findings over 533 files while bg-red-100 was everywhere). A semantic, theme-mapped
+      // utility (bg-primary, text-danger) carries no palette family + numeric shade, so it never matches; ui/
+      // is the one place that composes the primitives from the raw palette.
+      const PALETTE_CLASS =
+        /(?:^|[\s:"'`])((?:bg|text|border|ring(?:-offset)?|fill|stroke|from|via|to|divide|outline|decoration|caret|accent|placeholder|shadow)-(?:slate|gray|grey|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)(?:\/\d{1,3})?)\b/;
+      const paletteIn = (s) => {
+        const m = PALETTE_CLASS.exec(s);
+        return m ? m[1] : null;
+      };
       return {
+        JSXAttribute(node) {
+          if (isUiKit(f)) return; // the kit composes its primitives from the raw palette
+          if (node.name.type !== "JSXIdentifier" || node.name.name !== "className" || !node.value) return;
+          if (node.value.type === "Literal" && typeof node.value.value === "string") {
+            const hit = paletteIn(node.value.value);
+            if (hit) context.report({ node, messageId: "paletteClass", data: { value: hit } });
+            return;
+          }
+          if (node.value.type === "JSXExpressionContainer" && node.value.expression.type === "TemplateLiteral") {
+            for (const q of node.value.expression.quasis) {
+              const hit = paletteIn(q.value.raw);
+              if (hit) {
+                context.report({ node, messageId: "paletteClass", data: { value: hit } });
+                return;
+              }
+            }
+          }
+        },
         Literal(node) {
           if (typeof node.value !== "string") return;
           const value = node.value.trim();
@@ -1439,8 +1471,8 @@ const rules = {
   // LZFE029 — refresh-one-door. The session-rotation credential (the httpOnly cookie on web, the stored
   // refresh token on native) is BURNED by parallel rotation: the backend's theft detection sees a spent token
   // replayed and revokes the whole session family. So the Refresh slice has exactly ONE consumer surface — the
-  // client seam's single-flight 401 interceptor (lib/lazuli-client's refreshAccessToken) or the session seam's
-  // gated boot bootstrap (lib/session) — and a screen/viewModel that imports the refresh hook/operation, or
+  // session seam's single-flight bootstrapSession (lib/session), which the client seam's 401 interceptor calls
+  // through the injected setTokenRefresher — and a screen/viewModel that imports the refresh hook/operation, or
   // hand-rolls a POST to a refresh route, is the second rotation path that one day runs in parallel with the
   // first. Born from a pilot near-miss: a refresh bootstrap added to the session seam raced the client's 401
   // interceptor merged the same week — two cold-load rotations, one burned family.
@@ -1453,9 +1485,9 @@ const rules = {
       },
       messages: {
         offdoor:
-          "LZFE029: don't consume the refresh operation (`{{name}}`) here — rotation has ONE door (the client seam's single-flight refreshAccessToken / the session seam). A second rotation path eventually runs in parallel with the first, replays a spent token, and the backend's theft detection burns the whole session family.",
+          "LZFE029: don't consume the refresh operation (`{{name}}`) here — rotation has ONE door (the session seam's single-flight bootstrapSession, which the client's 401 interceptor calls via setTokenRefresher). A second rotation path eventually runs in parallel with the first, replays a spent token, and the backend's theft detection burns the whole session family.",
         raw:
-          "LZFE029: don't hand-roll a refresh call (`{{call}}`) here — rotation has ONE door (the client seam's single-flight refreshAccessToken / the session seam). A parallel rotation replays a spent token and the backend's theft detection burns the whole session family.",
+          "LZFE029: don't hand-roll a refresh call (`{{call}}`) here — rotation has ONE door (the session seam's single-flight bootstrapSession, which the client's 401 interceptor calls via setTokenRefresher). A parallel rotation replays a spent token and the backend's theft detection burns the whole session family.",
       },
     },
     create(context) {

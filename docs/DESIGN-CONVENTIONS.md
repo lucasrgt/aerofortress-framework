@@ -186,7 +186,9 @@ Field
 ## Color discipline — roles, never values
 
 - Components reference `color.<role>` only. Raw values — hex (`LZFE012`), `rgb()/hsl()/oklch()`,
-  CSS named colors (`LZFE026`) — live exclusively in the tokens file.
+  CSS named colors, and Tailwind palette-family utilities (`bg-red-500`, `text-blue-600`) (`LZFE026`) —
+  live exclusively in the tokens file / the theme; a screen uses semantic, theme-mapped utilities
+  (`bg-primary`, `text-danger`) instead.
 - Anything rendered **on** a filled role uses its on-pair: `onPrimary` on `primary`, `onDanger` on
   `danger`. Pairs are chosen at token-definition time to hold WCAG AA (≥ 4.5:1 for text); that is
   where contrast is decided, once.
@@ -242,7 +244,7 @@ undecidable properties teaches agents to suppress, the worst harness outcome.
 | `LZFE012` | **Design tokens (hex half)** — no inline hex outside token/theme/palette files | **shipped** | one palette; theming survives |
 | `LZFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui`. A missing primitive is extended in the app's `ui/`, never inlined. The `LZFE002` one-door pattern applied to paint | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every decision |
 | `LZFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`, `margin*`, `gap`, `rowGap`, `columnGap`, `borderRadius`, `fontSize`, `lineHeight`; `0` allowed), and no Tailwind arbitrary value on a **spacing/typography utility** (`p-[13px]`, `text-[14px]`, `gap-[7px]`). Layout dimensions (`max-w-[560px]`, `h-[80vh]`) are deliberately free — the style half allows `width: 320`, and the class spelling of the same decision must agree (asymmetry caught by the hostpoint-os dogfood) | **shipped** | off-scale values are how rhythm dies one screen at a time |
-| `LZFE026` | **Semantic colors** — outside token files: no `rgb()/rgba()/hsl()/hsla()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `LZFE012` (hex) — together: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
+| `LZFE026` | **Semantic colors** — outside token files: no `rgb()/rgba()/hsl()/hsla()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`, and no Tailwind palette-family utility (`bg-red-500`, `hover:border-rose-400/50`) in a `className` outside `ui/`. Completes `LZFE012` (hex) — together: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex and `bg-red-500` were just other spellings of the leak |
 
 Exemption boundaries, locked: the app's `ui/` folder (the kit implements the vocabulary, so it
 touches primitives and values), the token files (`LZFE012`'s filename pattern:

@@ -500,6 +500,14 @@ ruleTester.run("semantic-colors", plugin.rules["semantic-colors"], {
     { filename: "Foo.tsx", code: `const label = "red carpet"; const status = { state: "red" };` },
     { filename: "web/src/ui/Button.tsx", code: `import { palette } from "@/design/tokens";` },
     { filename: "Foo.test.tsx", code: `const c = "rgb(1,2,3)";` },
+    // Semantic, theme-mapped utilities carry a role, not a palette family + shade — the conformant shape.
+    { filename: "Foo.tsx", code: `export const X = () => <div className="bg-primary text-danger border-muted" />;` },
+    // Stock spacing/layout utilities are the scale (LZFE025's concern), not a color leak.
+    { filename: "Foo.tsx", code: `export const X = () => <div className="p-4 gap-2 flex rounded-lg" />;` },
+    // ui/ composes the primitives from the raw palette — it reaches deeper, like the palette import.
+    { filename: "web/src/ui/Button.tsx", code: `export const B = () => <button className="bg-red-500 text-white" />;` },
+    // A palette WORD without the numeric shade is not a Tailwind palette utility (e.g. a custom class).
+    { filename: "Foo.tsx", code: `export const X = () => <div className="bg-red text-blue" />;` },
   ],
   invalid: [
     { filename: "Foo.tsx", code: `const c = "rgb(34, 197, 94)";`, errors: [{ messageId: "fn" }] },
@@ -510,6 +518,16 @@ ruleTester.run("semantic-colors", plugin.rules["semantic-colors"], {
       errors: [{ messageId: "named" }],
     },
     { filename: "Foo.tsx", code: `import { palette } from "@/design/tokens";`, errors: [{ messageId: "palette" }] },
+    // The Tailwind leak the band was blind to: a palette-family color utility in a className.
+    { filename: "Foo.tsx", code: `export const X = () => <div className="bg-red-100 p-4" />;`, errors: [{ messageId: "paletteClass" }] },
+    // Variant-prefixed + opacity modifier is still the same fork.
+    { filename: "Foo.tsx", code: `export const X = () => <div className="hover:border-rose-400/50" />;`, errors: [{ messageId: "paletteClass" }] },
+    // The class spelled in a template literal (a conditional className) leaks just the same.
+    {
+      filename: "Foo.tsx",
+      code: "export const X = ({ on }) => <div className={`text-blue-600 ${on ? 'font-bold' : ''}`} />;",
+      errors: [{ messageId: "paletteClass" }],
+    },
   ],
 });
 
