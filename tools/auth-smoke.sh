@@ -4,9 +4,10 @@
 # (a generated app that did not compile) slipped through because nothing rendered the templates and built.
 #
 # Two legs:
-#   1. DOCTOR leg  — build the rendered API with the LZ* analyzers ON, and assert LZ0022 never reappears.
-#                    (Today the rendered app still trips LZ0012/LZ0017/LZ0021 — tracked separately; once
-#                     those are fixed, tighten this leg to assert a fully clean doctor build.)
+#   1. DOCTOR leg  — build the rendered API with the LZ* analyzers ON and assert it is doctor-CLEAN:
+#                    the build succeeds and reports zero LZ diagnostics (errors or warnings). The generated
+#                    auth scaffold holds the full convention — slice shape, [Entity] encapsulation,
+#                    concurrency tokens, journeys — so any regression that reintroduces an LZ finding fails here.
 #   2. COMPILE+TEST leg — build + run the generated test suite with analyzers OFF, to prove the rendered
 #                    C# compiles and every shipped *.Tests.cs passes.
 #
@@ -84,13 +85,20 @@ EOF
 echo "==> rendering auth + auth:email + auth:otp"
 ( cd "$WORK/src/Smoke.Api" && dotnet "$CLI" g auth >/dev/null && dotnet "$CLI" g auth:email >/dev/null && dotnet "$CLI" g auth:otp >/dev/null )
 
-echo "==> DOCTOR leg: build with analyzers ON, assert no LZ0022"
-DOCTOR_OUT="$(dotnet build "$WORK/src/Smoke.Api/Smoke.Api.csproj" -c Debug 2>&1 || true)"
-if echo "$DOCTOR_OUT" | grep -q "LZ0022"; then
-  echo "FAIL: LZ0022 reappeared in the generated app:"; echo "$DOCTOR_OUT" | grep "LZ0022"; exit 1
+echo "==> DOCTOR leg: build with analyzers ON, assert a clean doctor (zero LZ diagnostics)"
+if DOCTOR_OUT="$(dotnet build "$WORK/src/Smoke.Api/Smoke.Api.csproj" -c Debug 2>&1)"; then
+  DOCTOR_BUILD_OK=1
+else
+  DOCTOR_BUILD_OK=0
 fi
-echo "ok: no LZ0022. (tracked, still-open doctor findings:)"
-echo "$DOCTOR_OUT" | grep -oE "(error|warning) LZ[0-9]+" | sort | uniq -c | sort -rn || true
+LZ_FINDINGS="$(echo "$DOCTOR_OUT" | grep -oE "(error|warning) LZ[0-9]+" | sort | uniq -c | sort -rn || true)"
+if [ "$DOCTOR_BUILD_OK" -ne 1 ] || [ -n "$LZ_FINDINGS" ]; then
+  echo "FAIL: the generated app must build doctor-clean (zero LZ diagnostics). Reported:"
+  echo "${LZ_FINDINGS:-<no LZ findings — the build failed for another reason, see below>}"
+  echo "$DOCTOR_OUT" | grep -E "error|warning|LZ[0-9]+" | head -40
+  exit 1
+fi
+echo "ok: doctor is clean — the generated app builds with zero LZ diagnostics."
 
 echo "==> COMPILE+TEST leg: build + run generated tests (analyzers off)"
 dotnet test "$WORK/tests/Smoke.Tests/Smoke.Tests.csproj" -p:RunAnalyzers=false
