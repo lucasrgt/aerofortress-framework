@@ -110,7 +110,10 @@ export function Text({
   );
 }
 `,
-    "Button.tsx": `import { useState } from "react";
+    "Button.tsx": `'use client';
+
+// Stateful kit primitive → a client component: the Next App Router needs the directive; a no-op on Vite/RN.
+import { useState } from "react";
 import { color, motionMs, radius, space, text } from "./tokens-bridge";
 
 type Variant = "primary" | "secondary" | "danger";
@@ -187,7 +190,10 @@ export function Button({
   );
 }
 `,
-    "Field.tsx": `import { createContext, useContext, type ReactNode } from "react";
+    "Field.tsx": `'use client';
+
+// Stateful kit primitive → a client component: the Next App Router needs the directive; a no-op on Vite/RN.
+import { createContext, useContext, type ReactNode } from "react";
 import { color, space, text } from "./tokens-bridge";
 
 // Field → control wiring travels through kit-internal context, so the anatomy (label → control →
@@ -253,7 +259,10 @@ export function Field({
   );
 }
 `,
-    "Input.tsx": `import { useState } from "react";
+    "Input.tsx": `'use client';
+
+// Stateful kit primitive → a client component: the Next App Router needs the directive; a no-op on Vite/RN.
+import { useState } from "react";
 import { color, radius, space, text } from "./tokens-bridge";
 import { useFieldWiring } from "./Field";
 

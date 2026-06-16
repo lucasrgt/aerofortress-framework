@@ -1,3 +1,6 @@
+'use client';
+
+// Stateful kit primitive → a client component: the Next App Router needs the directive; a no-op on Vite/RN.
 import { useState } from "react";
 import { color, radius, space, text } from "./tokens-bridge";
 import { useFieldWiring } from "./Field";
