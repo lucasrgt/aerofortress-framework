@@ -53,13 +53,17 @@ describe("client-scaffold", () => {
     expect(query).not.toMatch(/onError:[\s\S]*?meta\?\.silent\b/);
   });
 
-  it("the mutator owns the ONE session-rotation path: single-flight refresh + a once-only 401 replay", () => {
+  it("the mutator delegates rotation to the injected seam: a once-only 401 replay, the auth routes exempt", () => {
     const mutator = renderMutator();
 
-    // Single-flight: concurrent callers share the in-flight rotation (parallel rotation replays a spent
-    // token and trips the backend's theft detection, burning the session family).
-    expect(mutator).toContain("refreshing ??=");
-    expect(mutator).toContain("export function refreshAccessToken");
+    // The rotation door is INJECTED, not baked: the shell registers the seam's single-flight bootstrapSession,
+    // so the same interceptor serves cookie AND body modes and the rotation logic lives in exactly one place.
+    expect(mutator).toContain("export function setTokenRefresher");
+    expect(mutator).toContain("await refreshSession()");
+    // …and the mutator no longer forks a cookie-only rotation path — no baked refresh route, no second
+    // single-flight duplicating the seam's (2-pilot evidence: pauta direct-post vs hostpoint injected).
+    expect(mutator).not.toContain("refreshAccessToken");
+    expect(mutator).not.toContain("REFRESH_PATH");
     // The interceptor replays at most once and exempts the auth routes, so an anonymous caller settles to 401.
     expect(mutator).toContain("_retried");
     expect(mutator).toContain("isAuthRoute");

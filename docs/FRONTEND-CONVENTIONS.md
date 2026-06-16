@@ -336,16 +336,19 @@ by parallel rotation**: the backend's theft detection sees a spent token replaye
 whole session family. So session restore is a **one-door** discipline, the LZFE002/016 shape
 applied to rotation:
 
-- **The blessed door (web): the client seam's 401 interceptor.** The scaffolded mutator
-  (`lib/lazuli-client.ts`) ships `refreshAccessToken()` — **single-flight** (concurrent callers
-  share the one in-flight rotation) — and an interceptor that, on a 401 outside the auth routes,
-  refreshes once and replays the request. A cold load and a mid-session expiry both restore
-  transparently inside the first attempt: no anonymous flash, no bounce to login, and a genuinely
-  anonymous caller settles to 401 at once (pair it with a no-retry-on-401 read policy in the
+- **The one door: the session seam's `bootstrapSession`, injected into the client interceptor.** The
+  scaffolded mutator (`lib/lazuli-client.ts`) ships `setTokenRefresher(fn)` and an interceptor that, on a
+  401 outside the auth routes, calls the injected refresher once and replays the request. The shell registers
+  the seam's `bootstrapSession` as that refresher at boot (`setTokenRefresher(session.bootstrapSession)`), so
+  the rotation logic — **single-flight**, cookie (web: empty post) AND body (native: stored token) alike —
+  lives in exactly one place, the seam, never forked into the transport file. A cold load and a mid-session
+  expiry both restore transparently inside the first attempt: no anonymous flash, no bounce to login, and a
+  genuinely anonymous caller settles to 401 at once (pair it with a no-retry-on-401 read policy in the
   QueryClient's `defaultOptions`).
-- **The alternative door (native/body-mode): the session seam's gated boot bootstrap** — the
-  stored refresh token is exchanged once at app start, with navigation gated on `ready` so nothing
-  else is in flight. One deliberate rotation, then the app proceeds.
+- **The same door at boot (native/body-mode): the gated bootstrap.** The stored refresh token is exchanged
+  once at app start through the very same `bootstrapSession`, with navigation gated on `ready` so nothing else
+  is in flight. One deliberate rotation, then the app proceeds — the interceptor and the boot share the seam's
+  single-flight, so the two never rotate in parallel.
 - **Never both.** A bootstrap probe in the session seam *and* a 401 interceptor in the client both
   fire on a cold load — two parallel rotations, one burned family. A pilot shipped each half in the
   same week from different branches; the merge is where the race was caught. `LZFE029` closes the
@@ -458,8 +461,9 @@ each **opt-in** so an app upgrades without a rewrite:
   StrictMode double-invokes effects in dev, and the boot can race the client's 401-interceptor — two refresh
   rotations replay the spent token and the backend's theft-detection burns the whole family (the `LZFE029`
   hazard, at boot). `singleFlight(fn)` collapses concurrent callers into one in-flight execution (the gate
-  reopens on settle, resolve *or* reject). It is exported for the app's own `refreshAccessToken` interceptor
-  too — the single-flight refresh gate is now a spine primitive, not a per-app hand-roll. Coalesced callers
+  reopens on settle, resolve *or* reject). The seam's `bootstrapSession` is wrapped with it, and the client's
+  401 interceptor shares that one gate by calling `bootstrapSession` through the injected `setTokenRefresher`
+  — the single-flight refresh gate is a spine primitive, registered once, not a per-app hand-roll. Coalesced callers
   share the first call's result, which is exactly right for a rotation (the credential rides the cookie/store,
   not the argument) — never wrap a per-argument operation with it.
 

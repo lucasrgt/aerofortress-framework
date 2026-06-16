@@ -5,8 +5,10 @@
 // scaffolded — every pilot re-derived them (and the one that re-derived the QueryClient bare shipped the
 // created-it-but-only-saw-it-after-F5 bug). This renders all four, conformant by construction: the base URL is
 // an injectable default overridden at boot via configureClient() (the LZFE020-blessed shape — never a baked
-// host in axios.create), the token sink is the seam's setAccessToken, the audience filter keeps non-app
-// endpoints out of the client (so LZFE008 stays high-signal), and the QueryClient carries the write-side
+// host in axios.create), the token sink is the seam's setAccessToken, the 401 rotation is the seam's
+// single-flight bootstrapSession injected via setTokenRefresher (one door, cookie AND body — never a
+// cookie-only fork baked into this transport file), the audience filter keeps non-app endpoints out of the
+// client (so LZFE008 stays high-signal), and the QueryClient carries the write-side
 // mutation defaults — invalidate on success, feedback on error (the LZFE027-blessed shape). Graduated from the
 // hostpoint pilot's lazuli-client.ts + orval.config.ts and the pauta pilot's state-management gap.
 //
@@ -59,52 +61,40 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-// ── Session restore — the ONE rotation path (LZFE029: refresh-one-door) ─────────────────────────────────
-// The refresh credential is an httpOnly cookie on web (invisible to JS; it rides via withCredentials) or a
-// secure-stored token on native. Rotating it TWICE in parallel replays a spent token and trips the backend's
-// theft detection, burning the whole session family — so every consumer shares ONE in-flight refresh, and
-// the 401 interceptor below is the only place a rotation starts. Cookie mode posts an empty body; a native
-// (body-mode) client instead wires its stored refresh token through the session seam's gated boot bootstrap
-// — either way: one door, single-flight, never both paths at once.
-const REFRESH_PATH = "/account/refresh"; // the app's Refresh slice route (Lazuli.Auth picks cookie/body by X-Client)
+// ── Token refresh — the SEAM rotates, the client only retries (LZFE029: refresh-one-door) ───────────────
+// The 401 interceptor restores the session transparently, but it does NOT know HOW to rotate. Cookie mode
+// (web: an empty post, the refresh rides the httpOnly cookie) and body mode (native: the secure-stored refresh
+// token) are the session seam's concern — and it rotates SINGLE-FLIGHT there (its bootstrapSession), so
+// concurrent 401s share ONE in-flight rotation instead of replaying a spent token and tripping the backend's
+// theft detection (which burns the whole session family). The shell registers that rotation here at boot; the
+// same injected door serves cookie and body alike, and the rotation logic lives in exactly one place — the
+// seam, never forked into this transport file. Until the shell wires it, a 401 settles to 401.
+type TokenRefresher = () => Promise<boolean>;
+let refreshSession: TokenRefresher | null = null;
 
-let refreshing: Promise<string | null> | null = null;
-
-/** Exchange the refresh credential for a fresh access token — single-flight: concurrent callers share the
- * one in-flight rotation. Resolves to the new token, or null when there is no live session. */
-export function refreshAccessToken(): Promise<string | null> {
-  refreshing ??= instance
-    .post<{ accessToken?: string }>(REFRESH_PATH, {})
-    .then((r) => {
-      const token = r.data?.accessToken ?? null;
-      setAccessToken(token);
-      return token;
-    })
-    .catch(() => {
-      setAccessToken(null);
-      return null;
-    })
-    .finally(() => {
-      refreshing = null;
-    });
-  return refreshing;
+/** Register the session seam's rotation (its single-flighted \`bootstrapSession\`) as the 401 refresher —
+ * called once at boot by the shell: \`setTokenRefresher(session.bootstrapSession)\`. The refresher rotates and
+ * pushes the fresh bearer through \`setAccessToken\`; it resolves true when a live session was restored. */
+export function setTokenRefresher(refresher: TokenRefresher): void {
+  refreshSession = refresher;
 }
 
-// On a 401, transparently refresh once and replay the request — restores the session on a cold load (the
-// in-memory bearer is gone, the refresh credential survives) and rides over a mid-session expiry without
-// bouncing to login. The auth routes are exempt and each request retries at most once, so a genuinely
-// anonymous caller settles to 401 instead of looping.
+// On a 401, transparently rotate once (through the injected seam) and replay the request — restores the
+// session on a cold load (the in-memory bearer is gone, the refresh credential survives) and rides over a
+// mid-session expiry without bouncing to login. The auth routes are exempt and each request retries at most
+// once, so a genuinely anonymous caller settles to 401 instead of looping.
 instance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
     const url = original?.url ?? "";
-    const isAuthRoute = url.includes(REFRESH_PATH) || url.includes("/login");
-    if (error.response?.status === 401 && original && !original._retried && !isAuthRoute) {
+    const isAuthRoute = url.includes("/refresh") || url.includes("/login");
+    if (error.response?.status === 401 && original && !original._retried && !isAuthRoute && refreshSession) {
       original._retried = true;
-      const token = await refreshAccessToken();
-      if (token) {
-        original.headers.set("Authorization", \`Bearer \${token}\`);
+      // The seam rotates (single-flight) and pushes the new bearer through setAccessToken; replay with it.
+      const restored = await refreshSession();
+      if (restored && accessToken) {
+        original.headers.set("Authorization", \`Bearer \${accessToken}\`);
         return instance.request(original);
       }
     }

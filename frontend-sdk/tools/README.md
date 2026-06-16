@@ -115,5 +115,7 @@ orval generates the hooks, but the **mutator** they all call through (auth injec
 `X-Client: web` header that turns on the cookie session) and the **orval config** are hand-owned files nothing
 scaffolded — every pilot re-derived them. This renders both, conformant by construction: the base URL is an
 injectable default overridden at boot via `configureClient()` (the LZFE020-blessed shape), the token sink is the
-session seam's `setAccessToken`, and the audience filter keeps webhooks/internal endpoints out of the client (so
-endpoint coverage stays high-signal). Existing files are never overwritten — they are hand-owned after birth.
+session seam's `setAccessToken`, the 401 rotation is the seam's single-flight `bootstrapSession` injected via
+`setTokenRefresher` (one door, cookie AND body — never a cookie-only fork baked into the transport file), and the
+audience filter keeps webhooks/internal endpoints out of the client (so endpoint coverage stays high-signal).
+Existing files are never overwritten — they are hand-owned after birth.
