@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
@@ -74,17 +75,27 @@ public static class JwtAccessTokenExtensions
             ClockSkew = TimeSpan.FromSeconds(30),
         };
 
-    /// <summary>Register the web refresh-cookie delivery service with the app's cookie name and path.</summary>
+    /// <summary>Register the web refresh-cookie delivery service with the app's cookie name and path. The
+    /// optional <paramref name="domain"/> and <paramref name="sameSite"/> stay at the strict, host-only secure
+    /// default; widen them only for a real multi-subdomain case (a cookie shared across sibling subdomains).
+    /// httpOnly and Secure are never tunable.</summary>
     /// <example>
     /// <code>
     /// builder.Services.AddRefreshCookie("myapp_refresh", path: "/account");
+    /// // multi-subdomain: a cookie that rides across *.example.com on a cross-persona hop
+    /// builder.Services.AddRefreshCookie("myapp_refresh", domain: ".example.com", sameSite: SameSiteMode.Lax);
     /// </code>
     /// A slice's route then takes <c>RefreshCookie cookies</c> by DI and calls
     /// <c>cookies.IsWeb / RefreshFrom / SetRefresh / Clear</c>.
     /// </example>
-    public static IServiceCollection AddRefreshCookie(this IServiceCollection services, string name, string path = "/")
+    public static IServiceCollection AddRefreshCookie(
+        this IServiceCollection services,
+        string name,
+        string path = "/",
+        string? domain = null,
+        SameSiteMode sameSite = SameSiteMode.Strict)
     {
-        services.AddSingleton(new RefreshCookieOptions(name, path));
+        services.AddSingleton(new RefreshCookieOptions(name, path, domain, sameSite));
         services.AddSingleton<RefreshCookie>();
         return services;
     }
