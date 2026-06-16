@@ -89,6 +89,15 @@ the live one, so a second use of a rotated one is **theft**. The response is to 
 family too. (Tokens are Base64Url so they are cookie/URL-safe; the chain grows append-only — pruning
 spent/expired rows is a future job.)
 
+A reuse **within `SessionToken.RefreshReuseGrace` (10s)** of the rotation is the exception: it is a
+*benign* concurrent refresh — two tabs sharing the one httpOnly cookie, or a double-bootstrap, each
+presenting the same live token at the same instant — not theft. It gets a transient `SessionRetry` (the
+client re-reads the rotated cookie and retries) and the family survives; only a reuse *after* the window
+burns it. The rotation save is also guarded by `UserSession.RowVersion` (optimistic concurrency): the racer
+that loses the write gets a `DbUpdateConcurrencyException`, caught and mapped to the same benign retry —
+so two simultaneous refreshes of one token yield one winner and one retry, never a forked family or a false
+theft-burn. (The exception path is enforced only by a relational provider; the in-memory store never raises it.)
+
 A family also has an **absolute ceiling** (`SessionToken.FamilyMaxAge`, 90 days): a session may slide
 (rotate) freely within that window, but `Refresh` retires the family once its first token is older than
 the ceiling — so a silently-rotating session cannot live forever, no matter how often it refreshes.
@@ -97,11 +106,11 @@ the ceiling — so a silently-rotating session cannot live forever, no matter ho
 - **No user enumeration by timing.** `Login` verifies the password against a fixed dummy argon2 hash when
   no account matches, so a missing email costs the same work as a wrong one, and the two return the *same*
   error. The absence of an account is observable through neither the response nor its timing.
-- **A credential change ends every session.** When the email flow's `ResetPassword` (or any future
-  password change) succeeds, it revokes **all** of the user's refresh families (`Refresh.RevokeAllForUser`),
+- **A credential change ends every session.** When a password reset (the email flow) or any future
+  password change succeeds, it revokes **all** of the user's refresh families (`Refresh.RevokeAllForUser`),
   not just the caller's — so a takeover recovery also evicts the attacker.
-- **OTP codes are brute-force-capped.** The phone flow's `VerifyPhone` locks a 6-digit code after
-  `MaxAttempts` wrong guesses (consuming the OTP), so the 10⁶ space cannot be walked.
+- **OTP codes are brute-force-capped.** When the phone flow is added, its verify slice locks a 6-digit
+  code after a small number of wrong guesses (consuming the OTP), so the 10⁶ space cannot be walked.
 - **Registration accepts email-existence disclosure.** A duplicate registration returns `409 Conflict`
   (an explicit `EmailTaken`) rather than masking it — a conscious UX trade-off; the mitigation for
   enumeration/abuse is edge rate-limiting, not a vague error.

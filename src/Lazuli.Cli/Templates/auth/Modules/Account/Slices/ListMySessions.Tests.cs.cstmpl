@@ -20,8 +20,8 @@ public class ListMySessionsTests
         var now = DateTime.UtcNow;
         await using (var db = NewDb(store))
         {
-            db.UserSessions.Add(Session(userId, current, now, now.AddDays(14)));
-            db.UserSessions.Add(Session(userId, other, now.AddMinutes(-1), now.AddDays(14)));
+            db.UserSessions.Add(Session(userId, current, now));
+            db.UserSessions.Add(Session(userId, other, now.AddMinutes(-1)));
             await db.SaveChangesAsync();
         }
 
@@ -42,9 +42,9 @@ public class ListMySessionsTests
         var now = DateTime.UtcNow;
         await using (var db = NewDb(store))
         {
-            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now, now.AddDays(1)));                  // live
-            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now, now.AddDays(-1)));                 // expired
-            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now, now.AddDays(1), usedAt: now));     // rotated
+            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now));                                       // live
+            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now - SessionToken.Lifetime - TimeSpan.FromDays(1))); // expired
+            db.UserSessions.Add(Session(userId, Guid.NewGuid(), now, usedAt: now));                          // rotated
             await db.SaveChangesAsync();
         }
 
@@ -54,8 +54,15 @@ public class ListMySessionsTests
         Assert.Single(result.Value.Sessions);
     }
 
-    private static UserSession Session(Guid userId, Guid family, DateTime created, DateTime expires, DateTime? usedAt = null) =>
-        new() { UserId = userId, FamilyId = family, TokenHash = family.ToString(), CreatedAt = created, ExpiresAt = expires, UsedAt = usedAt };
+    // The slot is opened through the entity factory (a 14-day window from `created`); a rotated slot is then
+    // marked used. So "expired" is expressed by backdating `created` past the lifetime, not by a free expiry.
+    private static UserSession Session(Guid userId, Guid family, DateTime created, DateTime? usedAt = null)
+    {
+        var session = UserSession.Start(userId, family, family.ToString(), created).Value;
+        if (usedAt is not null)
+            session.MarkUsed(usedAt.Value);
+        return session;
+    }
 
     //<lz:tenancy>
     private static AppDb NewDb(string store) =>

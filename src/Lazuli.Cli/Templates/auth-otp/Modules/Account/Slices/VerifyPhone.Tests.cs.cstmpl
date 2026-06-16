@@ -73,14 +73,7 @@ public class VerifyPhoneTests
     {
         var now = DateTime.UtcNow;
         await using var db = NewDb(org, store);
-        db.PhoneOtps.Add(new PhoneOtp
-        {
-            UserId = userId,
-            Phone = "+5511999999999",
-            CodeHash = PasswordHash.Create(code).Value,
-            ExpiresAt = now.AddMinutes(10),
-            CreatedAt = now,
-        });
+        db.PhoneOtps.Add(PhoneOtp.Issue(userId, "+5511999999999", PasswordHash.Create(code).Value, now).Value);
         await db.SaveChangesAsync();
     }
 

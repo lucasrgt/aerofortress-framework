@@ -31,8 +31,8 @@ public static class VerifyEmail
         if (user is null)
             return Error.NotFound(AccountErrorCodes.UserNotFound, "user not found");
 
-        token.ConsumedAt = now;
-        user.IsEmailVerified = true;
+        token.Consume(now);
+        user.MarkEmailVerified();
         await db.SaveChangesAsync(ct);
         return new Output();
     }

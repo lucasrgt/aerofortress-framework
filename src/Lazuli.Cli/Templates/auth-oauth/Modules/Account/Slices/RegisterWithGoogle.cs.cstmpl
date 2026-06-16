@@ -32,15 +32,10 @@ public static class RegisterWithGoogle
             return Error.Conflict(AccountErrorCodes.EmailTaken, "an account with this email already exists");
 
         var now = clock.GetUtcNow().UtcDateTime;
-        var user = new User
-        {
-            Email = email.Value,
-            Name = email.Value.Value,
-            PasswordHash = PasswordHash.Create(Guid.NewGuid().ToString()),   // no password — Google is the credential
-            IsEmailVerified = true,
-            RegistrationStep = RegistrationStep.PhonePending,
-            CreatedAt = now,
-        };
+        var created = User.RegisterViaGoogle(email.Value, now);
+        if (created.IsFailure)
+            return created.Error;
+        var user = created.Value;
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
 

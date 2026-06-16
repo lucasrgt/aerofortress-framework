@@ -18,6 +18,10 @@ public static class AccountErrorCodes
     /// <summary>The refresh session was revoked.</summary>
     public const string SessionRevoked = "auth.session_revoked";
 
+    /// <summary>A refresh lost a benign race — the token was just rotated by a concurrent refresh (a shared
+    /// cookie across tabs). Transient: the client re-reads the rotated cookie and retries; not theft.</summary>
+    public const string SessionRetry = "auth.session_retry";
+
     /// <summary>No session exists for the given id.</summary>
     public const string SessionNotFound = "account.session_not_found";
 
@@ -26,4 +30,9 @@ public static class AccountErrorCodes
 
     /// <summary>The password is shorter than the minimum length.</summary>
     public const string PasswordTooShort = "password.too_short";
+
+    /// <summary>An entity's invariant funnel (EnsureValid) rejected the state — a present id, a non-blank
+    /// name, and so on. Construction and mutation both return through that funnel, so a broken instance can
+    /// never be observed or persisted.</summary>
+    public const string InvalidState = "account.invalid_state";
 }

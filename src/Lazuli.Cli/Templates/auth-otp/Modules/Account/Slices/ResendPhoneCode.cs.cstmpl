@@ -17,14 +17,7 @@ public static class ResendPhoneCode
     {
         var now = clock.GetUtcNow().UtcDateTime;
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
-        db.PhoneOtps.Add(new PhoneOtp
-        {
-            UserId = current.UserId,
-            Phone = input.Phone,
-            CodeHash = PasswordHash.Create(code).Value,
-            ExpiresAt = now.AddMinutes(10),
-            CreatedAt = now,
-        });
+        db.PhoneOtps.Add(PhoneOtp.Issue(current.UserId, input.Phone, PasswordHash.Create(code).Value, now).Value);
         await db.SaveChangesAsync(ct);
 
         await sms.SendAsync(input.Phone, $"Your MyApp code is {code}", ct);

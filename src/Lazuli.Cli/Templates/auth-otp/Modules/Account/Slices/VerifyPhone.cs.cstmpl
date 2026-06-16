@@ -33,12 +33,12 @@ public static class VerifyPhone
 
         // Count this attempt first. A correct code within the limit always wins; a wrong code that hits the
         // ceiling consumes the OTP (UsedAt) so no further guess — right or wrong — can ever be tried.
-        otp.Attempts++;
+        otp.RecordAttempt();
         if (!PasswordHash.FromStored(otp.CodeHash).Verify(input.Code))
         {
             if (otp.Attempts >= MaxAttempts)
             {
-                otp.UsedAt = now;
+                otp.Use(now);
                 await db.SaveChangesAsync(ct);
                 return Error.Unauthorized(AccountErrorCodes.TooManyAttempts, "too many attempts");
             }
@@ -50,10 +50,8 @@ public static class VerifyPhone
         if (user is null)
             return Error.NotFound(AccountErrorCodes.UserNotFound, "user not found");
 
-        otp.UsedAt = now;
-        user.Phone = otp.Phone;
-        user.IsPhoneVerified = true;
-        user.RegistrationStep = RegistrationStep.Complete;
+        otp.Use(now);
+        user.CompletePhoneVerification(otp.Phone);
         await db.SaveChangesAsync(ct);
         return new Output();
     }

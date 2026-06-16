@@ -33,8 +33,8 @@ public class TenantIsolationTests
     {
         await using var db = NewDb(store, org);
         // OrgId not set here — stamped on save. PasswordHash is required; the dummy is fine, this
-        // test only proves org isolation.
-        db.Users.Add(new User { Email = Email.FromStored(email), PasswordHash = PasswordHash.FromStored("x.y") });
+        // test only proves org isolation. Register funnels through the entity's invariant guard.
+        db.Users.Add(User.Register(Email.FromStored(email), PasswordHash.FromStored("x.y"), DateTime.UtcNow).Value);
         await db.SaveChangesAsync();
     }
 

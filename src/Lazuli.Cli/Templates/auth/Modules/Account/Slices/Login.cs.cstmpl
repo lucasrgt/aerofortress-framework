@@ -45,14 +45,7 @@ public static class Login
         var now = clock.GetUtcNow().UtcDateTime;
         var family = Guid.NewGuid();   // the session id (sid) the access token carries
         var (refresh, refreshHash) = SessionToken.Issue();
-        db.UserSessions.Add(new UserSession
-        {
-            UserId = user.Id,
-            FamilyId = family,
-            TokenHash = refreshHash,
-            CreatedAt = now,
-            ExpiresAt = now.Add(SessionToken.Lifetime),
-        });
+        db.UserSessions.Add(UserSession.Start(user.Id, family, refreshHash, now).Value);
         await db.SaveChangesAsync(ct);
 
         //<lz:tenancy>

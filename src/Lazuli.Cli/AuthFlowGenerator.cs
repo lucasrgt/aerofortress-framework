@@ -109,38 +109,68 @@ public static class AuthFlowGenerator
             ErrorCodeScaffold.EnsureModuleCode(accountDir, appNamespace, "Account", constName, value, summary);
     }
 
-    // Add the flow's user fields, idempotently, just before the line that declares CreatedAt (so they sit
-    // with the other columns) — or before the class's closing brace if that anchor is gone.
+    // Add the flow's user fields and mutators, idempotently. The User entity is a reshaped [Entity]
+    // (LZ0014/LZ0021): its state is private, so a flow grows it through intention-revealing members, never
+    // public setters a slice could reach. Fields sit with the other columns (after CreatedAt); mutators and
+    // factories sit with the other methods (before the EnsureValid funnel). Each member is detected by a
+    // stable token so re-running a flow — or applying a second flow that shares a member (email + oauth both
+    // bring IsEmailVerified) — never duplicates it.
     private static void AugmentUser(string userFile, FlowSpec spec)
     {
-        if (spec.UserFields.Count == 0)
+        if (spec.UserFields.Count == 0 && spec.UserMethods.Count == 0)
             return;
         if (!File.Exists(userFile))
         {
             foreach (var f in spec.UserFields)
                 Console.WriteLine($"note: add `{f.Trim()}` to Modules/Account/User.cs");
+            foreach (var m in spec.UserMethods)
+                Console.WriteLine($"note: add this member to Modules/Account/User.cs:{Environment.NewLine}{m.Code}");
             return;
         }
 
         var text = File.ReadAllText(userFile);
         var nl = Newline(text);
-        var missing = spec.UserFields.Where(f => !ContainsMember(text, f)).ToList();
-        if (missing.Count == 0)
-            return;
+        var changed = false;
 
-        var block = string.Join(nl, missing);
-        var anchor = "    public DateTime CreatedAt { get; set; }";
-        if (text.Contains(anchor))
-            text = ReplaceFirst(text, anchor, block + nl + anchor);
-        else if (!InsertBeforeClassClose(ref text, block, nl))
+        var missingFields = spec.UserFields.Where(f => !ContainsMember(text, f)).ToList();
+        if (missingFields.Count > 0)
         {
-            foreach (var f in missing)
-                Console.WriteLine($"note: add `{f.Trim()}` to {userFile}");
-            return;
+            var block = string.Join(nl + nl, missingFields.Select(f => f.Replace("\n", nl)));
+            const string anchor = "    public DateTime CreatedAt { get; private set; }";
+            if (text.Contains(anchor))
+            {
+                text = ReplaceFirst(text, anchor, anchor + nl + nl + block);
+                changed = true;
+            }
+            else
+            {
+                foreach (var f in missingFields)
+                    Console.WriteLine($"note: add `{f.Trim()}` to {userFile}");
+            }
         }
 
-        File.WriteAllText(userFile, text);
-        Console.WriteLine($"added {missing.Count} field(s) to User.cs");
+        var missingMethods = spec.UserMethods.Where(m => !text.Contains(m.Token)).ToList();
+        if (missingMethods.Count > 0)
+        {
+            var block = string.Join(nl + nl, missingMethods.Select(m => m.Code.Replace("\n", nl)));
+            const string anchor = "    private Result<User> EnsureValid()";
+            if (text.Contains(anchor))
+            {
+                text = ReplaceFirst(text, anchor, block + nl + nl + anchor);
+                changed = true;
+            }
+            else
+            {
+                foreach (var m in missingMethods)
+                    Console.WriteLine($"note: add this member to {userFile}:{Environment.NewLine}{m.Code}");
+            }
+        }
+
+        if (changed)
+        {
+            File.WriteAllText(userFile, text);
+            Console.WriteLine($"augmented User.cs ({missingFields.Count} field(s), {missingMethods.Count} method(s))");
+        }
     }
 
     // Add the flow's DbSet properties and their indexes to the shared AppDb, idempotently. DbSets anchor
@@ -327,14 +357,9 @@ public static class AuthFlowGenerator
         return lastSpace < 0 ? null : beforeBrace[(lastSpace + 1)..];
     }
 
-    private static bool InsertBeforeClassClose(ref string text, string block, string nl)
-    {
-        var at = text.LastIndexOf(nl + "}", StringComparison.Ordinal);
-        if (at < 0)
-            return false;
-        text = text[..at] + nl + block + text[at..];
-        return true;
-    }
+    // A multi-line injected member, written with \n joins for readability; AugmentUser normalizes the
+    // newlines to the target file's on application.
+    private static string Lines(params string[] lines) => string.Join("\n", lines);
 
     private static string? FindProjectReference(string csproj, string projectName)
     {
@@ -381,6 +406,7 @@ public static class AuthFlowGenerator
         string ProviderNamespace,
         string DiLine,
         IReadOnlyList<string> UserFields,
+        IReadOnlyList<(string Token, string Code)> UserMethods,
         IReadOnlyList<(string Property, string Declaration)> DbSets,
         IReadOnlyList<string> Indexes,
         IReadOnlyList<string> MapLines,
@@ -396,8 +422,24 @@ public static class AuthFlowGenerator
             DiLine: "builder.Services.AddSingleton<ISmsSender, ConsoleSmsSender>();",
             UserFields:
             [
-                "    public string? Phone { get; set; }",
-                "    public bool IsPhoneVerified { get; set; }",
+                Lines(
+                    "    /// <summary>The verified phone number, set once VerifyPhone succeeds.</summary>",
+                    "    public string? Phone { get; private set; }"),
+                Lines(
+                    "    /// <summary>Whether the phone number has been verified.</summary>",
+                    "    public bool IsPhoneVerified { get; private set; }"),
+            ],
+            UserMethods:
+            [
+                (Token: "CompletePhoneVerification(", Code: Lines(
+                    "    /// <summary>Complete phone verification: record the verified phone, flag it verified, and",
+                    "    /// advance registration to Complete. Cannot fail — a void mutation.</summary>",
+                    "    public void CompletePhoneVerification(string phone)",
+                    "    {",
+                    "        Phone = phone;",
+                    "        IsPhoneVerified = true;",
+                    "        RegistrationStep = RegistrationStep.Complete;",
+                    "    }")),
             ],
             DbSets:
             [
@@ -428,7 +470,27 @@ public static class AuthFlowGenerator
             DiLine: "builder.Services.AddSingleton<IExternalIdentity, FakeExternalIdentity>();",
             UserFields:
             [
-                "    public bool IsEmailVerified { get; set; }",
+                Lines(
+                    "    /// <summary>Whether the account's email has been verified.</summary>",
+                    "    public bool IsEmailVerified { get; private set; }"),
+            ],
+            UserMethods:
+            [
+                (Token: "RegisterViaGoogle(", Code: Lines(
+                    "    /// <summary>Register an account from a Google identity: Google has already verified the email,",
+                    "    /// so the user is email-verified from the start, has no password (a random one is stored —",
+                    "    /// Google is the credential), and lands at PhonePending. Funnels through EnsureValid.</summary>",
+                    "    public static Result<User> RegisterViaGoogle(Email email, DateTime now) =>",
+                    "        new User",
+                    "        {",
+                    "            Id = Guid.NewGuid(),",
+                    "            Email = email,",
+                    "            Name = email.Value,",
+                    "            PasswordHash = PasswordHash.Create(Guid.NewGuid().ToString()),",
+                    "            IsEmailVerified = true,",
+                    "            RegistrationStep = RegistrationStep.PhonePending,",
+                    "            CreatedAt = now,",
+                    "        }.EnsureValid();")),
             ],
             DbSets: [],
             Indexes: [],
@@ -452,7 +514,15 @@ public static class AuthFlowGenerator
             DiLine: "builder.Services.AddSingleton<IEmailSender, ConsoleEmailSender>();",
             UserFields:
             [
-                "    public bool IsEmailVerified { get; set; }",
+                Lines(
+                    "    /// <summary>Whether the account's email has been verified.</summary>",
+                    "    public bool IsEmailVerified { get; private set; }"),
+            ],
+            UserMethods:
+            [
+                (Token: "MarkEmailVerified(", Code: Lines(
+                    "    /// <summary>Flag the account's email verified. Cannot fail — a void mutation.</summary>",
+                    "    public void MarkEmailVerified() => IsEmailVerified = true;")),
             ],
             DbSets:
             [

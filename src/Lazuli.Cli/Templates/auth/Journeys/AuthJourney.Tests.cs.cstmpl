@@ -70,13 +70,15 @@ public class AuthJourney
         Assert.NotEqual(first.RefreshToken, rotated.RefreshToken);   // the family rotated
     }
 
-    // The theft path — the highest-impact sad: the rotation already happened, then the old token is
-    // replayed. That replay must be rejected AND must burn the whole family, so the legitimately-rotated
-    // token dies too. Proving only the replay is rejected would miss the blast radius theft demands.
+    // The replay path — the highest-stakes sad: a token already rotated is presented again. Within the grace
+    // window that is a benign concurrent refresh (two tabs sharing one cookie), so it is rejected as a
+    // transient retry but does NOT kill the family — the legitimately-rotated token keeps working. (Theft
+    // proper — a replay long after rotation — burns the whole family; that, and the grace boundary, are proven
+    // deterministically in RefreshTests with a controllable clock, which an E2E journey cannot advance.)
     [E2E]
     [Journey(typeof(Refresh), JourneyPath.Sad)]
     [Fact]
-    public async Task Replayed_refresh_token_burns_the_whole_family()
+    public async Task A_replayed_refresh_token_is_rejected_without_killing_the_live_one()
     {
         await using var app = new TestApp();
         var client = app.CreateClient();
@@ -86,13 +88,13 @@ public class AuthJourney
         var rotated = await (await client.PostAsJsonAsync("/account/refresh", new { refreshToken = first.RefreshToken }))
             .Content.ReadFromJsonAsync<Tokens>();
 
-        // Replay the spent token: detected as theft.
+        // Replay the spent token: rejected — a spent token can never mint a new pair.
         var replay = await client.PostAsJsonAsync("/account/refresh", new { refreshToken = first.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
 
-        // The family is burned: even the legitimately-rotated token is now dead.
-        var afterBurn = await client.PostAsJsonAsync("/account/refresh", new { refreshToken = rotated!.RefreshToken });
-        Assert.Equal(HttpStatusCode.Unauthorized, afterBurn.StatusCode);
+        // The family survives the benign concurrent replay: the legitimately-rotated token still refreshes.
+        var live = await client.PostAsJsonAsync("/account/refresh", new { refreshToken = rotated!.RefreshToken });
+        live.EnsureSuccessStatusCode();
     }
 
     [E2E]

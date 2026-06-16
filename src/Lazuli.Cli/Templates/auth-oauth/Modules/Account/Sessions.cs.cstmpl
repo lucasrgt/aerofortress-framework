@@ -11,14 +11,7 @@ internal static class Sessions
     {
         var family = Guid.NewGuid();
         var (refresh, refreshHash) = SessionToken.Issue();
-        db.UserSessions.Add(new UserSession
-        {
-            UserId = user.Id,
-            FamilyId = family,
-            TokenHash = refreshHash,
-            CreatedAt = now,
-            ExpiresAt = now.Add(SessionToken.Lifetime),
-        });
+        db.UserSessions.Add(UserSession.Start(user.Id, family, refreshHash, now).Value);
         await db.SaveChangesAsync(ct);
         return (tokens.Issue(user.Id, user.OrgId, user.Role?.ToString(), family, user.Name), refresh);
     }

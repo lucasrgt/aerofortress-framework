@@ -58,7 +58,7 @@ public class RevokeOtherSessionsTests
     }
 
     private static UserSession Session(Guid userId, Guid family, DateTime now) =>
-        new() { UserId = userId, FamilyId = family, TokenHash = family.ToString(), CreatedAt = now, ExpiresAt = now.AddDays(14) };
+        UserSession.Start(userId, family, family.ToString(), now).Value;
 
     //<lz:tenancy>
     private static AppDb NewDb(string store) =>

@@ -27,11 +27,15 @@ public static class Refresh
 
         var now = clock.GetUtcNow().UtcDateTime;
 
-        // Reuse of a spent token: the legit client still holds the live one, so a second presentation
-        // of a rotated token means it leaked. Burn the whole family — thief's and victim's alike —
-        // forcing a fresh login.
+        // Reuse of a spent token. Within a short grace window of its rotation it is a benign concurrent
+        // refresh — two tabs sharing one httpOnly cookie, or a double-bootstrap: the loser re-reads the
+        // cookie the winner just rotated and retries, so the family is NOT burned. After the window the legit
+        // client has long since rotated, so a second presentation means the token leaked — theft — and the
+        // whole family burns (thief's and victim's alike), forcing a fresh login.
         if (session.UsedAt is not null)
         {
+            if (now - session.UsedAt.Value <= SessionToken.RefreshReuseGrace)
+                return Error.Unauthorized(AccountErrorCodes.SessionRetry, "refresh superseded, retry");
             await RevokeFamily(db, session.FamilyId, ct);
             return Error.Unauthorized(AccountErrorCodes.SessionRevoked, "session revoked");
         }
@@ -60,17 +64,20 @@ public static class Refresh
         if (user is null)
             return Error.Unauthorized(AccountErrorCodes.InvalidSession, "invalid or expired session");
 
-        session.UsedAt = now;
+        session.MarkUsed(now);
         var (refresh, refreshHash) = SessionToken.Issue();
-        db.UserSessions.Add(new UserSession
+        db.UserSessions.Add(UserSession.Start(user.Id, session.FamilyId, refreshHash, now).Value);
+        try
         {
-            UserId = user.Id,
-            FamilyId = session.FamilyId,
-            TokenHash = refreshHash,
-            CreatedAt = now,
-            ExpiresAt = now.Add(SessionToken.Lifetime),
-        });
-        await db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Lost the optimistic-concurrency race (RowVersion) to a concurrent refresh of the same live
+            // token — a shared cookie across tabs. The winner already rotated, so this is the benign retry,
+            // not theft. Only a relational provider enforces this; the in-memory store never raises it.
+            return Error.Unauthorized(AccountErrorCodes.SessionRetry, "refresh superseded, retry");
+        }
 
         //<lz:tenancy>
         var access = tokens.Issue(user.Id, user.OrgId, user.Role?.ToString(), session.FamilyId, user.Name);
