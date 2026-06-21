@@ -1,4 +1,4 @@
-using Lazuli.Abstractions;
+using AeroFortress.Framework.Abstractions;
 
 namespace Sample.Api.Modules.Wallets;
 

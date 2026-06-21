@@ -1,19 +1,19 @@
-# Lazuli — Monorepo Architecture (back + front, 3 platforms)
+# AeroFortress — Monorepo Architecture (back + front, 3 platforms)
 
 > Status: **decided 2026-06-06**, grade **9.5/10** (the residual 0.5 is earned in code — the kernel boundary +
 > ports surface only fully reveal themselves during the first extraction). This is the canonical layout for a
-> Lazuli project that spans a .NET backend + React Native (mobile) + React (web) + an Astro marketing site.
+> AeroFortress project that spans a .NET backend + React Native (mobile) + React (web) + an Astro marketing site.
 
 ## Identity (read first)
 
-Lazuli is a **Rails-style meta-framework for .NET** — **no language** (`.lzi`/`.lzx` retired). The "compiler" is
+AeroFortress is a **Rails-style meta-framework for .NET** — **no language** (`.lzi`/`.lzx` retired). The "compiler" is
 the analyzers: **`LZ*`** (Roslyn, backend) + **`LZFE*`** (ESLint, frontend) that fail the build. One thing, called
-**Lazuli** (the "Lazurite" distro name is retired); the workspace manifest is **`Lazuli.toml`**.
+**AeroFortress** (the "Lazurite" distro name is retired); the workspace manifest is **`AeroFortress.toml`**.
 
 ## The shape
 
 ```
-Lazuli.toml                         # the manifest = single source of truth; the `lazuli` CLI reads it and delegates
+AeroFortress.toml                         # the manifest = single source of truth; the `af` CLI reads it and delegates
 backends/
   hostpoint-app-api/                # .NET — MSBuild + LZ* analyzers (native, no package.json shim)
   hostpoint-os-api/                 # (when the os product lands)
@@ -24,7 +24,7 @@ frontends/
   hostpoint-barcos/ core/ mobile/ web/     # (when it lands)
   shared/          kernel/  ui-web/  ui-mobile/   # cross-product, promoted by evidence (≥2 products)
   website/         # Astro (SEO/marketing), standalone
-package.json (npm workspaces)  turbo.json     # generated from / validated against Lazuli.toml
+package.json (npm workspaces)  turbo.json     # generated from / validated against AeroFortress.toml
 ```
 
 **Package manager: npm workspaces + turbo (not pnpm).** The frontend contains an Expo app, and Expo/Metro + pnpm
@@ -42,7 +42,7 @@ npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@h
    `move`, not a rewrite. **os being react-dom is the canary that keeps `core` honest** — it can't consume RN-isms.
 
 2. **No `os→app` edge — a thin `shared/kernel`.** Both products depend on `@hostpoint/kernel` (auth/session, the
-   generated client + types for shared endpoints, the spine `@lazuli/react`, the ports). `app` = kernel + consumer
+   generated client + types for shared endpoints, the spine `@aerofortress/react`, the ports). `app` = kernel + consumer
    VMs; `os` = kernel + admin VMs + its own api client. Neither depends on the other (kills the coupling trap).
    Not speculative — both obviously need auth/client/ports.
 
@@ -51,10 +51,10 @@ npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@h
    web impls in `web`/`os`), wired at the shell, **never imported into a ViewModel**. This is what makes `core`
    genuinely platform-agnostic (the package boundary enforces it structurally; LZFE009 lints it).
 
-4. **`Lazuli.toml` is the single source of truth.** It **generates** the npm-workspaces config (root `package.json`
-   `workspaces`) + the turbo pipeline, and a **`lazuli doctor` check validates** that the declared topology
+4. **`AeroFortress.toml` is the single source of truth.** It **generates** the npm-workspaces config (root `package.json`
+   `workspaces`) + the turbo pipeline, and a **`af doctor` check validates** that the declared topology
    (products, cores, deps) matches the real `package.json` workspace deps + folders. No hand-maintained parallel;
-   drift = a build error. *(Shipped first as a validator — `Lazuli.toml` + `scripts/lazuli-doctor.mjs` in hostpoint;
+   drift = a build error. *(Shipped first as a validator — `AeroFortress.toml` + `scripts/lazuli-doctor.mjs` in hostpoint;
    generation of the workspace config follows once the packages physically exist.)*
 
 5. **`core` per product; `shared/` by evidence.** A product's `core` = its integration+logic (its orval client +
@@ -83,7 +83,7 @@ import-based rule during the front restructure (milestones 4–5), writing each 
 View moves to `mobile/`** — filling that 32-screen backlog honestly in the new structure rather than as throwaway tests
 on files about to move. Until then hostpoint keeps the proven sibling rule (stays pristine); canon is the import form.
 
-## `Lazuli.toml` schema (orchestrator)
+## `AeroFortress.toml` schema (orchestrator)
 
 ```toml
 [products.hostpoint-app]
@@ -107,25 +107,25 @@ packages = ["@hostpoint/kernel", "@hostpoint/ui-web", "@hostpoint/ui-mobile"]
 backend  = "tdd-iron-hand"                     # LZ* Roslyn rules
 frontend = "tdd-iron-hand"                     # LZFE* ESLint + the doctors
 
-[tasks]                                        # the `lazuli` CLI delegates (wire, not reimplement)
+[tasks]                                        # the `af` CLI delegates (wire, not reimplement)
 build = ["dotnet:build", "turbo:build"]
 test  = ["dotnet:test",  "turbo:test"]
 ```
 
-The `lazuli` CLI is the conductor (`lazuli build/test/new/doctor/gen:client`); it **delegates** to `dotnet` + `turbo`
+The `af` CLI is the conductor (`af build/test/new/doctor/gen:client`); it **delegates** to `dotnet` + `turbo`
 + `pnpm` + `orval` — it never reimplements their caching/build (the founding "wire, not reimplementation" principle).
 
 ## Migration sequence (big-bang, but in green-verified milestones)
 
 1. **(this doc)** capture — **done** (lazuli-net `d9ac8cf`).
 2. **lazuli-net**: evolve `LZFE006` to import-based detection (+ self-tests) — **done** (`716378b`). *Prereq.*
-3. **hostpoint**: `Lazuli.toml` + `lazuli doctor` (topology single-source + drift validator) — **done** (hostpoint
+3. **hostpoint**: `AeroFortress.toml` + `af doctor` (topology single-source + drift validator) — **done** (hostpoint
    `f30ab3b`). The `backends/`/`frontends/` *folder* rename is deferred: with one backend it is cosmetic + YAGNI
    (decision F); the manifest points at `src/` + `clients/` today and moves with the split.
 4. **front**: extract `@hostpoint/app-core` (ViewModels + `client.gen` + i18n + model); rewire the app to consume it.
 5. **front**: extract `@hostpoint/kernel` (auth/session/spine/ports interfaces); convert `expo-*` direct imports to
    ports + wire impls in the shell. (RN-web for web; Astro stays.)
-6. **`Lazuli.toml` generation**: generate the npm-workspaces config from the manifest (once the packages exist).
+6. **`AeroFortress.toml` generation**: generate the npm-workspaces config from the manifest (once the packages exist).
 7. **lazuli-net canon**: rewrite the identity (meta-framework, no language) + fold this doc into the convention set.
 
 `hostpoint-os` and `hostpoint-barcos` are **convention, applied when those products are real** — no empty scaffolds.
@@ -162,16 +162,16 @@ Turnkey steps:
 ### Traced dependency map (2026-06-06, from the 4a checkpoint — hostpoint)
 
 The 4a checkpoint (branch `refactor/front-core-split`, commit `4a3a8cb`) already did the **one piece of real
-decoupling** the move needs: the orval mutator (`lib/lazuli-client.ts`) no longer imports `lib/config`
+decoupling** the move needs: the orval mutator (`lib/aerofortress-client.ts`) no longer imports `lib/config`
 (expo-constants); the base URL is injected via `configureClient(apiUrl)` from a new shell-side
 `lib/configure-client.ts` (imported by `_layout` before bootstrap), the same push-don't-pull seam as the bearer
-token. **So `lib/lazuli-client` + all of `client.gen` are now expo-free and move to core untouched.** Everything
+token. **So `lib/aerofortress-client` + all of `client.gen` are now expo-free and move to core untouched.** Everything
 below is mechanical (verified: tsc 0, vitest 73/73, lint pristine).
 
 Concrete layer assignment + counts (hostpoint `clients/hostpoint-app/src`):
 
 - **→ `@hostpoint/app-core`** (agnostic): `client.gen/` (507 files, incl. `model/` = the orval schemas) +
-  `lib/lazuli-client.ts` (the mutator). The 33 `*.viewModel.ts` (+ their co-located `*.test.tsx`) follow — they
+  `lib/aerofortress-client.ts` (the mutator). The 33 `*.viewModel.ts` (+ their co-located `*.test.tsx`) follow — they
   import `client.gen` via `@/client.gen/*` (give app-core its own `@/`→`src` alias so these stay unchanged).
 - **→ `@hostpoint/kernel`** (auth/session): `lib/session/session.ts` (`onAuthenticated`/`bootstrapSession`/
   `clearSession`) + `lib/session/useSession.ts`. Its platform seam `lib/session/refresh-token.ts` +
@@ -187,7 +187,7 @@ Rewiring (deterministic, scriptable):
   imported by 8 panels, `../HostPropertyEdit.viewModel` by 9) → `@hostpoint/app-core/<resolved-path>` (resolve each
   relative path against its importer, then map `src/`→`@hostpoint/app-core/`).
 - mutator token importers: `setAccessToken` in `session.ts` + 2 VMs (`ForgotPassword`, `GoogleCallback`).
-- **orval**: keep the mutator at `app-core/src/lib/lazuli-client.ts` so the generated `../lib/lazuli-client` import
+- **orval**: keep the mutator at `app-core/src/lib/aerofortress-client.ts` so the generated `../lib/aerofortress-client` import
   stays valid (or update `orval.config.ts` `mutator.path` + `output.target`/`schemas` to the app-core paths and
   regenerate — don't hand-edit generated files).
 
@@ -202,10 +202,10 @@ Two **rule evolutions** the move forces (same shape as the LZFE006 import-based 
 
 `@hostpoint/app-core` now exists as a real npm-workspace package holding the agnostic data layer (`client.gen` +
 the mutator). The hard workspace plumbing is **done + verified green** (hostpoint-app `tsc` 0, app-core `tsc` 0,
-vitest 73/73, lint pristine, `lazuli doctor` green): npm workspaces + turbo, the Metro monorepo config
+vitest 73/73, lint pristine, `af doctor` green): npm workspaces + turbo, the Metro monorepo config
 (`watchFolders` + `nodeModulesPaths`), a **single react/react-dom via root `overrides`** (the hoist had created a
 second react → null hooks dispatcher; `npm dedupe` collapsed it to 19.2.3), cross-package tsc/vitest aliases, orval
-retargeted, and the LZFE008 coverage doctor + `Lazuli.toml` updated. **Operator verify: `npx expo export`.**
+retargeted, and the LZFE008 coverage doctor + `AeroFortress.toml` updated. **Operator verify: `npx expo export`.**
 
 Refinements learned for the VM move (4b-ii), which is now de-risked but is its own intricate pass:
 
@@ -242,7 +242,7 @@ real crash — `CountryFlag` calling `.toLowerCase()` on an undefined `isoCode` 
 Verified green (tsc 0, vitest 85/85, lint pristine).
 
 **Remaining (follow-up):** (1) operator re-run `npx expo export` for the final-3 native bundle; (2) make
-`Lazuli.toml` *generate* the npm-workspaces config (today it's the source + the doctor validates — generation is the
+`AeroFortress.toml` *generate* the npm-workspaces config (today it's the source + the doctor validates — generation is the
 single-source upgrade); (3) the lazuli-net canon identity rewrite (retire the language vocabulary).
 
 ---

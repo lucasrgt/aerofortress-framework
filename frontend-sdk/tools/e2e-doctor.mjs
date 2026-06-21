@@ -12,7 +12,7 @@
 //
 // The runner is the swappable slot (the "RSpec"): Playwright is the blessed default for WEB, Maestro/Detox for
 // NATIVE. A flow declares its `target` (web|native) and a `spec` path to its implementation (a `.spec.ts` / `.yaml`).
-// `checkE2e(root)` is pure (no process.exit) so a CLI, a test, or `lazuli doctor` decides what to do with it.
+// `checkE2e(root)` is pure (no process.exit) so a CLI, a test, or `af doctor` decides what to do with it.
 //
 // DEPTH, not just existence (LZFE-JOURNEY-002). A spec existing does NOT mean the journey is covered — a spec can
 // stop at the door (assert the entry screen and return), punting the rest to the backend twin. That is the exact

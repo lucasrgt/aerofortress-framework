@@ -22,7 +22,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@lazuli/react": r("./packages/lazuli-react/src/index.ts"),
+      "@aerofortress/react": r("./packages/aerofortress-react/src/index.ts"),
       "@/client.gen/sample": r("../examples/sample-app/frontend/core/src/client.gen/sample.ts"),
       "@/i18n": r("../examples/sample-app/frontend/core/src/i18n.ts"),
       "@/design/tokens": r("../examples/sample-app/frontend/core/src/design/tokens.ts"),

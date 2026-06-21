@@ -1,6 +1,6 @@
 "use strict";
 
-// Self-test for the Lazuli frontend harness — the parallel of the backend's self-doctor / SelfHarness. Every LZFE
+// Self-test for the AeroFortress Framework frontend harness — the parallel of the backend's self-doctor / SelfHarness. Every LZFE
 // rule is proven here with RuleTester: it must FIRE on the violation it polices and PASS on the shapes it allows. A
 // rule the linter merely "accepts" is not done until a test pins both edges (the same discipline the framework
 // applies to its own backend rules). Run: `node index.test.cjs` (exits non-zero on any failing case). eslint + the
@@ -50,7 +50,7 @@ ruleTester.run("data-door", plugin.rules["data-door"], {
   invalid: [
     { filename: "Foo.view.tsx", code: `import { useThing } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
     { filename: "src/app/_layout.tsx", code: `import { refresh } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
-    { filename: "src/lib/lazuli-client.ts", code: `import { thing } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
+    { filename: "src/lib/aerofortress-client.ts", code: `import { thing } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
   ],
 });
 
@@ -242,16 +242,16 @@ ruleTester.run("no-router-replace-in-effect", plugin.rules["no-router-replace-in
 ruleTester.run("session-one-door", plugin.rules["session-one-door"], {
   valid: [
     // The seam itself legitimately imports the setter (it pairs the write with the reset) — directory or file form.
-    { filename: "src/lib/session/session.ts", code: `import { setAccessToken } from "@/lib/lazuli-client";` },
-    { filename: "src/lib/session.ts", code: `import { setAccessToken } from "@/lib/lazuli-client";` },
+    { filename: "src/lib/session/session.ts", code: `import { setAccessToken } from "@/lib/aerofortress-client";` },
+    { filename: "src/lib/session.ts", code: `import { setAccessToken } from "@/lib/aerofortress-client";` },
     // A viewModel going through the seam is correct.
     { filename: "Login.viewModel.ts", code: `import { useSignIn } from "@/lib/session";` },
     // The client that DEFINES the setter exports it — it does not import it, so it is never flagged.
-    { filename: "src/lib/lazuli-client.ts", code: `export function setAccessToken(t) {}` },
+    { filename: "src/lib/aerofortress-client.ts", code: `export function setAccessToken(t) {}` },
   ],
   invalid: [
-    { filename: "Login.viewModel.ts", code: `import { setAccessToken } from "@/lib/lazuli-client";`, errors: [{ messageId: "offdoor" }] },
-    { filename: "SignupWizard.viewModel.ts", code: `import { setToken } from "@/lib/lazuli-client";`, errors: [{ messageId: "offdoor" }] },
+    { filename: "Login.viewModel.ts", code: `import { setAccessToken } from "@/lib/aerofortress-client";`, errors: [{ messageId: "offdoor" }] },
+    { filename: "SignupWizard.viewModel.ts", code: `import { setToken } from "@/lib/aerofortress-client";`, errors: [{ messageId: "offdoor" }] },
   ],
 });
 
@@ -317,18 +317,18 @@ ruleTester.run("safe-back", plugin.rules["safe-back"], {
 ruleTester.run("no-hardcoded-base-url", plugin.rules["no-hardcoded-base-url"], {
   valid: [
     // env-driven with a relative fallback (web) — the blessed shape.
-    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: import.meta.env.VITE_API_URL ?? "" });` },
+    { filename: "src/lib/aerofortress-client.ts", code: `const c = axios.create({ baseURL: import.meta.env.VITE_API_URL ?? "" });` },
     // env-driven with an env fallback (mobile).
-    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080" });` },
+    { filename: "src/lib/aerofortress-client.ts", code: `const c = axios.create({ baseURL: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080" });` },
     // a relative base is configuration, not a baked host.
-    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: "/api" });` },
+    { filename: "src/lib/aerofortress-client.ts", code: `const c = axios.create({ baseURL: "/api" });` },
     // an injectable default overridden at boot (the hostpoint pattern) is an assignment, not a construction prop.
-    { filename: "src/lib/lazuli-client.ts", code: `instance.defaults.baseURL = "http://localhost:8080";` },
+    { filename: "src/lib/aerofortress-client.ts", code: `instance.defaults.baseURL = "http://localhost:8080";` },
     // out of scope: a test fixture may hardcode a URL.
     { filename: "Foo.test.tsx", code: `const c = axios.create({ baseURL: "http://localhost:8080" });` },
   ],
   invalid: [
-    { filename: "src/lib/lazuli-client.ts", code: `const c = axios.create({ baseURL: "http://localhost:8080" });`, errors: [{ messageId: "hardcoded" }] },
+    { filename: "src/lib/aerofortress-client.ts", code: `const c = axios.create({ baseURL: "http://localhost:8080" });`, errors: [{ messageId: "hardcoded" }] },
     { filename: "src/lib/client.ts", code: `const c = makeClient({ baseUrl: "https://api.example.com" });`, errors: [{ messageId: "hardcoded" }] },
   ],
 });
@@ -647,10 +647,10 @@ ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"],
 ruleTester.run("refresh-one-door", plugin.rules["refresh-one-door"], {
   valid: [
     // The session seam may consume the rotation (a gated boot bootstrap composes the client's single-flight).
-    { filename: "src/lib/session.ts", code: `import { refreshAccessToken } from "@/lib/lazuli-client";` },
+    { filename: "src/lib/session.ts", code: `import { refreshAccessToken } from "@/lib/aerofortress-client";` },
     { filename: "src/lib/session/useSession.ts", code: `import { refresh } from "@/client.gen/sample";` },
     // The client seam itself defines the rotation — its own raw post is the door's inside.
-    { filename: "src/lib/lazuli-client.ts", code: `instance.post("/account/refresh", {});` },
+    { filename: "src/lib/aerofortress-client.ts", code: `instance.post("/account/refresh", {});` },
     // Type-only imports are contract vocabulary, not a rotation path.
     { filename: "Foo.viewModel.ts", code: `import type { refresh } from "@/client.gen/sample";` },
     // Unrelated names from the client are fine.
@@ -658,13 +658,13 @@ ruleTester.run("refresh-one-door", plugin.rules["refresh-one-door"], {
     // A refresh-named import from a NON-client source is not the rotation (e.g. a UI helper).
     { filename: "Foo.viewModel.ts", code: `import { refresh } from "@/lib/animation";` },
     // Tests exercise freely.
-    { filename: "Session.test.tsx", code: `import { refreshAccessToken } from "@/lib/lazuli-client";` },
+    { filename: "Session.test.tsx", code: `import { refreshAccessToken } from "@/lib/aerofortress-client";` },
   ],
   invalid: [
     // The near-miss shapes: the hook/op consumed outside the doors…
     { filename: "Foo.viewModel.ts", code: `import { useRefresh } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
     { filename: "src/app/_layout.tsx", code: `import { refresh } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
-    { filename: "Foo.viewModel.ts", code: `import { refreshAccessToken } from "@/lib/lazuli-client";`, errors: [{ messageId: "offdoor" }] },
+    { filename: "Foo.viewModel.ts", code: `import { refreshAccessToken } from "@/lib/aerofortress-client";`, errors: [{ messageId: "offdoor" }] },
     // …and the hand-rolled rotation.
     { filename: "Foo.viewModel.ts", code: `instance.post("/account/refresh", {});`, errors: [{ messageId: "raw" }] },
     { filename: "src/lib/api-helpers.ts", code: `axios.post("/auth/refresh-token");`, errors: [{ messageId: "raw" }] },
@@ -764,4 +764,4 @@ ruleTester.run("controller-field-state", plugin.rules["controller-field-state"],
 });
 
 // eslint-disable-next-line no-console
-console.log("eslint-plugin-lazuli: all LZFE rule tests passed");
+console.log("eslint-plugin-aerofortress: all LZFE rule tests passed");

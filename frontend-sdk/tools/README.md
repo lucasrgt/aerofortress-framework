@@ -2,8 +2,8 @@
 
 Beyond the typed client (orval generates that from the backend contracts), these emit the *structure* a feature
 needs — the frontend parallel of the backend scaffold — and check the parts a per-file lint rule can't see. Pure
-functions (no I/O, unit-tested); the `*.mjs` CLIs wrap them with file writes / reports. The `lazuli` .NET CLI
-front-door shells out to these (the way `lazuli doctor` shells out to `npm run lint`) — two engines, one front door.
+functions (no I/O, unit-tested); the `*.mjs` CLIs wrap them with file writes / reports. The `af` .NET CLI
+front-door shells out to these (the way `af doctor` shells out to `npm run lint`) — two engines, one front door.
 
 ## The test tiers (how each is enforced)
 
@@ -59,7 +59,7 @@ npm run assemble-i18n -- <featuresDir> <outFile>
 Discovers every `*.i18n.ts`, derives each namespace from the filename, and emits a generated module that imports the
 locale catalogs and composes `resources` (locale → namespace) — what an app otherwise wires by hand. The output
 typechecks, so a renamed/removed catalog fails the build; pair it with LZFE011 (key parity *within* each catalog) —
-the `lazuli/i18n-completeness` rule in-scope, or `i18n-parity.mjs` below when the catalogs are cross-package.
+the `aerofortress/i18n-completeness` rule in-scope, or `i18n-parity.mjs` below when the catalogs are cross-package.
 
 ## i18n parity — cross-package catalogs (LZFE011, the other half)
 
@@ -69,7 +69,7 @@ node tools/i18n-parity.mjs <catalogsDir> [...moreDirs]
 ```
 
 LZFE011 has two mechanisms for two layouts. When the catalogs live *inside* the linted source, the
-`lazuli/i18n-completeness` eslint rule pins parity per file at lint time — done. But in a **core-split** layout the
+`aerofortress/i18n-completeness` eslint rule pins parity per file at lint time — done. But in a **core-split** layout the
 catalogs sit in a SEPARATE package, outside the app's eslint scope, so the rule never sees them. `i18n-parity.mjs`
 reads them directly and enforces the same invariant (every locale object in a catalog declares the same keys; a key
 in one but not its siblings is a silent untranslated string), locale-agnostic like the rule. **Use the rule when

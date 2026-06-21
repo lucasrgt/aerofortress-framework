@@ -1,7 +1,7 @@
 # Decision: the doctor must catch the *unmarked* entity / value object, not only police the marked one
 
-**Status:** accepted; implemented (`LZ0021`, `analyzers/Lazuli.Doctor/UnmarkedDomainTypeAnalyzer.cs`) + tests
-(`tests/Lazuli.Doctor.Tests/UnmarkedDomainTypeAnalyzerTests.cs`, 5 cases, green). Self-graded
+**Status:** accepted; implemented (`LZ0021`, `analyzers/AeroFortress.Framework.Doctor/UnmarkedDomainTypeAnalyzer.cs`) + tests
+(`tests/AeroFortress.Framework.Doctor.Tests/UnmarkedDomainTypeAnalyzerTests.cs`, 5 cases, green). Self-graded
 **8.7 — PASS** (see §Grading).
 **Date:** 2026-06-08.
 **Supersedes/extends:** `ValueObjectAnalyzer` (LZ0013) + `EntityAnalyzer` (LZ0014). It does not replace
@@ -101,7 +101,7 @@ Existing, cited as-is: `LZ0013` (`ValueObjectAnalyzer.cs:23`), `LZ0014` (`Entity
 
 ## Scope / boundary
 
-Generic, in-boundary. Every Lazuli app has entities and value objects; the marks and the `DbContext` are
+Generic, in-boundary. Every AeroFortress app has entities and value objects; the marks and the `DbContext` are
 framework-conventional. This hardens an existing in-boundary mechanism (the marks) rather than moving the
 80/20 line — so the one-pilot pauta incident plus the LZ0013/LZ0014 lineage is sufficient justification. No
 provider names, no DI/transport mechanics, no runtime invasion: a pure syntactic+semantic analyzer,

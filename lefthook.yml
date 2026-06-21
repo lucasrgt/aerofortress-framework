@@ -1,4 +1,4 @@
-# Git hooks via lefthook — one config across the framework (.NET via Lazuli.slnx + the frontend-sdk workspace). The
+# Git hooks via lefthook — one config across the framework (.NET via AeroFortress.Framework.slnx + the frontend-sdk workspace). The
 # doctor runs locally before code is shared. pre-commit runs the LZFE plugin self-test when SDK files change;
 # pre-push runs the backend doctor (the LZ*/LZSELF* analyzers in the build) and the SDK typecheck. Glob-gated so a
 # backend-only change skips the SDK checks and vice versa. Wired by `npx lefthook install` via the `prepare` script.
@@ -14,7 +14,7 @@ pre-push:
   commands:
     backend-doctor: # LZ* (doctor) + LZSELF* (self-harness) analyzers run inside the build
       glob: "**/*.cs"
-      run: dotnet build Lazuli.slnx -v q -nologo
+      run: dotnet build AeroFortress.Framework.slnx -v q -nologo
     sdk-typecheck:
       glob: "frontend-sdk/**/*.{ts,tsx}"
       run: npm --prefix frontend-sdk run typecheck

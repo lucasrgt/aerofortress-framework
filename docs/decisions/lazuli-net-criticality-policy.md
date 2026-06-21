@@ -1,12 +1,12 @@
 # Decision: criticality is a *policy dial*, not a blanket — and the strict opt-out is a forced, reviewable marker
 
 **Status:** accepted; implemented in the 0.6.0 wave. New marker `[NonCritical]`
-(`src/Lazuli.Abstractions/NonCriticalAttribute.cs`), shared helper
-(`analyzers/Lazuli.Doctor/CriticalityPolicy.cs`), new rule **`LZ0029`**
-(`analyzers/Lazuli.Doctor/CriticalityPolicyAnalyzer.cs`), `LZ0008`/`LZ0010` rewired to the helper, the
-dial projected through `analyzers/Lazuli.Doctor/buildTransitive/Lazuli.Doctor.targets`, the template
-manifest section (`templates/lazuli-app/Lazuli.toml`), and a light manifest check
-(`src/Lazuli.Cli/LazuliManifest.cs`). Tests green (LZ0029 across the three levels + the `LZ0008`/`LZ0010`
+(`src/AeroFortress.Framework.Abstractions/NonCriticalAttribute.cs`), shared helper
+(`analyzers/AeroFortress.Framework.Doctor/CriticalityPolicy.cs`), new rule **`LZ0029`**
+(`analyzers/AeroFortress.Framework.Doctor/CriticalityPolicyAnalyzer.cs`), `LZ0008`/`LZ0010` rewired to the helper, the
+dial projected through `analyzers/AeroFortress.Framework.Doctor/buildTransitive/AeroFortress.Framework.Doctor.targets`, the template
+manifest section (`templates/lazuli-app/AeroFortress.toml`), and a light manifest check
+(`src/AeroFortress.Framework.Cli/AeroFortressManifest.cs`). Tests green (LZ0029 across the three levels + the `LZ0008`/`LZ0010`
 strict interaction + the manifest validator). Self-graded **8.6 — PASS** (see §Grading).
 **Date:** 2026-06-16.
 **Supersedes/extends:** `CriticalJourneyAnalyzer` (LZ0008) + `JourneyCoversCriticalAnalyzer` (LZ0010). It
@@ -44,7 +44,7 @@ Two facts make this a framework concern, not a per-app lint preference:
 
 ## Decision
 
-Add a **criticality policy** — one dial in `Lazuli.toml` (`[testing] criticality`) with three levels — and a
+Add a **criticality policy** — one dial in `AeroFortress.toml` (`[testing] criticality`) with three levels — and a
 new marker `[NonCritical]` that the stricter levels make meaningful.
 
 | Level | Meaning | LZ0008 / LZ0010 | LZ0029 |
@@ -75,19 +75,19 @@ lineage with `LZ0022`.
 
 ### 3. The analyzer never parses TOML — the dial is projected through MSBuild
 
-The doctor must not learn a config format. Teaching the analyzer to read `Lazuli.toml` would (a) break Law 2
+The doctor must not learn a config format. Teaching the analyzer to read `AeroFortress.toml` would (a) break Law 2
 — the policy would no longer be removable with the package — and (b) couple a Roslyn analyzer to a file
 format it has no other reason to know. Instead the doctor's `buildTransitive` targets — already auto-imported
-by every consumer and removed with the package — locate `Lazuli.toml`, read the one key with an MSBuild regex,
+by every consumer and removed with the package — locate `AeroFortress.toml`, read the one key with an MSBuild regex,
 and hand the analyzers the resolved level through a `CompilerVisibleProperty`
-(`build_property.LazuliCriticality`, surfaced in `AnalyzerConfigOptionsProvider.GlobalOptions`). Absent file
+(`build_property.AeroFortressCriticality`, surfaced in `AnalyzerConfigOptionsProvider.GlobalOptions`). Absent file
 or key ⇒ `opt-in`. The analyzer sees a single projected string; the TOML stays the CLI's concern. `lazuli
 doctor`'s manifest leg adds a light textual check that the value, if present, names one of the three levels —
 so a typo (`"strickt"`) is caught at the doctor instead of silently degrading to `opt-in` at build time.
 
 ### Canonical form (determinism)
 
-The dial lives in **exactly one** place — `[testing] criticality` in the workspace `Lazuli.toml` — and is
+The dial lives in **exactly one** place — `[testing] criticality` in the workspace `AeroFortress.toml` — and is
 read **once** per compilation. The three rules share **one** definition of "critical under policy"
 (`CriticalityPolicy.IsCriticalUnderPolicy`), so they cannot drift: a slice is critical for LZ0008, LZ0010, and
 the strict-mode effect by the identical test. There is no per-rule or per-author fork.
@@ -106,7 +106,7 @@ is identical to before for every workspace that has not turned the dial.
 
 ## Scope / boundary
 
-Generic, in-boundary. Every Lazuli app has slices, `[Critical]`, and journeys; the dial tunes an existing
+Generic, in-boundary. Every AeroFortress app has slices, `[Critical]`, and journeys; the dial tunes an existing
 framework mechanism rather than moving the 80/20 line. No source-gen of behavior (`[NonCritical]` is a pure
 marker, like `[Critical]`), no runtime you inherit from, no vendor anything. Law 2 is preserved by
 construction: the policy projection ships in the doctor's `buildTransitive` targets and leaves with the
@@ -151,6 +151,6 @@ authoring plus the analyzer-side tests that drive the same `build_property` the 
 - Map `LZ0029` to `production`/`strict`/`prototype` severities (it is `Error` by default today).
 - Cover the MSBuild projection end-to-end once a package-consuming fixture exists (today only the analyzer
   side — reading the projected `build_property` — is tested).
-- Consider whether `lazuli g slice` should emit `[NonCritical]` when scaffolding under a non-`opt-in`
+- Consider whether `af g slice` should emit `[NonCritical]` when scaffolding under a non-`opt-in`
   workspace, so a generated non-critical slice is born conformant. Deferred — the generator change is
   orthogonal to the policy and can follow once a pilot adopts a stricter level.

@@ -8,13 +8,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- Shared package metadata for the publishable Lazuli.* projects. Non-packable projects
+    <!-- Shared package metadata for the publishable AeroFortress.Framework.* projects. Non-packable projects
          (the sample, tests, self-harness) ignore it. -->
     <Version>0.1.0</Version>
-    <Authors>Lazuli</Authors>
-    <Company>Lazuli</Company>
-    <Description>Lazuli — the opinionated .NET convention framework (vertical slices + the doctor).</Description>
-    <PackageTags>lazuli;vertical-slice;convention;doctor</PackageTags>
+    <Authors>AeroFortress</Authors>
+    <Company>AeroFortress</Company>
+    <Description>AeroFortress — the opinionated .NET convention framework (vertical slices + the doctor).</Description>
+    <PackageTags>aerofortress;vertical-slice;convention;doctor</PackageTags>
   </PropertyGroup>
 
 </Project>

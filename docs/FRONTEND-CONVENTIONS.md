@@ -1,4 +1,4 @@
-# Lazuli (.NET) — Frontend Conventions & Harness
+# AeroFortress (.NET) — Frontend Conventions & Harness
 
 The frontend harness is the **same soul as the doctor, a different body**. Same mentality —
 convention over configuration, semantic density, enforcement that an LLM cannot drift past —
@@ -19,7 +19,7 @@ Ground every frontend convention here, never memory. The backend constitution is
 ## The two laws — restated for the frontend
 
 1. **Stranger-maintainable.** The output is always plain, idiomatic React Native that an RN dev
-   who has never heard of Lazuli can read and maintain. This is why MVVM lives here as a
+   who has never heard of AeroFortress can read and maintain. This is why MVVM lives here as a
    *naming discipline over custom hooks*, never as a framework (no classes, no observables, no
    two-way binding — that is Angular/WPF idiom imported into React, and it fails this law).
 2. **Doctor-removable.** Remove the harness (the ESLint plugin + the wrapped generator) and the
@@ -105,7 +105,7 @@ features/<zone>/<name>/
   **One ViewModel per screen, never per query.**
 - **Mandatory states.** A ViewModel exposing server data exposes `loading`, `error`, and `empty`
   as explicit state — never improvised in the View. This is the sad-path discipline of the back.
-  The spine (`@lazuli/react`) carries the primitives: the ViewModel projects each query through
+  The spine (`@aerofortress/react`) carries the primitives: the ViewModel projects each query through
   `toAsyncState` into the closed `AsyncState<T>` union (a multi-query screen folds them with
   `combineAsyncStates` — precedence `error > loading > empty > ready`, combined retry), and the
   View renders it through `<Resource>` (`LZFE010`). Routes project raw params through
@@ -141,12 +141,12 @@ lib/feedback.ts          # the feedback seam — one door for toasts; the shell 
 orval.config.ts          # the shipped convention config — the "poison" lives here
 ```
 
-- **The generator is stock, wrapped — never bespoke.** `lazuli gen client` runs **orval**
+- **The generator is stock, wrapped — never bespoke.** `af gen client` runs **orval**
   (target `react-query`) under our config. We do not own a compiler; we wire an existing one.
   Building our own OpenAPI→TS→TanStack generator *is* the Lazuli-1 gesture — re-solving parsing
   and emission that orval already maintains, tests, and edge-cases for free.
 - **The opinion lives in config + convention, not in a fork.** The "envenenada" is two things:
-  the `orval.config.ts` we ship and the **mutator** (`lazuli.client.ts` — the typed Lazuli
+  the `orval.config.ts` we ship and the **mutator** (`lazuli.client.ts` — the typed AeroFortress
   client: `Result<T>` unwrap, auth, error mapping). This mirrors the back exactly — we do not
   fork EF Core; we use it stock and direct, and the opinion is the slice convention + the doctor.
 - **The generated layer is boring on purpose.** All semantic density lives *above* it, in the
@@ -166,7 +166,7 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
 
 ## Pagination — one page shape, two pager hooks
 
-The backend's canonical `Page<T>` (see `CONVENTIONS.md` — `AddLazuliOpenApi` pins the four members
+The backend's canonical `Page<T>` (see `CONVENTIONS.md` — `AddAeroFortressOpenApi` pins the four members
 required and plainly numeric) is what makes a page *recognizable* on this side of the wire. The spine's
 `Page<T>` — `{ items, totalCount, pageNumber, pageSize }` — is **structural on purpose**, like
 `QueryLike`: it imports nothing from `client.gen/`, so any generated response carrying the shape matches,
@@ -337,7 +337,7 @@ whole session family. So session restore is a **one-door** discipline, the LZFE0
 applied to rotation:
 
 - **The one door: the session seam's `bootstrapSession`, injected into the client interceptor.** The
-  scaffolded mutator (`lib/lazuli-client.ts`) ships `setTokenRefresher(fn)` and an interceptor that, on a
+  scaffolded mutator (`lib/aerofortress-client.ts`) ships `setTokenRefresher(fn)` and an interceptor that, on a
   401 outside the auth routes, calls the injected refresher once and replays the request. The shell registers
   the seam's `bootstrapSession` as that refresher at boot (`setTokenRefresher(session.bootstrapSession)`), so
   the rotation logic — **single-flight**, cookie (web: empty post) AND body (native: stored token) alike —
@@ -353,7 +353,7 @@ applied to rotation:
   fire on a cold load — two parallel rotations, one burned family. A pilot shipped each half in the
   same week from different branches; the merge is where the race was caught. `LZFE029` closes the
   door mechanically: the refresh hook/operation (and any hand-rolled POST to a refresh route) is
-  consumable only inside `lib/lazuli-client` / `lib/session`.
+  consumable only inside `lib/aerofortress-client` / `lib/session`.
 
 ---
 
@@ -392,7 +392,7 @@ await session.bootstrapSession();  // rotation door → onSessionChanged (same u
 await session.clearSession();      // identity door → onIdentityChanged
 ```
 
-`onAuthenticated` is **deprecated** (since `@lazuli/react` 0.4.0): it read as a neutral "the session
+`onAuthenticated` is **deprecated** (since `@aerofortress/react` 0.4.0): it read as a neutral "the session
 changed" and was called for *both* login and bootstrap — the conflation itself. It survives as an alias
 of `signIn` (identity semantics) for the migration; move call sites to `signIn`. `onIdentityChanged`
 omitted falls back to `onSessionChanged` (retrocompat) — but then a sign-in does only the light reset and
@@ -486,7 +486,7 @@ it says "this endpoint *is* a webhook", and the harness derives that a webhook h
 
 - **Opt-out, not opt-in.** The default is `App` — app-facing, *must* be wired (`LZFE008`). The dangerous
   case (forgot to wire) must be loud by default; the legitimate exception (a webhook) costs one marker. (This
-  is right *because* a Lazuli app is UI-first/mobile — app-facing is dominant. An API-first product would
+  is right *because* a AeroFortress app is UI-first/mobile — app-facing is dominant. An API-first product would
   reconsider.)
 - **One mark, many derivations** — the `[Critical]` pattern again. A single marker on the slice feeds: orval
   (audience filter → non-app endpoints leave the client), `LZFE008` (covers only app-facing), and a future
@@ -502,7 +502,7 @@ it says "this endpoint *is* a webhook", and the harness derives that a webhook h
     killed earlier scenarios. Retry/signature/idempotency live in the `Handle`, visibly, never in the mark.
 - **The .NET spelling is a builder call, not a class attribute.** A minimal-API handler is a lambda; a `[Endpoint]`
   attribute on the slice class can't reach the endpoint metadata. So the marker is `.WithEndpointKind(EndpointKind.Webhook)`
-  on the slice's `Map` (framework extension, `Lazuli.AspNetCore`) — it tags the endpoint, and `AddLazuliOpenApi` /
+  on the slice's `Map` (framework extension, `AeroFortress.Framework.AspNetCore`) — it tags the endpoint, and `AddAeroFortressOpenApi` /
   the orval audience filter carry the nature into the client. `App` is the default and needs no call (opt-out).
 
 ---
@@ -554,7 +554,7 @@ own, and is doctor-removable (deleting the generator does not touch existing fil
 *is* the source. **Source-gen** runs every build, owns its output, clobbers your edits, and the
 behavior lives in the generator, not the file.
 
-So `lazuli g view <Slice>` scaffolds the `view`/`viewModel`/`test` triple with the **types fiber
+So `af g view <Slice>` scaffolds the `view`/`viewModel`/`test` triple with the **types fiber
 from the contract** and the **behavior as a TODO you write** — a starting point, never an owner.
 Explicitly **out**, on the same law: the old lazuli's "smart stubs" that pre-filled the body
 with the "correct" runtime call. That delegates behavior; it is the frontend twin of the
@@ -568,8 +568,8 @@ behavior.
 
 ## The harness — rule catalog (`LZFE*`)
 
-The frontend doctor is an **ESLint custom plugin** (`eslint-plugin-lazuli`) for in-file rules,
-plus a thin `ts-morph` pass for the cross-file shape, invoked alongside `lazuli doctor`. ESLint
+The frontend doctor is an **ESLint custom plugin** (`eslint-plugin-aerofortress`) for in-file rules,
+plus a thin `ts-morph` pass for the cross-file shape, invoked alongside `af doctor`. ESLint
 is the mature path for custom semantic rules — hostpoint reached for Biome and had to hand-roll
 a `.mjs` scanner for exactly this, the tell that Biome's custom plugins are not yet there.
 
@@ -607,7 +607,7 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `LZFE026` | **Semantic colors** — outside token files: no `rgb()/hsl()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `LZFE012`: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
 | `LZFE027` | **QueryClient carries the mutation defaults** — every production `new QueryClient(...)` wires `mutationCache: new MutationCache({ onSuccess, onError })`: success invalidates every active query + posts the success note (`meta.silent` opts out of the note), failure routes through the feedback seam unconditionally. Tests and the shared test harness (`test/`, `test-utils/`) build bare clients freely. Scaffolded as `lib/query.ts` | **shipped** | pauta: a created category only appeared after F5, with no toast — 13 of 43 ViewModels had no invalidation at all |
 | `LZFE028` | **No manual refetch ritual** — an `onSuccess` whose entire body is refetch/invalidate calls (inline, named, or `useCallback`-wrapped) duplicates the `LZFE027` defaults; delete it. A handler that does *more* than refetch (navigate, reset, hand off an id) is behavior — never flagged. Warn-tier: reveals, does not gate | **shipped** | pauta: 30 of 43 ViewModels hand-rolled `onSuccess: refetch` — the convention the majority groped toward, pinned so the minority can't forget it |
-| `LZFE029` | **Refresh one-door** — the refresh hook/operation (and any hand-rolled `POST` to a refresh route) is consumed only inside the rotation doors (`lib/lazuli-client`, `lib/session`); anywhere else is a second rotation path. Type-only imports stay free | **shipped** | pauta near-miss: a session-seam refresh bootstrap and a client 401 interceptor landed the same week from different branches — two cold-load rotations would have tripped the backend's theft detection and burned the session family |
+| `LZFE029` | **Refresh one-door** — the refresh hook/operation (and any hand-rolled `POST` to a refresh route) is consumed only inside the rotation doors (`lib/aerofortress-client`, `lib/session`); anywhere else is a second rotation path. Type-only imports stay free | **shipped** | pauta near-miss: a session-seam refresh bootstrap and a client 401 interceptor landed the same week from different branches — two cold-load rotations would have tripped the backend's theft detection and burned the session family |
 | `LZFE030` | **No cast on a navigation target** — no `as never`/`as any`/`as unknown` on the argument of `router.push`/`replace`/`navigate` (or a `useNavigate()` call), nor on the `href`/`to` of `<Redirect>`/`<Navigate>`/`<Link>`. The cast exists to silence typed routes; silenced, a drifted route literal compiles clean and 404s in prod. Pass a typed literal or the `{ pathname, params }` object. **Config pair**: typed routes ON (expo-router `experiments.typedRoutes` / TanStack's route tree) — without it the removed cast merely degrades to `string`. Error-tier, routing family | **shipped** | hostpoint: ~8 call sites cast `router.push(x as never)`; when the backend minted two routes that didn't exist (the sibling convention), the muted router compiled them clean → prod 404 |
 | `LZFE031` | **Submit handles the invalid path** — in a `*.viewModel.ts`, a one-argument `handleSubmit(onValid)` is flagged: a validation failure runs no code (it happens *before* the mutation, so `LZFE013`/`LZFE027` never see it). Use the spine's `submitOrReveal(form.handleSubmit, onValid, { onInvalid })` — it forces the surface and resolves the first invalid field for the shell to navigate to — or pass `onInvalid` by hand. Warn-tier on entry (a single-screen form with visible inline errors is legitimate); promotes with `LZFE032` | **shipped** | hostpoint: a 9-tab property editor's Save went completely mute when a hidden tab's field failed — no mutation, no toast, no error ("não está salvando a propriedade", in prod) |
 | `LZFE032` | **Controller surfaces its fieldState** — a `<Controller>` whose inline `render` never reads `fieldState` (destructured or accessed) leaves that field's validation error with no surface; pass `error={fieldState.error?.message}` to the field component. Near-zero false positives (`error` on an unvalidated field is inert); a deliberately surface-less control eslint-disables with its justification. Warn-tier, promoted together with `LZFE031` — the pair makes "a validation error always shows" hold by construction | **shipped** | hostpoint: the Description input destructured only `{ field }` — its validation failure had no surface at all (same incident as LZFE031) |
@@ -712,7 +712,7 @@ runs at error** for the sample tree — the exemplar proved green reachable, so 
 client` (stock orval, wrapped) with the shipped config + mutator. One blessed frontend shape.
 
 **Out (non-goals), by decision:**
-- **No bespoke generator.** orval stock, wrapped — never a Lazuli OpenAPI→TS compiler. (The
+- **No bespoke generator.** orval stock, wrapped — never a AeroFortress OpenAPI→TS compiler. (The
   Lazuli-1 vector.)
 - **No source-gen of behavior.** The ViewModel body is scaffolded once and owned, never
   re-emitted. No "smart stubs" that pre-fill logic. (The Lazuli-2 vector.)
@@ -740,8 +740,8 @@ client` (stock orval, wrapped) with the shipped config + mutator. One blessed fr
 - **No multi-app sprawl.** One frontend shape, enforced — sprawl was aerocoding's *N* apps, not
   one blessed convention.
 - **No frontend in core.** The harness ships as a separate, optional, doctor-removable package —
-  the `lazuli`/`lazuli-dev` split, applied again. It never enters `Lazuli.Abstractions` or
-  `Lazuli.Doctor`.
+  the `af`/`aerofortress-dev` split, applied again. It never enters `AeroFortress.Framework.Abstractions` or
+  `AeroFortress.Framework.Doctor`.
 
 When a proposal smells like capability instead of convention + enforcement, it is a scope
 violation. Reject in line.

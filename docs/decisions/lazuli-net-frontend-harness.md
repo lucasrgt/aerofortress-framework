@@ -10,7 +10,7 @@ below to mean *no source-gen of behavior and no bespoke generator*, not *no fron
 
 ## Context
 
-Lazuli's doctor enforces the backend slice convention so an LLM cannot drift past it. The
+AeroFortress's doctor enforces the backend slice convention so an LLM cannot drift past it. The
 frontend has no such harness, and the failure it invites is documented in our own history:
 hostpoint shipped screens rendering **storybook fixtures inlined as data** (`WAR-*`
 workarounds) because the SDK query did not exist yet — the AI reported "done" while the screen
@@ -40,21 +40,21 @@ the harness.
    generated typed TanStack hook per slice. An invented endpoint is a `tsc` error (no silent
    404). The completeness gate is the compiler, not a lint rule.
 
-3. **The generator is stock, wrapped — never bespoke.** `lazuli gen client` runs **orval**
-   (`react-query` target) under a shipped `orval.config.ts` + a Lazuli **mutator** (the typed
+3. **The generator is stock, wrapped — never bespoke.** `af gen client` runs **orval**
+   (`react-query` target) under a shipped `orval.config.ts` + a AeroFortress **mutator** (the typed
    client: `Result<T>` unwrap, auth, error→state). The opinion lives in config + convention, not
    in a fork — exactly as the back uses EF Core stock and puts the opinion in the slice + doctor.
    The generated layer is boring on purpose; all density lives in the hand-written ViewModel.
 
 4. **The bright line: generate the contract, scaffold the behavior.** Types and the typed
    slice-hook are *generated* (plumbing, re-emitted, never edited). The ViewModel body is
-   *scaffolded once* by `lazuli g view <Slice>` and then owned — a visible skeleton, never
+   *scaffolded once* by `af g view <Slice>` and then owned — a visible skeleton, never
    re-emitted. Source-gen of ViewModel behavior (and old-lazuli-style "smart stubs" that
    pre-fill logic) is **out** — it is the Lazuli-2 vector.
 
-5. **The harness is a separate, optional, doctor-removable package** — an `eslint-plugin-lazuli`
+5. **The harness is a separate, optional, doctor-removable package** — an `eslint-plugin-aerofortress`
    for in-file rules plus a thin `ts-morph` pass for cross-file shape, invoked alongside `lazuli
-   doctor`. It never enters `Lazuli.Abstractions` or `Lazuli.Doctor` — the `lazuli`/`lazuli-dev`
+   doctor`. It never enters `AeroFortress.Framework.Abstractions` or `AeroFortress.Framework.Doctor` — the `af`/`aerofortress-dev`
    split, applied again. Initial rule catalog: `LZFE001`–`LZFE007` (see the convention).
 
 6. **One backend micro-convention** makes the slice→hook name 1:1: the `Map` names its endpoint
@@ -71,7 +71,7 @@ the harness.
 
 ## Alternatives rejected
 
-- **A bespoke Lazuli OpenAPI→TS generator ("envenenada nativa").** Re-solves parsing/emission
+- **A bespoke AeroFortress OpenAPI→TS generator ("envenenada nativa").** Re-solves parsing/emission
   orval already owns; it is the literal Lazuli-1 gesture. Stock-wrapped wins. Bespoke is earned
   only by a concrete, proven limitation of orval — and even then as a thin post-processor, not a
   rewrite.

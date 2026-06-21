@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Resource } from "@lazuli/react";
+import { Resource } from "@aerofortress/react";
 import { Card, EmptyState, ErrorState, Screen, Stack, Text } from "@/ui";
 import { useItemsModel } from "./Items.viewModel";
 import type { Item } from "./Items.viewModel";

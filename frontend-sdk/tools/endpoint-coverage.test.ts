@@ -53,7 +53,7 @@ describe("isDataDoor", () => {
 
   it("does not count a View, a lib helper, or a test", () => {
     expect(isDataDoor("src/features/foo/Foo.view.tsx")).toBe(false);
-    expect(isDataDoor("src/lib/lazuli-client.ts")).toBe(false);
+    expect(isDataDoor("src/lib/aerofortress-client.ts")).toBe(false);
     expect(isDataDoor("src/features/foo/Foo.test.tsx")).toBe(false);
   });
 });

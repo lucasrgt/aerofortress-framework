@@ -11,7 +11,7 @@
 #   2. COMPILE+TEST leg — build + run the generated test suite with analyzers OFF, to prove the rendered
 #                    C# compiles and every shipped *.Tests.cs passes.
 #
-# Uses ProjectReferences to the freshly-built Lazuli.* projects (not the package feed), so it tests the
+# Uses ProjectReferences to the freshly-built AeroFortress.Framework.* projects (not the package feed), so it tests the
 # working tree. Headless; no Docker (the in-memory provider backs the tests). Run from the repo root.
 set -euo pipefail
 
@@ -21,8 +21,8 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 echo "==> building the CLI (carries the templates)"
-dotnet build "$REPO/src/Lazuli.Cli/Lazuli.Cli.csproj" -c Debug >/dev/null
-CLI="$REPO/src/Lazuli.Cli/bin/Debug/net10.0/Lazuli.Cli.dll"
+dotnet build "$REPO/src/AeroFortress.Framework.Cli/AeroFortress.Framework.Cli.csproj" -c Debug >/dev/null
+CLI="$REPO/src/AeroFortress.Framework.Cli/bin/Debug/net10.0/AeroFortress.Framework.Cli.dll"
 
 mkdir -p "$WORK/src/Smoke.Api" "$WORK/tests/Smoke.Tests"
 
@@ -34,12 +34,12 @@ cat > "$WORK/src/Smoke.Api/Smoke.Api.csproj" <<EOF
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$REPO_WIN/src/Lazuli.Abstractions/Lazuli.Abstractions.csproj" />
-    <ProjectReference Include="$REPO_WIN/src/Lazuli.AspNetCore/Lazuli.AspNetCore.csproj" />
-    <ProjectReference Include="$REPO_WIN/src/Lazuli.Auth/Lazuli.Auth.csproj" />
-    <ProjectReference Include="$REPO_WIN/src/Lazuli.Mail/Lazuli.Mail.csproj" />
-    <ProjectReference Include="$REPO_WIN/src/Lazuli.Sms/Lazuli.Sms.csproj" />
-    <ProjectReference Include="$REPO_WIN/analyzers/Lazuli.Doctor/Lazuli.Doctor.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="$REPO_WIN/src/AeroFortress.Framework.Abstractions/AeroFortress.Framework.Abstractions.csproj" />
+    <ProjectReference Include="$REPO_WIN/src/AeroFortress.Framework.AspNetCore/AeroFortress.Framework.AspNetCore.csproj" />
+    <ProjectReference Include="$REPO_WIN/src/AeroFortress.Framework.Auth/AeroFortress.Framework.Auth.csproj" />
+    <ProjectReference Include="$REPO_WIN/src/AeroFortress.Framework.Mail/AeroFortress.Framework.Mail.csproj" />
+    <ProjectReference Include="$REPO_WIN/src/AeroFortress.Framework.Sms/AeroFortress.Framework.Sms.csproj" />
+    <ProjectReference Include="$REPO_WIN/analyzers/AeroFortress.Framework.Doctor/AeroFortress.Framework.Doctor.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.8" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
@@ -52,7 +52,7 @@ cat > "$WORK/src/Smoke.Api/Smoke.Api.csproj" <<EOF
 </Project>
 EOF
 
-printf 'global using Lazuli.Abstractions;\nglobal using Lazuli.AspNetCore;\n' > "$WORK/src/Smoke.Api/GlobalUsings.cs"
+printf 'global using AeroFortress.Framework.Abstractions;\nglobal using AeroFortress.Framework.AspNetCore;\n' > "$WORK/src/Smoke.Api/GlobalUsings.cs"
 printf 'var builder = WebApplication.CreateBuilder(args);\n\nvar app = builder.Build();\n\napp.Run();\n' > "$WORK/src/Smoke.Api/Program.cs"
 
 cat > "$WORK/tests/Smoke.Tests/Smoke.Tests.csproj" <<EOF
@@ -70,11 +70,11 @@ cat > "$WORK/tests/Smoke.Tests/Smoke.Tests.csproj" <<EOF
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
-    <Using Include="Lazuli.Abstractions" />
-    <Using Include="Lazuli.Testing" />
+    <Using Include="AeroFortress.Framework.Abstractions" />
+    <Using Include="AeroFortress.Framework.Testing" />
     <ProjectReference Include="../../src/Smoke.Api/Smoke.Api.csproj" />
-    <ProjectReference Include="$REPO_WIN/src/Lazuli.Testing/Lazuli.Testing.csproj" />
-    <ProjectReference Include="$REPO_WIN/src/Lazuli.Testing.InMemory/Lazuli.Testing.InMemory.csproj" />
+    <ProjectReference Include="$REPO_WIN/src/AeroFortress.Framework.Testing/AeroFortress.Framework.Testing.csproj" />
+    <ProjectReference Include="$REPO_WIN/src/AeroFortress.Framework.Testing.InMemory/AeroFortress.Framework.Testing.InMemory.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/Smoke.Api/**/*.Tests.cs" />

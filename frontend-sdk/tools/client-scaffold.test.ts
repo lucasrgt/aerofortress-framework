@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error - plain .mjs tool module, typed by its JSDoc
 import { renderFeedback, renderMutator, renderOrvalConfig, renderQueryClient } from "./client-scaffold.mjs";
 // @ts-expect-error - the CommonJS plugin, loaded for the conformance proof below
-import lazuli from "../packages/eslint-plugin/index.cjs";
+import aerofortress from "../packages/eslint-plugin/index.cjs";
 
 // The mutator/config pair every pilot re-derived by hand — rendered conformant by construction. What is
 // pinned: the seams the harness depends on, and the LZFE020-blessed base-URL shape.
@@ -36,8 +36,8 @@ describe("client-scaffold", () => {
     const config = renderOrvalConfig("shop", "./contract/Shop.Api.json");
 
     expect(config).toContain('target: "./contract/Shop.Api.json"');
-    expect(config).toContain('tags: ["lazuli:webhook", "lazuli:internal"]');
-    expect(config).toContain('mutator: { path: "./src/lib/lazuli-client.ts", name: "lazuliClient" }');
+    expect(config).toContain('tags: ["aerofortress:webhook", "aerofortress:internal"]');
+    expect(config).toContain('mutator: { path: "./src/lib/aerofortress-client.ts", name: "aerofortressClient" }');
     expect(config).toContain('target: "./src/client.gen/shop.ts"');
   });
 
@@ -85,8 +85,8 @@ describe("client-scaffold", () => {
         {
           files: ["**/*.ts"],
           languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
-          plugins: { lazuli },
-          rules: { "lazuli/query-client-defaults": "error" },
+          plugins: { aerofortress },
+          rules: { "aerofortress/query-client-defaults": "error" },
         },
         { filename },
       );

@@ -1,4 +1,4 @@
-using Lazuli.EntityFrameworkCore;
+using AeroFortress.Framework.EntityFrameworkCore;
 
 namespace Sample.Api.Modules.Wallets;
 

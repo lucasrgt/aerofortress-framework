@@ -1,0 +1,16 @@
+# AeroFortress workspace manifest for the canonical example — it demonstrates the monorepo shape: one AeroFortress.toml, a .NET
+# backend, and a frontend split into an agnostic core + per-platform design-system shells (mobile = React Native,
+# web = react-dom). The View is written ONCE (agnostic, design-system-driven via @/ui) and renders on both.
+
+[workspace]
+name = "sample-app"
+scope = "@sample"
+
+[products.sample-app]
+backend  = "backend/Sample.Api"   # .NET vertical slices (LZ* analyzers); tests co-located, compiled by Sample.Tests
+core     = "frontend/core"        # agnostic: the ViewModel (data door) + the design-system-driven View + i18n + client
+apps     = ["mobile", "web"]      # mobile = RN @/ui impl; web = react-dom @/ui impl — the core View is shared
+
+[harness]
+backend  = "../../AeroFortress.Framework.slnx"                      # the framework's LZ* Roslyn analyzers
+frontend = "../../frontend-sdk/packages/eslint-plugin"  # the LZFE* ESLint rules

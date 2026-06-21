@@ -1,8 +1,8 @@
-# sample-app — the canonical Lazuli example
+# sample-app — the canonical AeroFortress example
 
-Demonstrates the Lazuli monorepo shape end to end (the same architecture in `docs/MONOREPO-ARCHITECTURE.md`):
+Demonstrates the AeroFortress monorepo shape end to end (the same architecture in `docs/MONOREPO-ARCHITECTURE.md`):
 
-- **`Lazuli.toml`** — the workspace manifest: one source of truth for the topology (backend + core + per-platform apps).
+- **`AeroFortress.toml`** — the workspace manifest: one source of truth for the topology (backend + core + per-platform apps).
 - **`backend/`** — the .NET API (`Sample.Api`) + its co-located tests (`Sample.Tests`), vertical slices under the
   `LZ*` Roslyn analyzers.
 - **`frontend/core/`** — the **platform-agnostic** layer: the ViewModel (the single data door), the

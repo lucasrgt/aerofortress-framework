@@ -1,4 +1,4 @@
-# Lazuli — frontend
+# AeroFortress Framework — frontend
 
 The frontend side of lazuli-net. Where the .NET packages under `src/` give the backend its spine (`[Slice]`,
 `Result<T>`, the Roslyn analyzers), this gives the React Native + web frontend an equally tight spine — **as
@@ -15,8 +15,8 @@ frontend/
   tsconfig.base.json  # strict TS config every package/sample extends
   vitest.config.ts    # jsdom + the @/… aliases that let the sample run wired (not mocked)
   packages/
-    lazuli-react/     # @lazuli/react — the spine: AsyncState, Resource (+ guards, session as they graduate)
-    eslint-plugin/    # eslint-plugin-lazuli — the LZFE harness (rules + RuleTester self-tests)   [planned home]
+    aerofortress-react/     # @aerofortress/react — the spine: AsyncState, Resource (+ guards, session as they graduate)
+    eslint-plugin/    # eslint-plugin-aerofortress — the LZFE harness (rules + RuleTester self-tests)   [planned home]
   sample/
     items/            # the canonical feature unit — the blessed reference an app/agent copies (kept pristine)
     harness/          # stand-ins for the app's @/ui, @/i18n, @/client.gen — so the sample compiles + tests
@@ -28,11 +28,11 @@ the spine + sample, then `vitest run`. The spine has unit tests (every `toAsyncS
 state); the sample's test mounts its data door against the harness's real react-query hook — **wired, not mocked**,
 the same shape a real generated client would have.
 
-Apps (e.g. the Hostpoint dogfood) consume `@lazuli/react` + the eslint plugin as packages; the `lazuli` .NET CLI
-scaffolds them in and `lazuli doctor` shells out to `npm run lint` for the frontend slice (Roslyn in-proc for the
+Apps (e.g. the Hostpoint dogfood) consume `@aerofortress/react` + the eslint plugin as packages; the `af` .NET CLI
+scaffolds them in and `af doctor` shells out to `npm run lint` for the frontend slice (Roslyn in-proc for the
 backend slice — two native engines, one front door).
 
-## The spine — `@lazuli/react`
+## The spine — `@aerofortress/react`
 
 The read-side analogue of `Result<T>`. A screen's **ViewModel** (the data door) exposes its resource as an
 `AsyncState<T>` discriminated union; the **View** renders it through `<Resource>`, so loading / error / empty are
@@ -66,7 +66,7 @@ See [`sample/items`](./sample/items) for the blessed reference.
 
 ## The harness (the frontend self-audit)
 
-`eslint-plugin-lazuli` (the LZFE rules) is the front-side parallel of the backend's Roslyn/`Lazuli.Doctor`
+`eslint-plugin-aerofortress` (the LZFE rules) is the front-side parallel of the backend's Roslyn/`AeroFortress.Framework.Doctor`
 self-audit. It polices the unit: View renders only (LZFE001), the ViewModel is the one data door (LZFE002, with
 `lib/session` + `lib/guards` as the sanctioned infra doors), the ViewModel is platform-agnostic (LZFE009), every
 ViewModel has a co-located test (LZFE005), no mocks in production (LZFE003). The plugin **self-proves** with
@@ -84,5 +84,5 @@ allowed shape.
    (`LZFE015–019`: declarative redirects, one session seam, a tri-state guard, guarded params + Back) — **done**;
    still ahead: the "no hardcoded string" half of i18n, a11y, error-handling (every mutation surfaces its error).
 3. **Generators** — beyond the typed client: scaffold a feature unit + assemble the i18n resource tree (`tools/`,
-   **done**); still ahead: wire route guards from declared policy, and the `lazuli` .NET CLI front-door that shells
+   **done**); still ahead: wire route guards from declared policy, and the `af` .NET CLI front-door that shells
    out to these.

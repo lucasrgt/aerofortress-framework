@@ -1,7 +1,7 @@
 # Decision: journey enforcement must grade *depth*, not just *existence*
 
 **Status:** accepted; Tier A1 (`LZFE-JOURNEY-002`, `frontend-sdk/tools/e2e-doctor.mjs`) and Tier B3
-(`LZ0020`, `analyzers/Lazuli.Doctor/JourneyAssertionAnalyzer.cs`) implemented (+ tests). Tier A2
+(`LZ0020`, `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`) implemented (+ tests). Tier A2
 (`LZFE-E2E-SKIP-IN-GATE-001`) is pending behind the e2e-support harness home; Tier B4
 (`LZFE-JOURNEY-SEAM-001`) pending its feasibility spike; Tier C (mutation) deferred until a critical
 journey set exists. Self-graded **8.6 — PASS with notes** (see §Grading). Tracked in
@@ -21,7 +21,7 @@ green doctor is not shipping safety" — applied to the **journey** grain instea
 The doctor enforces journeys at two grains today, both **existence-only**:
 
 - **Backend.** A `[Slice]` marked `[Critical]` must carry a happy *and* a sad `[Journey]`
-  (`analyzers/Lazuli.Doctor/CriticalJourneyAnalyzer.cs:29` — LZ0008), and every `[Journey]` must
+  (`analyzers/AeroFortress.Framework.Doctor/CriticalJourneyAnalyzer.cs:29` — LZ0008), and every `[Journey]` must
   cover a critical slice (`JourneyCoversCriticalAnalyzer.cs:32` — LZ0010). The match is **textual**
   — a regex over `AdditionalFiles` that confirms the `[Journey(typeof(Slice), JourneyPath.Happy|Sad)]`
   attribute *exists* (`CriticalJourneyAnalyzer.cs:86-106`). It never reads the test body.
@@ -42,7 +42,7 @@ Two structural facts make this a framework gap, not just a pilot mistake:
 
 1. **The framework already documents the depth contract it does not enforce.** `JourneyAttribute`
    states: *"A sad journey must assert both the failure status **and** that no state changed"*
-   (`src/Lazuli.Testing/JourneyAttribute.cs:22-26`). LZ0008 checks the attribute is present; nothing
+   (`src/AeroFortress.Framework.Testing/JourneyAttribute.cs:22-26`). LZ0008 checks the attribute is present; nothing
    checks the assertion exists. The prose promises depth; the analyzer delivers existence.
 2. **The `backendJourney` link actively *invited* the shallow spec.** Because parity is satisfied by
    a name match, the cheapest way to go green is an entry-only spec that punts depth to the backend
@@ -110,9 +110,9 @@ ceiling. Tier A ships first; B and C are sequenced behind it.
 
 5. **Mutation score as the only real depth metric, on critical journeys only.** A periodic /
    critical-path CI lane runs Stryker.NET (backend) + Stryker (TS) scoped to `[Critical]` slices and
-   their journeys, and the doctor **consumes the score artifact** to gate against a threshold. Lazuli
+   their journeys, and the doctor **consumes the score artifact** to gate against a threshold. AeroFortress
    does **not** invoke the mutation runner — same boundary as the rubric's C12 (`view_e2e_pair` checks
-   file existence; `handler_go` parses coverprofile; CI runs the tools, Lazuli reads the output). This
+   file existence; `handler_go` parses coverprofile; CI runs the tools, AeroFortress reads the output). This
    is the only rung that answers "is the assertion meaningful?", and it is explicitly *not* a
    per-build compiler rule.
 
@@ -141,7 +141,7 @@ Existing, cited as-is: `LZ0008` (`CriticalJourneyAnalyzer.cs:29`), `LZ0010`
 
 ## Scope / boundary
 
-Generic, in-boundary. Every Lazuli app with journeys benefits; the mechanism (`[Critical]` /
+Generic, in-boundary. Every AeroFortress app with journeys benefits; the mechanism (`[Critical]` /
 `[Journey]` attributes, the doctor, `flows.json`, the e2e-doctor) is already framework-owned. This is
 **not** moving the 80/20 boundary (which needs ≥3-pilot evidence) — it is hardening an existing
 in-boundary mechanism, so the one-pilot hostpoint incident + the C12/C13 lineage is sufficient

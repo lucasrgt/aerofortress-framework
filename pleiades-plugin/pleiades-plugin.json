@@ -1,6 +1,0 @@
-{
-  "name": "lazuli-net",
-  "version": "0.1.0",
-  "description": "The Lazuli .NET framework kit: scaffolding, domain conventions, frontend MVVM harness and the doctor (LZ*/LZFE*) — specialists, docs and workflows for building Lazuli apps.",
-  "knowledgeHome": "lazuli-net"
-}

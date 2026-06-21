@@ -1,6 +1,6 @@
-# Lazuli.Starter — Operating manual for AI agents
+# AeroFortress.Framework.Starter — Operating manual for AI agents
 
-This is a **Lazuli (.NET)** app: an opinionated convention bundle — a vertical-slice .NET backend + an
+This is a **AeroFortress (.NET)** app: an opinionated convention bundle — a vertical-slice .NET backend + an
 MVVM React frontend + a build-time harness (the *doctor*) that enforces both. The conventions exist so an
 agent has **less to decide** and what it writes is **checked**. Same mindset as Rails (convention over
 configuration, semantic density) in plain, idiomatic C# + TypeScript — no DSL, no runtime you inherit from.
@@ -12,7 +12,7 @@ configuration, semantic density) in plain, idiomatic C# + TypeScript — no DSL,
 ## The two laws (never violate)
 
 1. **Stranger-maintainable.** Output is always plain, idiomatic C#/TypeScript that a dev who has never heard
-   of Lazuli can read and maintain.
+   of AeroFortress can read and maintain.
 2. **Doctor-removable.** Remove the analyzers / the ESLint plugin and the app still **compiles and runs** —
    you only lose enforcement. The harness is wire, not apparatus.
 
@@ -23,13 +23,13 @@ the doctor can check.
 
 ## This repo
 
-Topology is declared in `Lazuli.toml` (the single source of truth; `lazuli doctor` validates it):
+Topology is declared in `AeroFortress.toml` (the single source of truth; `af doctor` validates it):
 
-- **Backend** `src/Lazuli.Starter.Api` — .NET vertical slices; the `LZ*` Roslyn analyzers gate
-  `Lazuli.Starter.slnx`.
-- **Frontend** — add a React client under `clients/` (`lazuli g`); the `LZFE*` ESLint plugin
-  (`clients/eslint-plugin-lazuli`, the downstream mirror of the lazuli-net canonical) gates it.
-- **Doctor**: `lazuli doctor` runs both legs.
+- **Backend** `src/AeroFortress.Framework.Starter.Api` — .NET vertical slices; the `LZ*` Roslyn analyzers gate
+  `AeroFortress.Framework.Starter.slnx`.
+- **Frontend** — add a React client under `clients/` (`af g`); the `LZFE*` ESLint plugin
+  (`clients/eslint-plugin-aerofortress`, the downstream mirror of the lazuli-net canonical) gates it.
+- **Doctor**: `af doctor` runs both legs.
 
 ---
 
@@ -61,7 +61,7 @@ public static class Deposit
   `.RequireAuthorization(…)` or an explicit `.AllowAnonymous()`, on its own `Map` chain or the module's route
   group (`LZ0022`); a `Handle` that injects `ICurrentUser` and never reads it is a missing ownership check
   (`LZ0023`). A curated CA* security floor (dropped `CancellationToken`, insecure deserialization, broken
-  crypto/TLS) ships with the doctor at error tier (opt-out: `<LazuliSecurityAnalysis>false</…>`).
+  crypto/TLS) ships with the doctor at error tier (opt-out: `<AeroFortressSecurityAnalysis>false</…>`).
 - **Modules** own both halves of their wiring — `AddServices` + `Map` (`LZ0015/16`); `Program.cs` is only an
   index (`LZ0017`). Each module carries a `<Module>.ctx.md` (`## Boundaries` + `## Design notes`, non-empty and
   kept **fresh** — `LZ0004/05`).
@@ -121,7 +121,7 @@ A screen is a triple: a **View** that renders, a **ViewModel** that owns data, a
     the first invalid field so a tab/step shell can navigate to it — or pass `onInvalid` by hand.
   - **`LZFE032`** — a `<Controller>` render must read `fieldState` and surface the field's error
     (`error={fieldState.error?.message}`); a render that only takes `{ field }` leaves the error invisible.
-  - The spine `@lazuli/react` ships the primitives these steer toward: `SessionState`/`toSessionState`,
+  - The spine `@aerofortress/react` ships the primitives these steer toward: `SessionState`/`toSessionState`,
     `AsyncState`/`Resource`/`combineAsyncStates`, `safeBack`, `requiredParam`, `submitOrReveal`.
 - **Contract freshness** — the typed client is pinned to the spec it was generated from: the codegen tail stamps
   `client.gen/.spec-hash` and the doctor compares it against the live OpenAPI document. A moved contract is a
@@ -135,10 +135,10 @@ A badly-wired route **fails the build**.
 ## Build & verify — green before you are done
 
 ```
-lazuli doctor      # validates Lazuli.toml, then runs the backend (LZ*) + each client's lint/typecheck/test (LZFE*)
+af doctor      # validates AeroFortress.toml, then runs the backend (LZ*) + each client's lint/typecheck/test (LZFE*)
 ```
 
-(Or the explicit commands in `Lazuli.toml [tasks]`.) Never leave the workspace red. If the doctor is red,
+(Or the explicit commands in `AeroFortress.toml [tasks]`.) Never leave the workspace red. If the doctor is red,
 **fix the code — never suppress a rule.** A rule fires on a real defect class; the fix *is* the convention.
 
 ---
@@ -154,13 +154,13 @@ adapters in core, no runtime you inherit from. When a need smells like *capabili
 
 ## The package-first law (anti-desync)
 
-This app consumes the framework **only as versioned `Lazuli*` packages and a rebased `eslint-plugin-lazuli`
+This app consumes the framework **only as versioned `AeroFortress*` packages and a rebased `eslint-plugin-aerofortress`
 mirror** — never as source copies. If a need here is framework-shaped (a rule, a spine primitive, a harness
-mechanism, anything another Lazuli app would also want), it does **not** get implemented in this repo:
+mechanism, anything another AeroFortress app would also want), it does **not** get implemented in this repo:
 it lands in **lazuli-net first**, ships through the package feed, and arrives here as a version bump whose
 doctor fallout you then fix. Writing it here "for now" is how framework code gets lost in time.
 
-Enforcement: declare the framework checkout in `Lazuli.toml` (`[framework] repo = "…"`) and `lazuli doctor`
+Enforcement: declare the framework checkout in `AeroFortress.toml` (`[framework] repo = "…"`) and `af doctor`
 fails on a stale package version or a drifted plugin mirror; the frontend lint chain re-checks the mirror on
 every commit. App-specific code (your domain, your vendors, your copy) stays here, obviously — the law is
 about *generic* mechanisms only.

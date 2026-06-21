@@ -16,8 +16,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet build Lazuli.slnx -c Release
-      - run: dotnet test Lazuli.slnx -c Release --no-build
+      - run: dotnet build AeroFortress.Framework.slnx -c Release
+      - run: dotnet test AeroFortress.Framework.slnx -c Release --no-build
 
   frontend:
     name: frontend-sdk (typecheck + lint + test)

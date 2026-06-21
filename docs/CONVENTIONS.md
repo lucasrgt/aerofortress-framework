@@ -1,6 +1,6 @@
-# Lazuli (.NET) — Conventions & Constitution
+# AeroFortress (.NET) — Conventions & Constitution
 
-Lazuli is the **opinionated .NET convention bundle**: a standardized vertical-slice
+AeroFortress is the **opinionated .NET convention bundle**: a standardized vertical-slice
 architecture + a build-time harness (the doctor) + an ai-context discipline, so an LLM has
 less to decide and what it writes is enforced. It is the *Rails mindset in .NET* — the
 mentality (convention over configuration, quality control, semantic density), **not** the
@@ -13,12 +13,12 @@ meaning per token for the AI. Token savings follow from that — they are not th
 
 ## The gift, and the boundary
 
-Lazuli's gift is **the scaffolding and the harness** — the opinionated project shape, the generators
-(`lazuli new` / `g`), and the doctor that enforces the conventions. That is the whole product. It is
+AeroFortress's gift is **the scaffolding and the harness** — the opinionated project shape, the generators
+(`af new` / `g`), and the doctor that enforces the conventions. That is the whole product. It is
 **not** a platform that absorbs every integration, vendor, or business rule.
 
 This is the Rails posture. Rails ships convention + the framework; the rest is **gems** the app
-chooses and **business logic** the app writes. Lazuli is the same — it ships the skeleton and the
+chooses and **business logic** the app writes. AeroFortress is the same — it ships the skeleton and the
 enforcement; each project brings its own libraries (a hashing lib, a payment SDK, a maps client) and
 its own domain rules, in plain idiomatic C#. The framework never grows a feature to meet one app's
 specific need.
@@ -39,7 +39,7 @@ the app. The framework earns new surface from evidence, never from the ambition 
 ## The two laws (read before adding anything)
 
 1. **Stranger-maintainable.** The output is always plain, idiomatic C# that a .NET dev who
-   has never heard of Lazuli can read and maintain. (Lazuli-the-language died failing this:
+   has never heard of AeroFortress can read and maintain. (Lazuli-the-language died failing this:
    its real code was generated Go.)
 2. **Doctor-removable.** `dotnet remove` the analyzer and the project still **compiles and
    runs** — you only lose enforcement. The harness is wire, not apparatus.
@@ -88,12 +88,12 @@ public static class Deposit
 - **A code is a registry constant, not a literal.** Each module owns a `<Module>ErrorCodes` static class of
   `const string` codes — the readable catalog of what can go wrong there — and every `Error`/`Check`/`FieldError`
   references one (`WalletsErrorCodes.NotFound`), never a bare string. The doctor (`LZ0018`) enforces it, which keeps
-  the set **discoverable**: `AddLazuliOpenApi` reflects over the registries and enumerates them into the
+  the set **discoverable**: `AddAeroFortressOpenApi` reflects over the registries and enumerates them into the
   `ErrorBody.code` schema, and `ToHttp` advertises the `ErrorBody` envelope on every endpoint — so the generated
   client is typed on the closed set of codes and the frontend's i18n can be checked for an exhaustive translation of
   each (localization stays the frontend's job — copy has one owner — the backend ships the keys). Platform-tier
   failures follow the same discipline: codes for cross-cutting concerns live on a `PlatformErrorCodes` registry —
-  the framework ships its own (`platform.rate_limited`, rendered by `RejectAsLazuliError()` when the app wires
+  the framework ships its own (`platform.rate_limited`, rendered by `RejectAsAeroFortressError()` when the app wires
   ASP.NET's rate limiter), and an app adds platform codes of its own the same way — so even a 429 reaches the
   client as a localizable `ErrorBody`, never a bare status.
 - **Rich types carry the semantics.** Prefer `Money`, `Cpf`, `Email` over `decimal`,
@@ -104,11 +104,11 @@ public static class Deposit
   with `AddModules` / `MapModules`) lists every module on both sides. No reflection, no discovery: the registry
   is plain code, and the doctor (`LZ0015` / `LZ0016`) checks the shape and that every `[Module]` is registered.
 - **The composition root is three named layers, not a dumping ground.** `Program.cs` stays a thin index —
-  `AddLazuli()` + `AddPlatform(config)` + `AddModules(config)`, then the matching `UseLazuli()` /
-  `UsePlatform()` / `MapModules()`. **`AddLazuli`** is the framework's universal conventions (OpenAPI,
-  enum-as-name JSON), shipped by Lazuli.AspNetCore. **`AddPlatform` / `UsePlatform`** is the app's own
+  `AddAeroFortress()` + `AddPlatform(config)` + `AddModules(config)`, then the matching `UseAeroFortress()` /
+  `UsePlatform()` / `MapModules()`. **`AddAeroFortress`** is the framework's universal conventions (OpenAPI,
+  enum-as-name JSON), shipped by AeroFortress.Framework.AspNetCore. **`AddPlatform` / `UsePlatform`** is the app's own
   cross-cutting infrastructure — its `DbContext`, auth, CORS, the framework ports it shares: app-owned (the
-  framework can't know your store or your vendors), a *conventional name* so every Lazuli backend reads the
+  framework can't know your store or your vendors), a *conventional name* so every AeroFortress backend reads the
   same, and simply absent when there is nothing cross-cutting to share. It splits **by concern** — one
   `Platform/<Concern>.cs` per concern (recommended vocabulary: Persistence, Security, Observability, Web),
   each a partial of one `Platform` class, composed explicitly (no discovery); a single-concern app is just one
@@ -120,7 +120,7 @@ public static class Deposit
 - **Authorization is a decision, never an omission.** Every slice's endpoint carries an explicit posture —
   `.RequireAuthorization(…)` or `.AllowAnonymous()` — on its own `Map` chain or on the module's route group
   (`app.MapGroup("/wallets").RequireAuthorization()`); an endpoint with neither is a build error (`LZ0022`).
-  Inside the handler, the caller arrives as an injected `ICurrentUser` (claims-based, from `Lazuli.Auth`) and
+  Inside the handler, the caller arrives as an injected `ICurrentUser` (claims-based, from `AeroFortress.Framework.Auth`) and
   the slice does its own ownership/role/org check — a `Handle` that injects `ICurrentUser` and never reads it
   is flagged (`LZ0023`): the signature would claim a check the body doesn't make.
 - **Co-located `<Module>.ctx.md`** carries the business "why" — the rules that are not in the
@@ -142,17 +142,17 @@ without it every slice invents its own output, the generated client gets an ad-h
 nothing downstream (the typed client, the frontend spine's pager hooks) can recognize "this is a page"
 and compose. The pieces:
 
-- **`Page<T>(Items, TotalCount, PageNumber, PageSize)`** lives in `Lazuli.Abstractions` beside `Result<T>`.
+- **`Page<T>(Items, TotalCount, PageNumber, PageSize)`** lives in `AeroFortress.Framework.Abstractions` beside `Result<T>`.
   The numbers are the **effective** values after server-side clamping, echoed — the contract never reports
-  a page that was not actually served. `AddLazuliOpenApi` pins the schema (four members required, plainly
+  a page that was not actually served. `AddAeroFortressOpenApi` pins the schema (four members required, plainly
   numeric, a collision-free slice-qualified id), so the spine's structural `Page<T>` match holds end-to-end.
   Since 0.4.0 the plain-numeric pin covers the **whole document**: `NumberHandling`'s read-from-string
   tolerance is a runtime affordance the serializer never writes, so every numeric schema — body property,
   query parameter, inline sub-schema — declares the plain number the wire actually speaks (nullability
   survives). No more `number | string` unions pushing `Number(x) || 0` coercions into ViewModels.
-- **`ToPageAsync(pageNumber, pageSize, maxPageSize = 100, ct)`** lives in the **`Lazuli.EntityFrameworkCore`
+- **`ToPageAsync(pageNumber, pageSize, maxPageSize = 100, ct)`** lives in the **`AeroFortress.Framework.EntityFrameworkCore`
   satellite** (the only runtime package that references EF Core — an app opts in à la carte; it is not in
-  the `Lazuli` meta-package). The receiver is **`IOrderedQueryable<T>`, not `IQueryable<T>`**: paginating
+  the `AeroFortress` meta-package). The receiver is **`IOrderedQueryable<T>`, not `IQueryable<T>`**: paginating
   without an `OrderBy` does not compile — an unordered Skip/Take has no stable meaning in SQL — and that
   enforcement is the type system's, so it survives even with the doctor removed. Count and page run over
   the **same queryable**, so a count taken before a tenant filter (leaking other orgs' existence into the
@@ -240,7 +240,7 @@ ships another server-minted route *after* this convention landed.
 
 ## The domain — entities & value objects
 
-A slice is the *operation*; the **entity** and its **value objects** are the *domain* it operates on. Lazuli
+A slice is the *operation*; the **entity** and its **value objects** are the *domain* it operates on. AeroFortress
 keeps the tactical-DDD half that earns its keep — rich, self-validating types — and leaves the apparatus
 (repositories, a base class you inherit, an event bus for internal decoupling) out, because each fails one of
 the two laws. The result is plain C# that happens to be hard to misuse.
@@ -267,7 +267,7 @@ the two laws. The result is plain C# that happens to be hard to misuse.
 - **Scalar value objects are transparent on the wire.** A scalar `[ValueObject]` that crosses the API
   boundary subclasses `ScalarJsonConverter<TVo, TPrimitive>` (next to the type, pointed at by
   `[JsonConverter]`): it serializes as the primitive it wraps (`Money` as its number, `Slug` as its string),
-  invalid wire input fails through the smart constructor as a 400, and `AddLazuliOpenApi` mirrors the
+  invalid wire input fails through the smart constructor as a 400, and `AddAeroFortressOpenApi` mirrors the
   primitive in the contract schema automatically — so the generated client types it as the primitive, never
   an empty object. The richness is a backend guarantee, not a contract change. (Earned in the hostpoint
   pilot, where every wire-crossing scalar VO needed this by hand.)
@@ -297,7 +297,7 @@ the doctor and they become inert decoration — the domain still compiles and ru
 
 ```
 src/<App>.Api/
-  Program.cs                       # composition root, a thin index: AddLazuli + AddPlatform + AddModules (+ the matching Use*/Map*)
+  Program.cs                       # composition root, a thin index: AddAeroFortress + AddPlatform + AddModules (+ the matching Use*/Map*)
   GlobalUsings.cs
   AppDb.cs                         # one DbContext for every module — the modular monolith's store
   Platform.cs                      # the app's cross-cutting infra: AddPlatform / UsePlatform — app-owned, optional
@@ -316,7 +316,7 @@ tests/<App>.Tests/                 # thin runner: globs the co-located *.Tests.c
 
 - **Slices live in `Slices/`; the domain (entities, DbContext) lives at the module root.** The split
   keeps a module with ten operations from swallowing what is domain. The folder is `Slices/`, not
-  `Features/` — one term, matching `[Slice]`, `lazuli g slice`, and the rules.
+  `Features/` — one term, matching `[Slice]`, `af g slice`, and the rules.
 - **Value objects go in `BuildingBlocks/`** when generic (a leaf type couples nothing), or inside the
   module when module-specific.
 - **The namespace is `<App>.Api.Modules.<Module>` — the `Slices/` subfolder is not in it.** Folders
@@ -329,7 +329,7 @@ tests/<App>.Tests/                 # thin runner: globs the co-located *.Tests.c
   job, and domain events + an outbox are reserved for genuinely-async external integrations (a payment
   webhook), not internal decoupling. Extracting a module later re-platforms only its cross-module reads — a
   move, not a rewrite. (See `lazuli-net-modular-monolith` in the decisions archive.)
-- The scaffold (`lazuli new`) and generators (`lazuli g module` / `g slice`) produce exactly this shape.
+- The scaffold (`af new`) and generators (`af g module` / `g slice`) produce exactly this shape.
 
 ---
 
@@ -337,7 +337,7 @@ tests/<App>.Tests/                 # thin runner: globs the co-located *.Tests.c
 
 Real-time is **opt-in**, the way Rails 8 dropped the default `channels/` folder: a fresh app has no hub, so
 it carries no transport it doesn't use. When a feature needs server-pushed liveness — live messages, typing,
-presence — `lazuli g hub <Module> <Name>` scaffolds a SignalR hub under `Modules/<Module>/Realtime/<Name>Hub.cs`.
+presence — `af g hub <Module> <Name>` scaffolds a SignalR hub under `Modules/<Module>/Realtime/<Name>Hub.cs`.
 
 - **A hub is wire, not logic — the same law as an endpoint.** A hub method persists nothing itself: it calls
   the matching slice (the one source of the write + its rules) and then fans the result out to the room.
@@ -398,16 +398,16 @@ Tests live **next to the slice** (`Deposit.Tests.cs` beside `Deposit.cs`): the a
 excludes them (`<Compile Remove>`) so no test dependency ships; a thin per-app test project
 compiles them via glob. No mirror-the-architecture test tree.
 
-- **Categories are a closed vocabulary** (`Lazuli.Testing`): `[Unit]` (fast, no infrastructure),
+- **Categories are a closed vocabulary** (`AeroFortress.Framework.Testing`): `[Unit]` (fast, no infrastructure),
   `[Integration]` (real infrastructure — database, HTTP), `[E2E]` (cross-module journey). Each
   maps to the xUnit trait `Category=<kind>`, so `dotnet test --filter Category=Unit` and the
   doctor read the same single signal — the attribute on the test.
-- **The integration host is `LazuliWebTest<TProgram>`.** It boots the real app and hands you one
+- **The integration host is `AeroFortressWebTest<TProgram>`.** It boots the real app and hands you one
   hook, `SwapStores(IServiceCollection)`, to reconfigure services for the test. The base holds
   **no database opinion and drags no provider dependency**. Two paths, both the app's to choose:
-  - *Fast and isolated* — reference `Lazuli.Testing.InMemory`, call
+  - *Fast and isolated* — reference `AeroFortress.Framework.Testing.InMemory`, call
     `services.UseIsolatedInMemory<WalletsDb>()`.
-  - *A real database* — reference `Lazuli.Testing.Postgres`: one `PostgresTestDatabase` (a single
+  - *A real database* — reference `AeroFortress.Framework.Testing.Postgres`: one `PostgresTestDatabase` (a single
     Testcontainers Postgres, one migrated **template** database, an isolated `CREATE DATABASE …
     TEMPLATE` clone per test, pooling off) wrapped in the app's own static accessor; register its
     connection in `SwapStores`. Keyed stores let two contexts share one database (the
@@ -438,7 +438,7 @@ compiles them via glob. No mirror-the-architecture test tree.
   not-found. Don't mark a slice critical because it sounds important or sits on an important flow.
 - **The criticality *policy* is a dial — how strictly a slice must decide.** Most apps stay on the default,
   where `[Critical]` is opt-in and silence means "not critical." A team that wants criticality treated like
-  authorization — a decision on every slice, never an omission — turns the dial up in `Lazuli.toml`:
+  authorization — a decision on every slice, never an omission — turns the dial up in `AeroFortress.toml`:
   ```toml
   [testing]
   criticality = "opt-in"   # default — only a [Critical] slice needs journeys (today's behavior)
@@ -451,7 +451,7 @@ compiles them via glob. No mirror-the-architecture test tree.
   `[NonCritical]` is the one explicit opt-out. The doctor reads the dial through MSBuild (no TOML parsing in
   the analyzer), so the policy ships and is removed with the harness. Reach for a stricter level only when the
   domain warrants it; the default keeps `[Critical]` the sparing, meaningful mark it is meant to be.
-- **A generator that scaffolds a `[Critical]` slice ships its journeys too.** `lazuli g auth`
+- **A generator that scaffolds a `[Critical]` slice ships its journeys too.** `af g auth`
   (`Login`/`Refresh`/`Register`) and every augment (`g auth:otp` → `VerifyPhone`) emit the matching
   `Journeys/*.Tests.cs` beside the slice — otherwise the generated app fails `LZ0008` on its first
   `doctor`. The rule is self-enforcing: `LZ0008` is exactly what makes "the augment forgot the journey"
@@ -484,7 +484,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0014` | **Entity encapsulation + invariant funnel**: an `[Entity]` exposes no public constructor (born via a factory, rehydrated by EF via a private one) and no public setter, and declares a private `EnsureValid()` (or `Validate()`) returning `Result<T>` that every create/mutate path returns through | **shipped** | anemic domain — invariants must live on the entity, unbypassable (the sample's own `Wallet` was a setter bag) |
 | `LZ0015` | **Module shape**: a `[Module]` is a static class declaring a public static `AddServices(IServiceCollection, IConfiguration)` (its own DI) and a public static `Map(IEndpointRouteBuilder)` (its routes) — it owns both halves of its wiring | **shipped** | the composition root drifts into a dumping ground; a module's DI scatters across `Program.cs` |
 | `LZ0016` | **Module registered**: every `[Module]`'s `AddServices` and `Map` are actually called in the explicit registry (`AddModules` / `MapModules`) — a compile-time reachability check, no reflection | **shipped** | generating a module and forgetting to wire it — a silent 404 instead of a build error |
-| `LZ0017` | **Composition root is an index**: the top-level statements (`Program.cs`) wire only `AddLazuli` / `AddPlatform` / `AddModules` and the matching `UseLazuli` / `UsePlatform` / `MapModules`; any other service registration (`IServiceCollection`), pipeline step, or endpoint mapping (`Use*`/`Map*`) there is flagged and redirected to the platform or a module | **shipped** | the index rots into a dumping ground — infra creeps back into `Program.cs`, drifts, and bit-rots there unwatched |
+| `LZ0017` | **Composition root is an index**: the top-level statements (`Program.cs`) wire only `AddAeroFortress` / `AddPlatform` / `AddModules` and the matching `UseAeroFortress` / `UsePlatform` / `MapModules`; any other service registration (`IServiceCollection`), pipeline step, or endpoint mapping (`Use*`/`Map*`) there is flagged and redirected to the platform or a module | **shipped** | the index rots into a dumping ground — infra creeps back into `Program.cs`, drifts, and bit-rots there unwatched |
 | `LZ0018` | **Error code is a registry constant**: the `code` passed to an `Error` factory / `Validation.Check` / `Validation.Add` / `FieldError` must reference a `const` on a class named `*ErrorCodes` (e.g. `WalletsErrorCodes.NotFound`), never an inline literal | **shipped** | a code invisible to reflection can't be enumerated into the OpenAPI contract — it would reach a user untranslated; the registry keeps the set discoverable + typed end-to-end |
 | `LZ0019` | **Error code constant is used**: every `const` on an `*ErrorCodes` registry must be referenced by an `Error`/`Validation` call somewhere in the compilation — the reverse of `LZ0018` | **shipped** | drop a flow and leave its code behind → a dead code still ships in the OpenAPI enum + the i18n catalog; this keeps the registry the exact, live set (no orphans) |
 | `LZ0020` | **A `[Journey]` asserts its post-condition**: the journey test body must contain an assertion (xUnit `Assert`, FluentAssertions `Should`, or a `Verify`/`Expect` helper) — the depth rung above `LZ0008` (which proves the journey exists). Warning-tier; textual over the journey AdditionalFiles | **shipped** | an assertion-free journey is theater — it runs the path and proves nothing |
@@ -496,38 +496,38 @@ never speculation. Keep it minimal; add only on real drift.
 | `LZ0026` | **A `[Critical]` write declares its concurrency posture**: a `[Critical]` slice whose `Handle` saves changes against an entity with no visible concurrency token (no `[Timestamp]`/`[ConcurrencyCheck]` member, no `RowVersion` property) is flagged — concurrent requests are last-write-wins on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration is invisible to the doctor; name the property `RowVersion` or tune the severity | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
 | `LZ0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
 | `LZ0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
-| `LZ0029` | **A slice decides its criticality under the explicit policy**: when `Lazuli.toml`'s `[testing] criticality = "explicit"`, a `[Slice]` carrying neither `[Critical]` nor `[NonCritical]` is flagged — criticality becomes a decision on every slice, the mirror of `LZ0022`'s posture on authorization. Inert under the default `"opt-in"` (only `[Critical]` matters) and under `"strict"` (where an undecided slice is *treated as* critical and `LZ0008`/`LZ0010` demand its journeys). The dial is read from the manifest through MSBuild and projected to the analyzers — no TOML parsing in the doctor | **shipped** | criticality was opt-in-only; a team wanting it considered on every slice (like auth) had no enforcement, and a forced `[NonCritical]` is reviewable where a silent absence is not |
+| `LZ0029` | **A slice decides its criticality under the explicit policy**: when `AeroFortress.toml`'s `[testing] criticality = "explicit"`, a `[Slice]` carrying neither `[Critical]` nor `[NonCritical]` is flagged — criticality becomes a decision on every slice, the mirror of `LZ0022`'s posture on authorization. Inert under the default `"opt-in"` (only `[Critical]` matters) and under `"strict"` (where an undecided slice is *treated as* critical and `LZ0008`/`LZ0010` demand its journeys). The dial is read from the manifest through MSBuild and projected to the analyzers — no TOML parsing in the doctor | **shipped** | criticality was opt-in-only; a team wanting it considered on every slice (like auth) had no enforcement, and a forced `[NonCritical]` is reviewable where a silent absence is not |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
 
 Beside the LZ* rules the doctor ships a **security floor** for the built-in .NET analyzers
-(`buildTransitive/lazuli.globalconfig`): a curated CA* set — dropped `CancellationToken`
+(`buildTransitive/aerofortress.globalconfig`): a curated CA* set — dropped `CancellationToken`
 (CA2016), insecure deserialization (CA23xx), broken crypto / disabled cert validation /
 deprecated TLS (CA53xx) — raised to error tier. Same removability story: opt out per-project
-with `<LazuliSecurityAnalysis>false</LazuliSecurityAnalysis>`, or override a single rule from
+with `<AeroFortressSecurityAnalysis>false</AeroFortressSecurityAnalysis>`, or override a single rule from
 your own `.globalconfig` at a `global_level` above 50. The libraries hold themselves to the
-same floor via `build/Lazuli.Library.props`.
+same floor via `build/AeroFortress.Framework.Library.props`.
 
 ---
 
 ## The self-harness — framework-dev only, never shipped
 
 The libraries hold *themselves* to a standard, the way the Rails repo does. This is the
-**self-harness** (`Lazuli.SelfHarness`): analyzers that run only on lazuli-net's own source.
+**self-harness** (`AeroFortress.Framework.SelfHarness`): analyzers that run only on lazuli-net's own source.
 
 It is **closed to this repo**: `IsPackable=false`, referenced with
 `ReferenceOutputAssembly="false"`, never packaged, and **never part of the production CLI or
-the user-facing `Lazuli.Doctor`**. It is the `lazuli` vs `lazuli-dev` split — framework-dev
+the user-facing `AeroFortress.Framework.Doctor`**. It is the `af` vs `aerofortress-dev` split — framework-dev
 tooling stays out of the published surface, always.
 
 | Rule | Enforces | Applies to |
 |------|----------|------------|
-| `LZSELF001` | File at or under 500 lines | `Lazuli.*` libraries |
-| `LZSELF002` | No tracking codes or scratch markers in comments (TODO, FIXME, HACK, XXX, capital-letter/number codes) | `Lazuli.*` libraries |
-| `CS1591` (built-in) | Every public member carries XML documentation | `Lazuli.*` libraries |
+| `LZSELF001` | File at or under 500 lines | `AeroFortress.Framework.*` libraries |
+| `LZSELF002` | No tracking codes or scratch markers in comments (TODO, FIXME, HACK, XXX, capital-letter/number codes) | `AeroFortress.Framework.*` libraries |
+| `CS1591` (built-in) | Every public member carries XML documentation | `AeroFortress.Framework.*` libraries |
 
-Settings live once in `build/Lazuli.Library.props`, imported by every `Lazuli.*` project. The
+Settings live once in `build/AeroFortress.Framework.Library.props`, imported by every `AeroFortress.Framework.*` project. The
 bar is code a Microsoft .NET MVP would read and be proud of: gold-standard docs, no junk,
 small files. The **user's app is not** held to these — `LZSELF*` never touches a generated
 user project.

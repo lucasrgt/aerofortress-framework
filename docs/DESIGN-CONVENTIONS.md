@@ -1,4 +1,4 @@
-# Lazuli (.NET) — Design Conventions & the Design SDK
+# AeroFortress (.NET) — Design Conventions & the Design SDK
 
 The design layer is the third third of the framework. The backend constitution makes architecture
 decisions default-good ([CONVENTIONS.md](CONVENTIONS.md)); the frontend constitution makes wiring
@@ -17,7 +17,7 @@ in four layers of decreasing strength:
    named escape hatch: raw elements, off-scale values, raw color.
 3. **Copyable exemplars** — canonical screens (the recipes). An agent instantiates the nearest
    recipe; it never composes a screen from a blank file.
-4. **Loaded context** — the `lazuli-design` skill puts 1–3 in front of the agent at build time and
+4. **Loaded context** — the `aerofortress-design` skill puts 1–3 in front of the agent at build time and
    closes with a visual self-review (lint can verify consistency; only eyes verify beauty).
 
 Ground every design convention here, never memory. The decision trail lives in the Design SDK wave
@@ -28,13 +28,13 @@ Ground every design convention here, never memory. The decision trail lives in t
 ## The two laws — restated for design
 
 1. **Stranger-maintainable.** The kit is plain React / React Native components **in the app's own
-   repo**, styled by direct lookup into a plain tokens file. A dev who has never heard of Lazuli
+   repo**, styled by direct lookup into a plain tokens file. A dev who has never heard of AeroFortress
    opens `ui/Stack.tsx` and reads a flexbox container. No theme provider to learn, no styled-system
    DSL, no runtime.
 2. **Doctor-removable.** Remove the design band and the app still builds and renders **pixel-
    identical** — tokens are data, the kit is the app's code. You lose enforcement, never function.
 
-**Vocabulary, not mechanism — the posture in one line.** Lazuli prescribes the token **names** and
+**Vocabulary, not mechanism — the posture in one line.** AeroFortress prescribes the token **names** and
 the kit **shape**; it never prescribes the styling **library**. CSS vars, Tailwind/NativeWind,
 StyleSheet, Unistyles — the mechanism is the app's, mapped *from* `tokens.ts` by hand, once. Token
 **values** are the app's too: that is the entire theming and white-label story. What is fixed is
@@ -47,7 +47,7 @@ what things are *called* and what shape the door has — because names and shape
 
 The single source of truth is one plain TS file the app owns — canonically
 `core/src/design/tokens.ts` (tokens are platform-neutral data; they live in the shared core, the
-hostpoint precedent). Scaffolded by `lazuli`'s design scaffold; edited freely **in values**, never
+hostpoint precedent). Scaffolded by `af`'s design scaffold; edited freely **in values**, never
 in names. Hex belongs ONLY in this file (`LZFE012` exempts it by filename; `LZFE026` completes the
 pair for every other raw-color spelling).
 
@@ -96,7 +96,7 @@ Why these scales, and why closed:
 
 ## The kit — a closed API is the convention
 
-The kit is scaffolded **into the app** (`ui/` — code you own), never published as a package. Lazuli
+The kit is scaffolded **into the app** (`ui/` — code you own), never published as a package. AeroFortress
 ships the *standard* a kit follows plus a conformant starting kit; it does not ship a component
 library you version against (that is the MUI/aerocoding vector, rejected by construction). The
 locked v1 surface:
@@ -256,7 +256,7 @@ touches primitives and values), the token files (`LZFE012`'s filename pattern:
 
 Recipes are **real, compiled, tested screens** in the sample app — never doc snippets (snippets
 don't lint, so they rot). A new screen starts as a copy of the nearest archetype; composition is
-the recipe's job, binding is yours. (Agents: the `lazuli-design` skill routes you here —
+the recipe's job, binding is yours. (Agents: the `aerofortress-design` skill routes you here —
 instantiate, do not invent.)
 
 | Archetype | Canonical unit | Use for |
@@ -272,10 +272,10 @@ spec the recipe) — dashboards, wizards, settings screens arrive that way, neve
 ## Scope — and non-goals
 
 **In:** the token taxonomy, the closed kit API + scaffold, the design band (`LZFE024–026`), the
-recipes, the `lazuli-design` skill.
+recipes, the `aerofortress-design` skill.
 
 **Out (non-goals), by decision:**
-- **No published `@lazuli/ui` component library.** A versioned UI lib is theming-API surface +
+- **No published `@aerofortress/ui` component library.** A versioned UI lib is theming-API surface +
   breaking releases + platform sprawl — the MUI/aerocoding vector. Scaffolded code-you-own, always.
 - **No styling-mechanism prescription.** Tailwind/NativeWind/StyleSheet/CSS vars stay the app's;
   the app maps them *from* `tokens.ts` once, by hand.

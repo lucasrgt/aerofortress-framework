@@ -18,7 +18,7 @@ import vitest from "@vitest/eslint-plugin";
 //   - eslint-plugin-no-secrets — entropy-based hardcoded-secret detection (the .env discipline, enforced in code).
 // The LZFE plugin is CommonJS; load it via createRequire.
 const require = createRequire(import.meta.url);
-const lazuli = require("./packages/eslint-plugin/index.cjs");
+const aerofortress = require("./packages/eslint-plugin/index.cjs");
 // Accessibility — the ecosystem-specific half of the harness, mirrored across targets: web uses jsx-a11y
 // (alt / aria / href on the DOM), mobile uses react-native-a11y (accessibilityRole / accessible / label on RN
 // primitives). Same intent, no shared parity, so each ecosystem gets its own block below. Warn-first — a revealed
@@ -41,53 +41,53 @@ export default [
       // type-aware lint (projectService) — required by @typescript-eslint/no-floating-promises.
       parserOptions: { ecmaFeatures: { jsx: true }, projectService: true, tsconfigRootDir: import.meta.dirname },
     },
-    plugins: { lazuli, "no-secrets": noSecrets, sonarjs, "@typescript-eslint": tsPlugin },
+    plugins: { aerofortress, "no-secrets": noSecrets, sonarjs, "@typescript-eslint": tsPlugin },
     rules: {
       // promise safety (type-aware) — an unhandled promise is a silent failure; `void p` opts out explicitly.
       "@typescript-eslint/no-floating-promises": "error",
-      "lazuli/view-purity": "error",
-      "lazuli/data-door": "error",
-      "lazuli/viewmodel-platform-agnostic": "error",
-      "lazuli/test-colocated": "error",
-      "lazuli/view-integration-test": "error",
-      "lazuli/no-mock": "error",
-      "lazuli/state-completeness": "error",
-      "lazuli/i18n-completeness": "error",
-      "lazuli/design-tokens": "error",
-      "lazuli/mutation-error-handled": "error",
-      "lazuli/no-hardcoded-copy": "error",
+      "aerofortress/view-purity": "error",
+      "aerofortress/data-door": "error",
+      "aerofortress/viewmodel-platform-agnostic": "error",
+      "aerofortress/test-colocated": "error",
+      "aerofortress/view-integration-test": "error",
+      "aerofortress/no-mock": "error",
+      "aerofortress/state-completeness": "error",
+      "aerofortress/i18n-completeness": "error",
+      "aerofortress/design-tokens": "error",
+      "aerofortress/mutation-error-handled": "error",
+      "aerofortress/no-hardcoded-copy": "error",
       // The routing harness (LZFE015–019 + 030) — declarative redirects, one session seam, a tri-state guard,
       // guarded params + Back, and no cast on a navigation target (the typed-routes mute button). Error-tier
       // (correctness), router-agnostic (expo + TanStack). The default a generated app gets.
-      "lazuli/no-router-replace-in-effect": "error",
-      "lazuli/session-one-door": "error",
-      "lazuli/guard-tristate": "error",
-      "lazuli/route-param-guard": "error",
-      "lazuli/safe-back": "error",
-      "lazuli/no-cast-navigation": "error",
+      "aerofortress/no-router-replace-in-effect": "error",
+      "aerofortress/session-one-door": "error",
+      "aerofortress/guard-tristate": "error",
+      "aerofortress/route-param-guard": "error",
+      "aerofortress/safe-back": "error",
+      "aerofortress/no-cast-navigation": "error",
       // The form-validation pair (LZFE031–032) — every validation failure has a surface: the submit carries its
       // invalid path (the spine's submitOrReveal), and a <Controller> surfaces its field's error. Warn-tier on
       // entry (a single-screen form with all errors visible inline is legitimate); promote together once the
       // primitive absorbs the common case.
-      "lazuli/submit-handles-invalid": "warn",
-      "lazuli/controller-field-state": "warn",
-      "lazuli/no-hardcoded-base-url": "error",
+      "aerofortress/submit-handles-invalid": "warn",
+      "aerofortress/controller-field-state": "warn",
+      "aerofortress/no-hardcoded-base-url": "error",
       // The security pair (LZFE021–022) — the XSS door stays behind one sanitizing seam; a URL-supplied value
       // never becomes a navigation target without an allowlist. Error-tier (correctness, same bar as routing).
-      "lazuli/no-raw-html": "error",
-      "lazuli/no-open-redirect": "error",
+      "aerofortress/no-raw-html": "error",
+      "aerofortress/no-open-redirect": "error",
       // The design band (LZFE024–026, DESIGN-CONVENTIONS.md) — views render @/ui only, spacing/typography from the
       // scale, color by semantic role. Error-tier since the canonical screens landed (the recipes prove the bar).
-      "lazuli/ui-door": "error",
-      "lazuli/scale-only": "error",
-      "lazuli/semantic-colors": "error",
+      "aerofortress/ui-door": "error",
+      "aerofortress/scale-only": "error",
+      "aerofortress/semantic-colors": "error",
       // The mutation band (LZFE027–028) — the QueryClient carries the write-side defaults (invalidate on success,
       // feedback on error), and the hand-rolled `onSuccess: refetch` ritual those defaults obsolete is revealed.
-      "lazuli/query-client-defaults": "error",
-      "lazuli/no-manual-refetch-ritual": "warn",
+      "aerofortress/query-client-defaults": "error",
+      "aerofortress/no-manual-refetch-ritual": "warn",
       // The session-rotation door (LZFE029) — refresh is consumed by ONE seam (the client's single-flight
       // interceptor / the session seam); a second rotation path trips the backend's theft detection.
-      "lazuli/refresh-one-door": "error",
+      "aerofortress/refresh-one-door": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",

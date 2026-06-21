@@ -11,31 +11,31 @@
 
 /** The LZFE rule -> code map. Drives the architecture bucket + the clean-roster view. */
 export const LZFE_CODES = {
-  "lazuli/view-purity": "LZFE001",
-  "lazuli/data-door": "LZFE002",
-  "lazuli/no-mock": "LZFE003",
-  "lazuli/test-colocated": "LZFE005",
-  "lazuli/view-integration-test": "LZFE006",
-  "lazuli/viewmodel-platform-agnostic": "LZFE009",
-  "lazuli/state-completeness": "LZFE010",
-  "lazuli/i18n-completeness": "LZFE011",
-  "lazuli/design-tokens": "LZFE012",
-  "lazuli/mutation-error-handled": "LZFE013",
-  "lazuli/no-hardcoded-copy": "LZFE014",
-  "lazuli/no-router-replace-in-effect": "LZFE015",
-  "lazuli/session-one-door": "LZFE016",
-  "lazuli/guard-tristate": "LZFE017",
-  "lazuli/route-param-guard": "LZFE018",
-  "lazuli/safe-back": "LZFE019",
-  "lazuli/no-hardcoded-base-url": "LZFE020",
-  "lazuli/no-raw-html": "LZFE021",
-  "lazuli/no-open-redirect": "LZFE022",
-  "lazuli/ui-door": "LZFE024",
-  "lazuli/scale-only": "LZFE025",
-  "lazuli/semantic-colors": "LZFE026",
-  "lazuli/query-client-defaults": "LZFE027",
-  "lazuli/no-manual-refetch-ritual": "LZFE028",
-  "lazuli/refresh-one-door": "LZFE029",
+  "aerofortress/view-purity": "LZFE001",
+  "aerofortress/data-door": "LZFE002",
+  "aerofortress/no-mock": "LZFE003",
+  "aerofortress/test-colocated": "LZFE005",
+  "aerofortress/view-integration-test": "LZFE006",
+  "aerofortress/viewmodel-platform-agnostic": "LZFE009",
+  "aerofortress/state-completeness": "LZFE010",
+  "aerofortress/i18n-completeness": "LZFE011",
+  "aerofortress/design-tokens": "LZFE012",
+  "aerofortress/mutation-error-handled": "LZFE013",
+  "aerofortress/no-hardcoded-copy": "LZFE014",
+  "aerofortress/no-router-replace-in-effect": "LZFE015",
+  "aerofortress/session-one-door": "LZFE016",
+  "aerofortress/guard-tristate": "LZFE017",
+  "aerofortress/route-param-guard": "LZFE018",
+  "aerofortress/safe-back": "LZFE019",
+  "aerofortress/no-hardcoded-base-url": "LZFE020",
+  "aerofortress/no-raw-html": "LZFE021",
+  "aerofortress/no-open-redirect": "LZFE022",
+  "aerofortress/ui-door": "LZFE024",
+  "aerofortress/scale-only": "LZFE025",
+  "aerofortress/semantic-colors": "LZFE026",
+  "aerofortress/query-client-defaults": "LZFE027",
+  "aerofortress/no-manual-refetch-ritual": "LZFE028",
+  "aerofortress/refresh-one-door": "LZFE029",
 };
 
 /**
@@ -45,7 +45,7 @@ export const LZFE_CODES = {
  */
 export function bucket(ruleId) {
   if (!ruleId) return "parse";
-  if (ruleId.startsWith("lazuli/")) return "lzfe";
+  if (ruleId.startsWith("aerofortress/")) return "lzfe";
   if (
     ruleId.startsWith("@tanstack/") ||
     ruleId.startsWith("no-secrets/") ||

@@ -15,7 +15,7 @@ new slot). That read-then-write has no concurrency guard, so two refreshes of th
 race are last-write-wins:
 
 - Trigger #1 — a single client double-firing (React StrictMode / double-bootstrap) — is already mitigated
-  upstream by `@lazuli/react` 0.5.0 single-flight rotation (the two calls collapse into one).
+  upstream by `@aerofortress/react` 0.5.0 single-flight rotation (the two calls collapse into one).
 - The residual is a genuine **cross-tab** race: two tabs sharing the one httpOnly refresh cookie each
   present the same live token at the same instant. Today both can pass the `UsedAt == null` check and
   succeed, forking the family; the theft-detection (`UsedAt != null` ⇒ burn) is not atomic with the write.
@@ -51,9 +51,9 @@ assertion no longer holds. The coverage was split, not weakened:
 
 The concurrency-exception path (3) needs Postgres — the EF InMemory provider does not enforce optimistic
 concurrency, so it never raises `DbUpdateConcurrencyException`. The catch is shipped in `Refresh`, but it
-is not covered by the in-memory smoke; it would be exercised by a `Lazuli.Testing.Postgres` (Testcontainers
+is not covered by the in-memory smoke; it would be exercised by a `AeroFortress.Framework.Testing.Postgres` (Testcontainers
 → Docker) `[Integration]` test, documented below. Such a test is *not* generated into the scaffold, because
-a consuming app may not reference `Lazuli.Testing.Postgres` — shipping it would break compilation there.
+a consuming app may not reference `AeroFortress.Framework.Testing.Postgres` — shipping it would break compilation there.
 
 ## Tests
 

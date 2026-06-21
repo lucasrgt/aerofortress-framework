@@ -3,8 +3,8 @@
 const fs = require("fs");
 const path = require("path");
 
-// eslint-plugin-lazuli — the frontend harness (LZFE*). The front-side parallel of the backend's Roslyn analyzers
-// (Lazuli.Doctor): it polices the MVVM seam so React Native + web screens stay wired, not mocked — the View
+// eslint-plugin-aerofortress — the frontend harness (LZFE*). The front-side parallel of the backend's Roslyn analyzers
+// (AeroFortress.Framework.Doctor): it polices the MVVM seam so React Native + web screens stay wired, not mocked — the View
 // renders, the ViewModel is the only data door, and no fixture/mock leaks into production. Doctor-removable: delete
 // the plugin and the app still builds; you only lose enforcement. Canonical home: lazuli-net/frontend.
 
@@ -1493,10 +1493,10 @@ const rules = {
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
       // The doors: the session/guards infra seams, the client seam itself, the generated client, and tests.
-      const isClientSeam = /(^|\/)lib\/(lazuli-)?client(\.|\/)/.test(f);
+      const isClientSeam = /(^|\/)lib\/(aerofortress-)?client(\.|\/)/.test(f);
       if (isInfraDataDoor(f) || isClientSeam || isGenerated(f) || isTest(f)) return {};
       const REFRESH_NAMES = /^(use)?refresh(accesstoken|token|session)?$/i;
-      const REFRESH_SOURCE = new RegExp(`${GENERATED_CLIENT.source}|(^|/)lib/(lazuli-)?client`);
+      const REFRESH_SOURCE = new RegExp(`${GENERATED_CLIENT.source}|(^|/)lib/(aerofortress-)?client`);
       return {
         ImportDeclaration(node) {
           if (isTypeOnly(node) || !REFRESH_SOURCE.test(node.source.value.replace(/\\/g, "/"))) return;
@@ -1696,6 +1696,6 @@ const rules = {
 };
 
 module.exports = {
-  meta: { name: "eslint-plugin-lazuli", version: "0.8.0" },
+  meta: { name: "eslint-plugin-aerofortress", version: "0.8.0" },
   rules,
 };

@@ -4,7 +4,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@lazuli/react": ["../../../frontend-sdk/packages/lazuli-react/src/index.ts"],
+      "@aerofortress/react": ["../../../frontend-sdk/packages/aerofortress-react/src/index.ts"],
       "@/client.gen/*": ["./core/src/client.gen/*"],
       "@/i18n": ["./core/src/i18n.ts"],
       "@/design/tokens": ["./core/src/design/tokens.ts"],

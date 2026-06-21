@@ -2,7 +2,7 @@
 
 **Created:** 2026-06-08. **Status:** in progress (branch `framework/portback-audit`).
 
-Lazuli grew by dogfooding in the **hostpoint** pilot
+AeroFortress grew by dogfooding in the **hostpoint** pilot
 (`c:/Users/lucas/dev/dotnet-projects/hostpoint-monorepo`) without a disciplined port-back. This
 checklist is the audit of every generic mechanism the pilot accumulated that the framework should own
 but doesn't — plus the framework claims that aren't actually shipped. App-specific material (per the
@@ -21,11 +21,11 @@ Abstractions 4, Sample 21, SDK tools 28, eslint plugin all):**
 LZFE015 (no-router-replace-in-effect, ported) · LZFE008 (endpoint-coverage tool, was claimed-but-absent) ·
 LZFE-JOURNEY-002 (e2e terminal-depth) · tenancy scaffold hardening (encapsulated OrgId + metadata stamp) ·
 LZ0006 (no-repository) · LZ0007 (file ≤500) · LZ0020 (journey asserts its post-condition) ·
-`OrderedLifecycle<TState>` helper · `Lazuli.toml` scaffolded by `lazuli new` + read/validated by the doctor.
+`OrderedLifecycle<TState>` helper · `AeroFortress.toml` scaffolded by `af new` + read/validated by the doctor.
 
 **Deferred follow-up (each blocked on a real dependency, not skipped):**
-the frontend generator (unblocks monorepo scaffold, `lazuli gen client`, the e2e-support harness home +
-Tier A2 skip-in-gate) · the Tier B4 seam-rule feasibility spike · `@lazuli/react` publish (needs a build
+the frontend generator (unblocks monorepo scaffold, `af gen client`, the e2e-support harness home +
+Tier A2 skip-in-gate) · the Tier B4 seam-rule feasibility spike · `@aerofortress/react` publish (needs a build
 pipeline + an outward npm/registry step) · Tier C mutation lane (needs a `[Critical]` journey set). The
 AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pilot rule.
 
@@ -33,16 +33,16 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 
 ## P1 — broken promise / claimed-but-absent
 
-- [~] **Scaffold a real project + `Lazuli.toml`.** _Done:_ `lazuli new` now scaffolds `Lazuli.toml`
-  (`templates/lazuli-app/Lazuli.toml`, substituted from the project name), and the CLI finally READS it —
-  `src/Lazuli.Cli/LazuliManifest.cs` validates `[workspace]`/name + that declared backend/core paths exist,
-  wired into `lazuli doctor` (missing = notice, broken = failure) with 4 tests. _Still pending (tied to the
+- [~] **Scaffold a real project + `AeroFortress.toml`.** _Done:_ `af new` now scaffolds `AeroFortress.toml`
+  (`templates/lazuli-app/AeroFortress.toml`, substituted from the project name), and the CLI finally READS it —
+  `src/AeroFortress.Framework.Cli/AeroFortressManifest.cs` validates `[workspace]`/name + that declared backend/core paths exist,
+  wired into `af doctor` (missing = notice, broken = failure) with 4 tests. _Still pending (tied to the
   deferred frontend generator):_ scaffolding the monorepo plumbing (`package.json` workspaces, `turbo.json`,
-  `lefthook.yml`, `clients/`) and making `Lazuli.toml` *generate* the workspace/turbo config.
-  - hostpoint: `Lazuli.toml`, root `package.json`, `turbo.json`, `lefthook.yml`
-- [ ] **`lazuli gen client` (the "wired guarantee").** The frontend harness rests on a generated
+  `lefthook.yml`, `clients/`) and making `AeroFortress.toml` *generate* the workspace/turbo config.
+  - hostpoint: `AeroFortress.toml`, root `package.json`, `turbo.json`, `lefthook.yml`
+- [ ] **`af gen client` (the "wired guarantee").** The frontend harness rests on a generated
   typed client so an invented endpoint is a `tsc` error — but **orval is not even a dependency**, there
-  is no `orval.config.ts`, no `lazuli gen client`. The LZFE rules police a client nothing generates.
+  is no `orval.config.ts`, no `af gen client`. The LZFE rules police a client nothing generates.
   _FRAMEWORK-GAP._ (`docs/decisions/lazuli-net-frontend-harness.md` §3 vs `frontend-sdk/tools/generate.mjs:47`)
 - [x] **`LZFE008` endpoint-coverage — claimed "shipped", absent.** _Done:_ implemented as
   `frontend-sdk/tools/endpoint-coverage.mjs` (pure `extractHooks` + `checkEndpointCoverage` core + CLI
@@ -50,7 +50,7 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 - [x] **`LZFE015` no-router-replace-in-effect — real rule, not ported + ID collision.** _Done:_ ported
   to `frontend-sdk/packages/eslint-plugin/index.cjs` (+ self-test), claimed LZFE015 for the navigation
   rule, moved the planned "no orphan placeholder" to LZFE016 (`docs/FRONTEND-CONVENTIONS.md`). A
-  battle-tested rule in the pilot (`hostpoint/clients/eslint-plugin-lazuli/index.cjs:438`, born from a
+  battle-tested rule in the pilot (`hostpoint/clients/eslint-plugin-aerofortress/index.cjs:438`, born from a
   shipped infinite-navigation bug) is absent from the framework plugin, and its ID collides with a
   *planned, different* LZFE015 ("no orphan placeholder") at `docs/FRONTEND-CONVENTIONS.md:275`.
   _FRAMEWORK-GAP._
@@ -63,25 +63,25 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 - [ ] **The 5 `lzfe-*.mjs` doctor scripts are reimplementations, not SDK consumers.** They re-derive
   `walk`/regex/`bucket`/`aggregateReport` inline; the framework already exposes the pure cores
   (`checkJourneyParity`, `checkE2e`, `aggregateReport`, `i18n-parity`, `error-code-coverage`).
-  _FRAMEWORK-GAP (anti-drift)._ (blocked on `@lazuli/*` being consumable)
-- [ ] **Publish `@lazuli/react`.** Unpublished → the pilot forks `AsyncState`/`Resource` locally and
+  _FRAMEWORK-GAP (anti-drift)._ (blocked on `@aerofortress/*` being consumable)
+- [ ] **Publish `@aerofortress/react`.** Unpublished → the pilot forks `AsyncState`/`Resource` locally and
   they are drifting. _FRAMEWORK-GAP._ (npm publish is an outward release step — prepare, don't publish)
-- [x] **Harden the tenancy scaffold (`lazuli g auth`).** _Done:_ `ITenantScoped.OrgId` is now `{ get; }`
+- [x] **Harden the tenancy scaffold (`af g auth`).** _Done:_ `ITenantScoped.OrgId` is now `{ get; }`
   (read-only); `TenantDbContext` stamps via EF property metadata (`entry.Property(...).CurrentValue`),
   not the CLR setter, + exposes `CurrentOrgId`; `User.OrgId` is `{ get; private set; }`. The shipped
   `TenantIsolation.Tests` already assumed this (seeds without OrgId, asserts the stamp), so the change
   aligns the entity/interface with the test. Did NOT port `IParticipation` (1-pilot, AMBIGUOUS).
   _Follow-up:_ the `crud` test scaffold seeds `new() { OrgId = org }` (cross-org isolation), which needs
   a settable OrgId — a seed-helper is required before crud entities can also go `private set`.
-- [ ] **`lazuli` CLI conductor + `lazuli g view` front-door.** `MONOREPO-ARCHITECTURE.md` promises
+- [ ] **`af` CLI conductor + `af g view` front-door.** `MONOREPO-ARCHITECTURE.md` promises
   `build`/`gen:client` reading `[tasks]`; the ViewModel scaffold exists as a `.mjs` but isn't wired
   into the .NET CLI. _FRAMEWORK-GAP._
-- [x] **`OrderedLifecycle<TState>` helper.** _Done:_ `src/Lazuli.Abstractions/OrderedLifecycle.cs` —
+- [x] **`OrderedLifecycle<TState>` helper.** _Done:_ `src/AeroFortress.Framework.Abstractions/OrderedLifecycle.cs` —
   `Reached` (cursor ≥ step) + `Advance` (no-skip/no-regress), generic over `TState : struct, Enum`, with a
-  new `tests/Lazuli.Abstractions.Tests` project (4 green, wired into `Lazuli.slnx`). Replaces the
+  new `tests/AeroFortress.Framework.Abstractions.Tests` project (4 green, wired into `AeroFortress.Framework.slnx`). Replaces the
   byte-for-byte Host/Traveler duplication.
 - [x] **`LZ0006` no-repository + `LZ0007` file ≤500 (user apps).** _Done:_ both shipped as Roslyn
-  analyzers (`analyzers/Lazuli.Doctor/NoRepositoryAnalyzer.cs`, `FileSizeAnalyzer.cs`) with twin tests
+  analyzers (`analyzers/AeroFortress.Framework.Doctor/NoRepositoryAnalyzer.cs`, `FileSizeAnalyzer.cs`) with twin tests
   (7 green); `docs/CONVENTIONS.md` flipped planned→shipped. _was FRAMEWORK-GAP (documented commitment)._
 
 ## Journey-depth (decision `lazuli-net-journey-depth-enforcement.md`)
@@ -89,7 +89,7 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 - [x] **Tier A1 `LZFE-JOURNEY-002`** — terminal-depth in `e2e-doctor.mjs` (+ tests). _done this session._
 - [ ] **Decision-doc fixes** — `LZ0011` collides with `TestInfraPurityAnalyzer` → renumber to `LZ0020`;
   refresh the stale "today" baseline (A1 is now implemented).
-- [x] **Tier B3 `LZ0020`** (was LZ0011) — _Done:_ `analyzers/Lazuli.Doctor/JourneyAssertionAnalyzer.cs`
+- [x] **Tier B3 `LZ0020`** (was LZ0011) — _Done:_ `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`
   flags a `[Journey]` whose body asserts nothing (warning-tier, textual over the journey AdditionalFiles,
   lenient on custom asserters); 4 tests; `CONVENTIONS.md` lists it shipped.
 - [ ] **Tier A2 `LZFE-E2E-SKIP-IN-GATE-001`** — a skipped gate-class flow must fail in gate mode.
@@ -105,18 +105,18 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 
 A second audit pass over the pilot, after the LZ0022–26 / LZFE021–22 wave. Claims verified against the
 framework source (several apparent gaps turned out already owned: `ClaimsCurrentUser` ships in
-`Lazuli.Auth`; refresh rotation + theft detection and `TenantDbContext` ship as `lazuli g auth`
-scaffold templates — the lazuli way, app-owned by construction).
+`AeroFortress.Framework.Auth`; refresh rotation + theft detection and `TenantDbContext` ship as `af g auth`
+scaffold templates — the AeroFortress way, app-owned by construction).
 
 **Progress — 2026-06-09 (same day):** all six findings attacked. Scalar VO transparency →
-`ScalarJsonConverter<TVo,TPrim>` (Abstractions) + automatic schema mirroring in `AddLazuliOpenApi`,
-dogfooded on the sample's `Money`. Postgres harness → `Lazuli.Testing.Postgres` (`PostgresTestDatabase`).
-Rate-limit bridge → `RejectAsLazuliError()` + the framework's `PlatformErrorCodes`. Session seam →
-`createSessionSeam` + `useSession` in `@lazuli/react` (cache reset paired by construction). Error-copy
+`ScalarJsonConverter<TVo,TPrim>` (Abstractions) + automatic schema mirroring in `AddAeroFortressOpenApi`,
+dogfooded on the sample's `Money`. Postgres harness → `AeroFortress.Framework.Testing.Postgres` (`PostgresTestDatabase`).
+Rate-limit bridge → `RejectAsAeroFortressError()` + the framework's `PlatformErrorCodes`. Session seam →
+`createSessionSeam` + `useSession` in `@aerofortress/react` (cache reset paired by construction). Error-copy
 bridge → `apiErrorCode`/`apiErrorCopy` in the spine (structural i18n). Mutator → `tools/client-scaffold.mjs`
 (mutator + orval config, LZFE020-conformant). Pilot mirror rebased to plugin 0.4.0 with LZFE021/022 adopted —
 zero new errors, full lint chain + typecheck + 125 tests green. Still open from the reverse-drift item: the
-app adopting the spine unions themselves (blocked on `@lazuli/react` publish, tracked in P2).
+app adopting the spine unions themselves (blocked on `@aerofortress/react` publish, tracked in P2).
 
 ### Backend
 
@@ -124,14 +124,14 @@ app adopting the spine unions themselves (blocked on `@lazuli/react` publish, tr
   pilot adds needs a hand-written `[JsonConverter]` + a per-type branch in the `Web.cs` OpenAPI
   schema transformer (`hostpoint/src/Hostpoint.Api/Platform/Web.cs:52`, `Money.cs:54`, `Slug.cs:46`)
   or the contract emits an empty object and the generated client breaks. The mechanism is generic:
-  a `Lazuli.AspNetCore` schema-transformer that maps a `[ValueObject]` with a primitive-writing
+  a `AeroFortress.Framework.AspNetCore` schema-transformer that maps a `[ValueObject]` with a primitive-writing
   converter to its primitive schema (`Money`→`int64`, `Slug`→`string`). _FRAMEWORK-GAP — this is the
   pilot's most repeated per-feature toll._
 - [x] **Testcontainers Postgres harness with template-database cloning.**
   (`hostpoint/tests/Hostpoint.Tests/TestDatabase.cs`) One container, one migration into a template DB,
-  then `CREATE DATABASE … TEMPLATE` per test/keyed group, pooling off. `Lazuli.Testing` ships only the
+  then `CREATE DATABASE … TEMPLATE` per test/keyed group, pooling off. `AeroFortress.Framework.Testing` ships only the
   WebApplicationFactory harness + InMemory; the real-database leg every serious pilot needs lives in
-  the app. Candidate: `Lazuli.Testing.Postgres`. _FRAMEWORK-GAP._
+  the app. Candidate: `AeroFortress.Framework.Testing.Postgres`. _FRAMEWORK-GAP._
 - [x] **Rate-limiting wired to the error envelope.** The pilot wires ASP.NET's limiter and renders 429
   as the framework's `ErrorBody` with a `platform.rate_limited` registry code
   (`hostpoint/src/Hostpoint.Api/Platform/RateLimiting.cs`). The framework owns `ErrorKind.RateLimit` and
@@ -142,7 +142,7 @@ app adopting the spine unions themselves (blocked on `@lazuli/react` publish, tr
   Document in CONVENTIONS (platform layer section); no code needed.
 - [ ] _(hold, 1-pilot)_ JSON-list `ValueConverter`+`ValueComparer` helper; sandbox env-gated vendor
   tests (`Sandbox.cs`); reflection seed-helper for encapsulated entities (`TestUser.cs`); presigned-URL
-  memoization in an eventual `Lazuli.Storage.S3`.
+  memoization in an eventual `AeroFortress.Framework.Storage.S3`.
 
 ### Frontend
 
@@ -150,29 +150,29 @@ app adopting the spine unions themselves (blocked on `@lazuli/react` publish, tr
   `clearSession` + the `useSession` boot hook + the `refresh-token.ts`/`.web.ts` platform-seam pair
   (`hostpoint/clients/app-core/src/lib/session/*`) are the generic mechanics LZFE016/017 *steer
   toward*, yet the spine ships only the read-side (`SessionState`). The write-side trio (token write
-  paired with `me`-cache reset by construction) belongs in `@lazuli/react` (storage injected as a
+  paired with `me`-cache reset by construction) belongs in `@aerofortress/react` (storage injected as a
   port). _FRAMEWORK-GAP — the harness polices a seam the framework doesn't ship._
 - [x] **`apiErrorCopy()` — the error-code→copy bridge.**
   (`hostpoint/clients/app-core/src/lib/api-error.ts`) Reads `ErrorBody.code` off an axios error, looks
   up the `api-errors` i18n namespace, falls back to a generic key. It is the runtime half of the
   `error-code-coverage` loop (the tool proves the catalog is complete; this consumes it). Generic —
   graduate to the spine or ship in the scaffold. _FRAMEWORK-GAP._
-- [x] **Mutator/`configureClient` template.** The orval mutator (`lazuli-client.ts`: auth injection,
+- [x] **Mutator/`configureClient` template.** The orval mutator (`aerofortress-client.ts`: auth injection,
   base-URL port, `Result` envelope) + boot-time `configureClient()` exist only in the pilot; the SDK's
   `generate.mjs` scaffolds features against a client whose mutator nothing scaffolds. Folds into the
-  tracked **`lazuli gen client`** item — listed here so the mutator template isn't forgotten when that
+  tracked **`af gen client`** item — listed here so the mutator template isn't forgotten when that
   lands.
-- [~] **Reverse drift (pilot behind framework).** The hostpoint `eslint-plugin-lazuli` mirror is
+- [~] **Reverse drift (pilot behind framework).** The hostpoint `eslint-plugin-aerofortress` mirror is
   v0.3.0 — missing LZFE021/022 and the hardened LZFE002/011/013/016/018 — and the app forks
   `AsyncState` locally while not using the spine's `SessionState`/`requiredParam`/`combineAsyncStates`
   at all (guards still branch on a raw `session.ready` boolean — exactly what LZFE017 exists to
-  prevent). Both are symptoms of the tracked "@lazuli/react publish" gap; flagged so the next pilot
+  prevent). Both are symptoms of the tracked "@aerofortress/react publish" gap; flagged so the next pilot
   sync rebases the mirror + adopts the spine unions.
 
 ## Design dogfood 2026-06-09 — pauta (the Design SDK wave, `.specs/` 0007)
 
 The design layer (tokens + closed kit + LZFE024–026) wired into `pauta-web/frontend` (Next 15 +
-Tailwind, aerocoding-generated, zero prior Lazuli wiring). Mirror at 0.6.0, band warn-first globally,
+Tailwind, aerocoding-generated, zero prior AeroFortress wiring). Mirror at 0.6.0, band warn-first globally,
 error on `src/ui/**` + the relifted exemplar (`billing-type-edit`, the form recipe instantiated on a
 real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 errors, 456 tests green
 (98 files, 8 new). Per-rule verdicts:
@@ -237,5 +237,5 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
 3. Contained analyzers: LZ0006, LZ0007, the journey-body LZ0020.
 4. Tenancy scaffold hardening + OrderedLifecycle helper.
 5. e2e harness templates + skip-in-gate.
-6. Foundation: `Lazuli.toml` scaffold + manifest reader; `lazuli gen client`.
-7. `@lazuli/react` publish-readiness; then rewrite the pilot's 5 scripts as thin SDK CLIs.
+6. Foundation: `AeroFortress.toml` scaffold + manifest reader; `af gen client`.
+7. `@aerofortress/react` publish-readiness; then rewrite the pilot's 5 scripts as thin SDK CLIs.

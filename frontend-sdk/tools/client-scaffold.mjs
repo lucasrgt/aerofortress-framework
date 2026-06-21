@@ -10,7 +10,7 @@
 // cookie-only fork baked into this transport file), the audience filter keeps non-app endpoints out of the
 // client (so LZFE008 stays high-signal), and the QueryClient carries the write-side
 // mutation defaults — invalidate on success, feedback on error (the LZFE027-blessed shape). Graduated from the
-// hostpoint pilot's lazuli-client.ts + orval.config.ts and the pauta pilot's state-management gap.
+// hostpoint pilot's aerofortress-client.ts + orval.config.ts and the pauta pilot's state-management gap.
 //
 // Usage: node tools/client-scaffold.mjs <client-name> <contract-path> [target-dir]
 //   node tools/client-scaffold.mjs hostpoint ./contract/Hostpoint.Api.json ../app-core/src
@@ -18,7 +18,7 @@
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-/** The orval mutator + client seam (lib/lazuli-client.ts) — the single HTTP door every generated hook calls. */
+/** The orval mutator + client seam (lib/aerofortress-client.ts) — the single HTTP door every generated hook calls. */
 export function renderMutator() {
   return `import axios, {
   type AxiosRequestConfig,
@@ -35,7 +35,7 @@ const isWeb = typeof document !== "undefined";
 // *.gen.ts hooks are boring plumbing on top of this; all behaviour lives above, in the ViewModels.
 //
 // withCredentials so the session cookie (set by the API on login) rides cross-origin requests. X-Client: web
-// is the Lazuli.Auth convention: the API delivers the refresh token as an httpOnly cookie ONLY when the
+// is the AeroFortress.Framework.Auth convention: the API delivers the refresh token as an httpOnly cookie ONLY when the
 // request carries it; without it the refresh rides the response body (the native mode) and the web cookie
 // session never forms.
 const instance = axios.create({
@@ -103,7 +103,7 @@ instance.interceptors.response.use(
 );
 
 /** The mutator orval wires every endpoint through: inject auth, return the body. */
-export const lazuliClient = async <T>(config: AxiosRequestConfig): Promise<T> => {
+export const aerofortressClient = async <T>(config: AxiosRequestConfig): Promise<T> => {
   const response = await instance.request<T>({
     ...config,
     headers: {
@@ -114,7 +114,7 @@ export const lazuliClient = async <T>(config: AxiosRequestConfig): Promise<T> =>
   return response.data;
 };
 
-export default lazuliClient;
+export default aerofortressClient;
 `;
 }
 
@@ -217,9 +217,9 @@ export default defineConfig({
   ${name}: {
     input: {
       target: "${contract}",
-      // Audience filter: webhooks/internal endpoints carry a lazuli:* tag (WithEndpointKind on the backend)
+      // Audience filter: webhooks/internal endpoints carry an aerofortress:* tag (WithEndpointKind on the backend)
       // and never become a hook — so they never trip the LZFE008 loose-endpoint warning.
-      filters: { mode: "exclude", tags: ["lazuli:webhook", "lazuli:internal"] },
+      filters: { mode: "exclude", tags: ["aerofortress:webhook", "aerofortress:internal"] },
     },
     output: {
       mode: "split",
@@ -230,7 +230,7 @@ export default defineConfig({
       clean: true,
       prettier: false,
       override: {
-        mutator: { path: "./src/lib/lazuli-client.ts", name: "lazuliClient" },
+        mutator: { path: "./src/lib/aerofortress-client.ts", name: "aerofortressClient" },
         query: { useQuery: true, useMutation: true },
       },
     },
@@ -248,7 +248,7 @@ if (invokedDirectly) {
     console.error("usage: node tools/client-scaffold.mjs <client-name> <contract-path> [target-dir]");
     process.exit(2);
   }
-  const mutatorPath = join(targetDir, "src", "lib", "lazuli-client.ts");
+  const mutatorPath = join(targetDir, "src", "lib", "aerofortress-client.ts");
   const feedbackPath = join(targetDir, "src", "lib", "feedback.ts");
   const queryPath = join(targetDir, "src", "lib", "query.ts");
   const orvalPath = join(targetDir, "orval.config.ts");

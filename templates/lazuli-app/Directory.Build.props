@@ -1,7 +1,7 @@
 <Project>
 
   <PropertyGroup>
-    <!-- The .NET analyzers run at build time, so the native lint joins the Lazuli doctor's gate. -->
+    <!-- The .NET analyzers run at build time, so the native lint joins the AeroFortress doctor's gate. -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!-- IDE0005 (unnecessary usings) only fires in the build when a doc file is generated

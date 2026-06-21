@@ -1,7 +1,7 @@
 // Frontend generators — the parallel of the backend scaffold. Beyond the typed client (orval), these emit the
 // *structure*: a feature unit (ViewModel + View + test + i18n) from a name, and the assembled i18n resource tree
 // from every feature's catalog. Pure render functions (testable, no I/O); the *.mjs CLIs wrap them with file
-// writes, and the `lazuli` .NET CLI front-door shells out to those CLIs (the way `lazuli doctor` shells out to
+// writes, and the `af` .NET CLI front-door shells out to those CLIs (the way `af doctor` shells out to
 // `npm run lint`). The unit they emit is the blessed sample/items with names substituted — conformant by
 // construction (it passes the LZFE rules + typecheck + its own test, because the sample does).
 
@@ -44,7 +44,7 @@ export function renderFeature(nameRaw) {
   const Entity = pascal(singular(camel(nameRaw))); // "Booking"
   const lower = collection.toLowerCase(); // i18n namespace + client.gen segment
 
-  const viewModel = `import { toAsyncState, type AsyncState } from "@lazuli/react";
+  const viewModel = `import { toAsyncState, type AsyncState } from "@aerofortress/react";
 // The orval-generated typed hook for the \`list_${lower}\` slice — the ONLY data the door touches.
 import { useList${Plural} } from "@/client.gen/${lower}";
 import i18n from "@/i18n";
@@ -80,7 +80,7 @@ export function use${Plural}Model(): ${Plural}Model {
 `;
 
   const view = `import { useTranslation } from "react-i18next";
-import { Resource } from "@lazuli/react";
+import { Resource } from "@aerofortress/react";
 // The design system — the View reaches it through these names only (never react-native directly).
 import { Screen, Stack, Text, EmptyState } from "@/ui";
 import { use${Plural}Model } from "./${Plural}.viewModel";
@@ -183,7 +183,7 @@ export const enUS = {
  * platform-neutral (web inline styles, RN StyleSheet, a Tailwind theme all map FROM it), zero imports, zero deps.
  */
 export function renderDesign() {
-  const tokens = `// DESIGN TOKENS — this app's values for the Lazuli design taxonomy (docs/DESIGN-CONVENTIONS.md).
+  const tokens = `// DESIGN TOKENS — this app's values for the AeroFortress design taxonomy (docs/DESIGN-CONVENTIONS.md).
 // Names are the convention, protected by the design band (LZFE024-026); values are YOURS — edit the
 // values freely (brand, dark mode, white-label), never the names. Raw colors (hex) live ONLY here
 // (LZFE012 exempts this file by name); everything else references the semantic \`color.*\` roles.

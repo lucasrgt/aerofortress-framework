@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>af</ToolCommandName>
+    <!-- Published as `aerofortress-framework-cli` (a descriptive package id distinct from the
+         meta-package `AeroFortress.Framework`). Install: `dotnet tool install -g aerofortress-framework-cli`;
+         the command is `af`. -->
+    <PackageId>aerofortress-framework-cli</PackageId>
+
+    <!-- Package metadata (the CLI doesn't import AeroFortress.Framework.Library.props — that turns CS1591 into an error, and a
+         tool isn't a documented library surface). Normally in step with the framework; 0.1.2 is a CLI-only patch
+         (the packaging fix — a stray tools/ path that broke `dotnet tool install` on stricter SDKs). -->
+    <Version>0.1.2</Version>
+    <Authors>Lucas Tinoco</Authors>
+    <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
+    <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>
+    <PackageProjectUrl>https://github.com/lucasrgt/lazuli-net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/lucasrgt/lazuli-net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) Lucas Tinoco</Copyright>
+  </PropertyGroup>
+
+  <!-- The auth blueprint templates. .cstmpl so they never compile into the CLI. Copied next to the tool
+       (CopyToOutputDirectory) and read from disk at runtime — embedding them as resources hit an SDK quirk
+       that collapsed the wildcard to a single manifest entry, so disk content is the reliable carrier for a
+       CLI tool. The whole build output is packed verbatim under tools/<tfm>/any/, so this lands the templates
+       beside the dll there with no extra Pack/PackagePath. A custom PackagePath also dropped a second copy at a
+       non-standard tools/ path, which makes some SDKs fail to find DotnetToolSettings.xml on install. -->
+  <ItemGroup>
+    <None Include="Templates\**\*.cstmpl" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- The CLI's internal scaffolding helpers (e.g. ErrorCodeScaffold) are unit-tested. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="AeroFortress.Framework.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

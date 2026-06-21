@@ -1,4 +1,4 @@
-// DESIGN TOKENS — this app's values for the Lazuli design taxonomy (docs/DESIGN-CONVENTIONS.md).
+// DESIGN TOKENS — this app's values for the AeroFortress design taxonomy (docs/DESIGN-CONVENTIONS.md).
 // Names are the convention, protected by the design band (LZFE024-026); values are YOURS — edit the
 // values freely (brand, dark mode, white-label), never the names. Raw colors (hex) live ONLY here
 // (LZFE012 exempts this file by name); everything else references the semantic `color.*` roles.

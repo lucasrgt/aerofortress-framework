@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // LZFE011 (cross-package) — locale parity for *.i18n.ts catalogs, as a TOOL. The eslint rule
-// (`lazuli/i18n-completeness`) is the in-scope mechanism: when the catalogs sit inside the linted source, it pins
+// (`aerofortress/i18n-completeness`) is the in-scope mechanism: when the catalogs sit inside the linted source, it pins
 // parity per file at lint time. But in a core-split layout the catalogs live in a SEPARATE package, outside the
 // app's eslint scope, so the rule can never see them — this tool does, by reading the files directly. Same
 // invariant (every locale object in a catalog declares the same keys; a key in one but not its siblings is a
