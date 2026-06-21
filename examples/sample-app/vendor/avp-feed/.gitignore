@@ -1,0 +1,4 @@
+# This is a VENDORED feed: the AVP backend adapter (Assay.Net) is committed here so the sample app is
+# self-contained and restores offline / in CI. Override the repo-wide *.nupkg ignore for this folder only.
+# Master feed (regenerate with `dotnet pack`): avp/assay.net/local-feed.
+!*.nupkg

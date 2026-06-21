@@ -31,7 +31,7 @@ public class WithdrawTests
         await using var db = NewDb();
         var id = await SeedFunded(db, 50m);
 
-        var result = await Withdraw.Handle(new Withdraw.Input(id, 20m), db, default);
+        var result = await Withdraw.Handle(new Withdraw.Input(id, 20m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(30m, result.Value.Balance);
@@ -46,7 +46,7 @@ public class WithdrawTests
         await using var db = NewDb();
         var id = await SeedFunded(db, 10m);
 
-        var result = await Withdraw.Handle(new Withdraw.Input(id, 999m), db, default);
+        var result = await Withdraw.Handle(new Withdraw.Input(id, 999m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorKind.BusinessRule, result.Error.Kind);
@@ -60,7 +60,7 @@ public class WithdrawTests
     {
         await using var db = NewDb();
 
-        var result = await Withdraw.Handle(new Withdraw.Input(Guid.NewGuid(), -1m), db, default);
+        var result = await Withdraw.Handle(new Withdraw.Input(Guid.NewGuid(), -1m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorKind.Validation, result.Error.Kind);
@@ -73,7 +73,7 @@ public class WithdrawTests
     {
         await using var db = NewDb();
 
-        var result = await Withdraw.Handle(new Withdraw.Input(Guid.NewGuid(), 5m), db, default);
+        var result = await Withdraw.Handle(new Withdraw.Input(Guid.NewGuid(), 5m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorKind.NotFound, result.Error.Kind);

@@ -14,6 +14,7 @@ public static partial class Platform
     public static IServiceCollection AddPlatform(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<AppDb>(o => o.UseInMemoryDatabase("sample"));
+        services.AddIdempotency();
         return services;
     }
 }
