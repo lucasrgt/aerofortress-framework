@@ -1693,9 +1693,65 @@ const rules = {
       };
     },
   },
+
+  // LZFE033 — a `@verify` obligation has its `@avp` proof. The front-side of the backend's LZ0030 (the
+  // [Verify]↔[AVP] bridge), and the closing leg of AeroFortress Clockwork on the frontend: a View/ViewModel that
+  // declares `@verify <criterion-id>` (the AVP acceptance obligation — the JSDoc twin of the backend
+  // [Verify("id")]) must have a co-located test carrying `@avp <criterion-id>` (the twin of [AVP("id")]): the
+  // assay JS verification that the behaviour actually holds, not just that it was claimed. Markers are JSDoc tags,
+  // erased at runtime — doctor-removable like every LZFE rule. Co-located scope mirrors LZFE005/006: the proof for
+  // Foo.view.tsx / Foo.viewModel.ts lives in Foo.test.tsx. (Whether the proof PASSES is the test runner's job —
+  // Doctor 2; this rule, like LZ0030, enforces the pairing exists — Doctor 1.)
+  "verify-has-avp-proof": {
+    meta: {
+      type: "problem",
+      docs: {
+        description:
+          "Every `@verify <id>` on a View/ViewModel has a matching `@avp <id>` proof in its co-located test (the front-side of the backend's LZ0030 bridge).",
+      },
+      messages: {
+        missing:
+          "LZFE033: `@verify {{id}}` declares an AVP obligation with no co-located proof — create {{test}} with an `@avp {{id}}` assay verification that the behaviour holds (the front-side of the backend's LZ0030).",
+        unproven:
+          "LZFE033: `@verify {{id}}` is declared but {{test}} carries no `@avp {{id}}` proof — add the assay JS verification tagged `@avp {{id}}` so the obligation is proven, not just claimed.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isView(f) && !isViewModel(f)) return {};
+      // Markers are read from COMMENTS (JSDoc), never strings — so a literal "@verify" in copy never false-fires.
+      const idsIn = (text, tag) => {
+        const ids = new Set();
+        const re = new RegExp(`@${tag}\\s+([\\w.-]+)`, "g");
+        let m;
+        while ((m = re.exec(text)) !== null) ids.add(m[1]);
+        return ids;
+      };
+      return {
+        "Program:exit"(node) {
+          const sourceCode = context.sourceCode ?? context.getSourceCode();
+          const obligations = new Set();
+          for (const c of sourceCode.getAllComments()) for (const id of idsIn(c.value, "verify")) obligations.add(id);
+          if (obligations.size === 0) return;
+
+          const base = path.basename(context.filename).replace(/\.(view\.tsx|viewModel\.ts)$/, "");
+          const testPath = path.join(path.dirname(context.filename), `${base}.test.tsx`);
+          const testExists = fs.existsSync(testPath);
+          // The proof side is read as TEXT (the file isn't parsed here) — the same plain scan the backend's
+          // LZ0030 runs over its AdditionalFiles test files.
+          const proven = testExists ? idsIn(fs.readFileSync(testPath, "utf8"), "avp") : new Set();
+
+          for (const id of obligations) {
+            if (!testExists) context.report({ node, messageId: "missing", data: { id, test: `${base}.test.tsx` } });
+            else if (!proven.has(id)) context.report({ node, messageId: "unproven", data: { id, test: `${base}.test.tsx` } });
+          }
+        },
+      };
+    },
+  },
 };
 
 module.exports = {
-  meta: { name: "eslint-plugin-aerofortress", version: "0.8.0" },
+  meta: { name: "eslint-plugin-aerofortress", version: "0.10.0" },
   rules,
 };

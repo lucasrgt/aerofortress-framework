@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 
 // Verifies the framework's spine/tools AND the canonical example (examples/sample-app) — wired, not mocked. The
 // example's agnostic core (the ViewModel + the design-system-driven View) renders against the WEB `@/ui` impl in
@@ -13,6 +13,9 @@ export default defineConfig({
   test: {
     root: r(".."),
     environment: "jsdom",
+    // __fixtures__ holds eslint RuleTester fixtures named `*.test.tsx` (the LZFE033 rule looks up
+    // `<base>.test.tsx`), not vitest suites — keep them out of the run (+ vitest's own defaults).
+    exclude: [...configDefaults.exclude, "**/__fixtures__/**"],
     include: [
       "frontend-sdk/packages/**/*.test.{ts,tsx}",
       "frontend-sdk/tools/**/*.test.{ts,tsx}",

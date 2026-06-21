@@ -9,6 +9,7 @@
 const { RuleTester } = require("eslint");
 const tsParser = require("@typescript-eslint/parser");
 const plugin = require("./index.cjs");
+const path = require("path");
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -759,6 +760,41 @@ ruleTester.run("controller-field-state", plugin.rules["controller-field-state"],
       filename: "Foo.view.tsx",
       code: `const P = () => <Controller control={control} name="amount" render={(props) => <Input {...props.field} />} />;`,
       errors: [{ messageId: "blind" }],
+    },
+  ],
+});
+
+// LZFE033 — a `@verify` obligation has its `@avp` proof in the co-located test (the front-side of LZ0030).
+// fs-based like LZFE005/006: it reads the co-located *.test.tsx. The __fixtures__/lzfe033 files provide the proof
+// side; a non-existent co-located test (the common RuleTester case) proves the `missing` edge.
+const LZFE033_FIX = path.join(__dirname, "__fixtures__", "lzfe033");
+ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
+  valid: [
+    // No obligation declared -> nothing to prove.
+    { filename: "Foo.view.tsx", code: `export const X = () => null;` },
+    // Out of scope: not a View/ViewModel (the marker in a plain file is ignored).
+    { filename: "Foo.tsx", code: `/** @verify fires-primary-effect */\nexport const X = () => null;` },
+    // The obligation IS proven: the co-located fixture test carries `@avp proven-x`.
+    { filename: path.join(LZFE033_FIX, "Proven.view.tsx"), code: `/** @verify proven-x */\nexport const X = () => null;` },
+  ],
+  invalid: [
+    // No co-located test on disk -> the obligation has no proof (missing). Unique base avoids a cwd collision.
+    {
+      filename: "Lzfe033Probe.view.tsx",
+      code: `/** @verify fires-primary-effect */\nexport const X = () => null;`,
+      errors: [{ messageId: "missing" }],
+    },
+    // A ViewModel obligation with no co-located test -> missing too.
+    {
+      filename: "Lzfe033Probe.viewModel.ts",
+      code: `/** @verify single-flight */\nexport const useX = () => null;`,
+      errors: [{ messageId: "missing" }],
+    },
+    // The co-located test EXISTS but proves a different criterion -> unproven.
+    {
+      filename: path.join(LZFE033_FIX, "Unproven.view.tsx"),
+      code: `/** @verify needs-y */\nexport const X = () => null;`,
+      errors: [{ messageId: "unproven" }],
     },
   ],
 });
