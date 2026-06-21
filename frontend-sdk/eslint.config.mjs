@@ -88,6 +88,9 @@ export default [
       // The session-rotation door (LZFE029) — refresh is consumed by ONE seam (the client's single-flight
       // interceptor / the session seam); a second rotation path trips the backend's theft detection.
       "aerofortress/refresh-one-door": "error",
+      // The AVP bridge (LZFE033) — the front-side of the backend's LZ0030 and the closing leg of Clockwork: a
+      // `@verify <id>` obligation on a View/ViewModel must have a co-located `@avp <id>` proof. Error-tier.
+      "aerofortress/verify-has-avp-proof": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",

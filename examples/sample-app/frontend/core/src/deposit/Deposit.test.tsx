@@ -52,6 +52,13 @@ describe("Deposit", () => {
     expect(await screen.findByText("Deposit complete")).toBeTruthy();
   });
 
+  /**
+   * @avp no-phantom-success — the AVP proof of DepositView's `@verify no-phantom-success` obligation (LZFE033,
+   * the front-side of the backend's LZ0030 bridge): a failing deposit surfaces the command error (role=alert)
+   * while the entered input persists — never a phantom success. (Graduates to the @aerofortress/assay
+   * actionEffect React verifier once that package is wired into the example — the JS twin of the backend's
+   * vendored Assay.Net Runner.)
+   */
   it("surfaces the command failure as a role=alert block and keeps the form", async () => {
     render(<DepositView />, { wrapper });
     fill(MISSING_WALLET, "50");

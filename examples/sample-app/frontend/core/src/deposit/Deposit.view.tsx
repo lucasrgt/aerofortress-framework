@@ -7,6 +7,11 @@ import { useDepositModel } from "./Deposit.viewModel";
 // one Field+Input per field > the role=alert command error > Button(primary, loading while pending). Field-level
 // errors render inside their Field (anatomy: label → control → hint|error); the command's failure renders above
 // the submit (LZFE013 made visible). Instantiate this shape for any create/edit screen — never compose from blank.
+/**
+ * @verify no-phantom-success — on a failed deposit the entered amount persists and the command error is visible;
+ * the form never reports a phantom success. Proven by the co-located `@avp no-phantom-success` test — the
+ * front-side of the backend's LZ0030 ([Verify]↔[AVP]) bridge, enforced by LZFE033.
+ */
 export function DepositView() {
   const { t } = useTranslation("deposit");
   const { control, submit, submitting, submitError, completed } = useDepositModel();
