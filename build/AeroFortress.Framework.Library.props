@@ -28,7 +28,7 @@
     package id defaults to the assembly name (AeroFortress.Framework.*); per-package Description can override the default below.
   -->
   <PropertyGroup>
-    <Version>1.0.1</Version>
+    <Version>2.0.0</Version>
     <Authors>Lucas Tinoco</Authors>
     <Company>AeroFortress</Company>
     <Product>AeroFortress</Product>
