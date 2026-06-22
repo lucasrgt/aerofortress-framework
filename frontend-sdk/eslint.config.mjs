@@ -19,14 +19,11 @@ import vitest from "@vitest/eslint-plugin";
 // The LZFE plugin is CommonJS; load it via createRequire.
 const require = createRequire(import.meta.url);
 const aerofortress = require("./packages/eslint-plugin/index.cjs");
-// Accessibility — the ecosystem-specific half of the harness, mirrored across targets: web uses jsx-a11y
-// (alt / aria / href on the DOM), mobile uses react-native-a11y (accessibilityRole / accessible / label on RN
-// primitives). Same intent, no shared parity, so each ecosystem gets its own block below. Warn-first — a revealed
-// backlog promoted to error per-rule once cleared. (rn-a11y caps its eslint peer at 8 but runs clean on 9.)
+// Accessibility — web (DOM) uses jsx-a11y (alt / aria / href). The mobile RN counterpart (react-native-a11y)
+// is dropped until it publishes an eslint-9 peer: its latest release still caps eslint at 8, and we keep the
+// install ERESOLVE-clean rather than pin a legacy-peer-deps escape hatch. Restore the mobile block (and a
+// toWarn helper) once a maintained eslint-9 RN-a11y plugin exists.
 const jsxA11y = require("eslint-plugin-jsx-a11y");
-const rnA11y = require("eslint-plugin-react-native-a11y");
-const toWarn = (rules) =>
-  Object.fromEntries(Object.entries(rules).map(([id, val]) => [id, Array.isArray(val) ? ["warn", ...val.slice(1)] : "warn"]));
 
 export default [
   { ignores: ["**/node_modules/**", "packages/eslint-plugin/**"] },
@@ -106,15 +103,6 @@ export default [
     files: ["../examples/sample-app/frontend/web/**/*.{ts,tsx}"],
     plugins: { "jsx-a11y": jsxA11y },
     rules: { ...jsxA11y.flatConfigs.recommended.rules, "jsx-a11y/aria-role": ["error", { ignoreNonDOM: true }] },
-  },
-  // a11y — mobile (RN): react-native-a11y. The {core,web} block doesn't cover mobile, so this carries its own
-  // (type-free) parse setup; a11y rules are AST-based and need no type info. has-accessibility-hint is off
-  // (supplementary, not required — keeps the backlog high-signal), matching the hostpoint dogfood.
-  {
-    files: ["../examples/sample-app/frontend/mobile/**/*.{ts,tsx}"],
-    languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
-    plugins: { "react-native-a11y": rnA11y },
-    rules: { ...toWarn(rnA11y.configs.all.rules), "react-native-a11y/has-accessibility-hint": "off" },
   },
   // test hygiene — no .only/.skip leaking into the suite (the @vitest recommended set).
   {
