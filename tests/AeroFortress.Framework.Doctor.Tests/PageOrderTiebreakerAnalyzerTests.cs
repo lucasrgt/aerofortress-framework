@@ -15,7 +15,7 @@ public class PageOrderTiebreakerAnalyzerTests
             {
                 static async System.Threading.Tasks.Task Handle(Db db, System.Threading.CancellationToken ct)
                 {
-                    var page = await db.Wallets.{|LZ0028:OrderByDescending|}(w => w.CreatedAt).ToPageAsync(1, 20, ct: ct);
+                    var page = await db.Wallets.{|AF0028:OrderByDescending|}(w => w.CreatedAt).ToPageAsync(1, 20, ct: ct);
                 }
             }
             """ + Stubs);
@@ -70,7 +70,7 @@ public class PageOrderTiebreakerAnalyzerTests
                 static async System.Threading.Tasks.Task Handle(Db db, System.Threading.CancellationToken ct)
                 {
                     // CustomerId ends in Id but many wallets share one customer — not unique, still flagged.
-                    var page = await db.Wallets.OrderBy(w => w.Name).{|LZ0028:ThenBy|}(w => w.CustomerId).ToPageAsync(1, 20, ct: ct);
+                    var page = await db.Wallets.OrderBy(w => w.Name).{|AF0028:ThenBy|}(w => w.CustomerId).ToPageAsync(1, 20, ct: ct);
                 }
             }
             """ + Stubs);

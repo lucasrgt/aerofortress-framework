@@ -6,8 +6,8 @@ using Microsoft.CodeAnalysis.Text;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0007 — keeps every source file in a AeroFortress app at or under 500 lines, the Rails-repo discipline
-/// the framework holds itself to (the user-app counterpart of <c>LZSELF001</c>, which polices the
+/// AF0007 — keeps every source file in a AeroFortress app at or under 500 lines, the Rails-repo discipline
+/// the framework holds itself to (the user-app counterpart of <c>AFSELF001</c>, which polices the
 /// framework's own libraries). A file past the ceiling is the signal to extract a concern into its own
 /// file — a vertical slice should be small — not to keep packing. EF migrations (a <c>Migrations</c>
 /// directory) are exempt: tool-emitted, append-only, never hand-maintained — their size is the schema's,
@@ -20,7 +20,7 @@ public sealed class FileSizeAnalyzer : DiagnosticAnalyzer
     public const int MaxLines = 500;
 
     /// <summary>The identifier reported when a file exceeds <see cref="MaxLines"/>.</summary>
-    public const string DiagnosticId = "LZ0007";
+    public const string DiagnosticId = "AF0007";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

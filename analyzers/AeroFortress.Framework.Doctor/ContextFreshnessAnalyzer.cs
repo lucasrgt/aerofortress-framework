@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.Text;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0005 — a module's <c>.ctx.md</c> stays fresh by <em>citation resolution</em>: a backticked code
+/// AF0005 — a module's <c>.ctx.md</c> stays fresh by <em>citation resolution</em>: a backticked code
 /// identifier it names must still exist somewhere the doctor can see — this module's source, a referenced
 /// assembly, or a co-located <c>*.Tests.cs</c> the project feeds the doctor as an <c>AdditionalFile</c>. A
 /// ctx that names <c>`AttachCtx`</c> after that construct was renamed or removed is rot, and the doctor
@@ -37,7 +37,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class ContextFreshnessAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a ctx that names code which no longer exists.</summary>
-    public const string DiagnosticId = "LZ0005";
+    public const string DiagnosticId = "AF0005";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0026 — <b>a <c>[Critical]</c> write declares its concurrency posture</b>. A <c>[Critical]</c> slice whose
+/// AF0026 — <b>a <c>[Critical]</c> write declares its concurrency posture</b>. A <c>[Critical]</c> slice whose
 /// <c>Handle</c> saves changes against an entity that carries no concurrency token runs last-write-wins: two
 /// concurrent requests both read the same row, both mutate, and the second save silently erases the first —
 /// the classic double-spend on exactly the slices marked high-stakes. The token is one property:
@@ -22,7 +22,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class CriticalConcurrencyAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when a critical slice saves an entity that has no concurrency token.</summary>
-    public const string DiagnosticId = "LZ0026";
+    public const string DiagnosticId = "AF0026";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

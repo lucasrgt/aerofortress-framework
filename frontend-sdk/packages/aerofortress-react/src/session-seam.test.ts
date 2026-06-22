@@ -147,7 +147,7 @@ describe("createSessionSeam", () => {
 
   // A cold start that double-invokes the boot effect (StrictMode), or a bootstrap racing the client's 401
   // interceptor, must not fire TWO refresh rotations — the backend's theft detection burns the family on the
-  // replayed token (LZFE029 at boot). bootstrapSession is single-flighted.
+  // replayed token (AFFE029 at boot). bootstrapSession is single-flighted.
   it("concurrent bootstrapSession calls share ONE refresh rotation (no double-rotation at boot)", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {

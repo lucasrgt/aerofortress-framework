@@ -5,7 +5,7 @@ import type { Page } from "./page";
 // list — REPLACE on page 1 (a fresh open, or a post-mutation refetch of the head), APPEND with per-key dedupe
 // on the rest. The dedupe is what absorbs mid-pagination drift: an item that slides across a page boundary
 // between requests would otherwise show twice. Fetch-agnostic like usePager — the hook owns page +
-// accumulation STATE, never the request; the ViewModel stays the one data door (LZFE002), parameterizes its
+// accumulation STATE, never the request; the ViewModel stays the one data door (AFFE002), parameterizes its
 // generated hook with `acc.page` and folds the response back in. Graduated from the hostpoint pilot's
 // PublicPointReviews.
 //

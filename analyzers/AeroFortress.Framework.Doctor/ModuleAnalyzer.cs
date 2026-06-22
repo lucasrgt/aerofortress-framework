@@ -14,10 +14,10 @@ namespace AeroFortress.Framework.Doctor;
 /// the app's explicit registry. Two rules:
 ///
 /// <list type="bullet">
-/// <item><description><c>LZ0015</c> (shape) — a <c>[Module]</c> is a <c>static</c> class declaring a public
+/// <item><description><c>AF0015</c> (shape) — a <c>[Module]</c> is a <c>static</c> class declaring a public
 /// static <c>AddServices(IServiceCollection, IConfiguration)</c> (its own DI, even if empty) and a public static
 /// <c>Map(IEndpointRouteBuilder)</c> (its routes).</description></item>
-/// <item><description><c>LZ0016</c> (registration) — every <c>[Module]</c>'s <c>AddServices</c> and <c>Map</c>
+/// <item><description><c>AF0016</c> (registration) — every <c>[Module]</c>'s <c>AddServices</c> and <c>Map</c>
 /// are actually called somewhere in the compilation (i.e. in the registry's <c>AddModules</c> / <c>MapModules</c>),
 /// so generating a module and forgetting to register it is a build error, not a silent 404. This reflects over
 /// nothing at runtime — it is a compile-time reachability check.</description></item>
@@ -30,10 +30,10 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class ModuleAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a <c>[Module]</c> that does not own both halves of its wiring.</summary>
-    public const string ShapeDiagnosticId = "LZ0015";
+    public const string ShapeDiagnosticId = "AF0015";
 
     /// <summary>The identifier reported for a <c>[Module]</c> that is never wired in the registry.</summary>
-    public const string RegistrationDiagnosticId = "LZ0016";
+    public const string RegistrationDiagnosticId = "AF0016";
 
     private static readonly DiagnosticDescriptor ShapeRule = new(
         id: ShapeDiagnosticId,
@@ -123,7 +123,7 @@ public sealed class ModuleAnalyzer : DiagnosticAnalyzer
             foreach (var module in modules)
             {
                 // Only flag a method that exists but is never wired; a missing method is the shape rule's job
-                // (LZ0015), so the two rules never double-report the same module.
+                // (AF0015), so the two rules never double-report the same module.
                 if (HasPublicStaticMethod(module.Key, "AddServices") && !addServicesCalled.ContainsKey(module.Key))
                     endContext.ReportDiagnostic(Diagnostic.Create(RegistrationRule, module.Value, module.Key.Name,
                         "is not registered — its AddServices is never called; wire it in the module registry (AddModules)"));

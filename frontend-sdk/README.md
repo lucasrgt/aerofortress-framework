@@ -16,7 +16,7 @@ frontend/
   vitest.config.ts    # jsdom + the @/… aliases that let the sample run wired (not mocked)
   packages/
     aerofortress-react/     # @aerofortress/react — the spine: AsyncState, Resource (+ guards, session as they graduate)
-    eslint-plugin/    # eslint-plugin-aerofortress — the LZFE harness (rules + RuleTester self-tests)   [planned home]
+    eslint-plugin/    # eslint-plugin-aerofortress — the AFFE harness (rules + RuleTester self-tests)   [planned home]
   sample/
     items/            # the canonical feature unit — the blessed reference an app/agent copies (kept pristine)
     harness/          # stand-ins for the app's @/ui, @/i18n, @/client.gen — so the sample compiles + tests
@@ -66,10 +66,10 @@ See [`sample/items`](./sample/items) for the blessed reference.
 
 ## The harness (the frontend self-audit)
 
-`eslint-plugin-aerofortress` (the LZFE rules) is the front-side parallel of the backend's Roslyn/`AeroFortress.Framework.Doctor`
-self-audit. It polices the unit: View renders only (LZFE001), the ViewModel is the one data door (LZFE002, with
-`lib/session` + `lib/guards` as the sanctioned infra doors), the ViewModel is platform-agnostic (LZFE009), every
-ViewModel has a co-located test (LZFE005), no mocks in production (LZFE003). The plugin **self-proves** with
+`eslint-plugin-aerofortress` (the AFFE rules) is the front-side parallel of the backend's Roslyn/`AeroFortress.Framework.Doctor`
+self-audit. It polices the unit: View renders only (AFFE001), the ViewModel is the one data door (AFFE002, with
+`lib/session` + `lib/guards` as the sanctioned infra doors), the ViewModel is platform-agnostic (AFFE009), every
+ViewModel has a co-located test (AFFE005), no mocks in production (AFFE003). The plugin **self-proves** with
 RuleTester (`npm test`) — a rule isn't done until a test pins that it fires on the violation and passes on the
 allowed shape.
 
@@ -79,9 +79,9 @@ allowed shape.
    wired against a harness.
 1. **Spine** — `AsyncState`/`Resource` + the routing/session primitives (`SessionState`/`toSessionState`, `safeBack`)
    graduated from the pilots (done).
-2. **Rules** — grow LZFE into categories the way the backend has: state-completeness (screens use `<Resource>`),
+2. **Rules** — grow AFFE into categories the way the backend has: state-completeness (screens use `<Resource>`),
    i18n-completeness (keys in every locale), design-tokens (no inline hex), and the **routing harness**
-   (`LZFE015–019`: declarative redirects, one session seam, a tri-state guard, guarded params + Back) — **done**;
+   (`AFFE015–019`: declarative redirects, one session seam, a tri-state guard, guarded params + Back) — **done**;
    still ahead: the "no hardcoded string" half of i18n, a11y, error-handling (every mutation surfaces its error).
 3. **Generators** — beyond the typed client: scaffold a feature unit + assemble the i18n resource tree (`tools/`,
    **done**); still ahead: wire route guards from declared policy, and the `af` .NET CLI front-door that shells

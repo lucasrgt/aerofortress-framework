@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0028 — <b>a paged order needs a unique tiebreaker</b>. <c>ToPageAsync</c> turns the order into page
+/// AF0028 — <b>a paged order needs a unique tiebreaker</b>. <c>ToPageAsync</c> turns the order into page
 /// boundaries (Skip/Take over ORDER BY); when no sort key is unique, rows that compare equal have no
 /// defined order between queries — a row repeats on the next page and another vanishes, and only under
 /// data that HAS ties (the pilot bug: <c>OrderByDescending(CreatedAt)</c> over same-timestamp reviews,
@@ -21,7 +21,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class PageOrderTiebreakerAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when a ToPageAsync ordering chain carries no unique key.</summary>
-    public const string DiagnosticId = "LZ0028";
+    public const string DiagnosticId = "AF0028";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

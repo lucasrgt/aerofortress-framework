@@ -12,9 +12,9 @@ public enum JourneyPath
 
 /// <summary>
 /// Declares that an <c>[E2E]</c> test is the journey proving a <c>[Critical]</c> slice on a given
-/// <see cref="Path"/>. The relation is enforced both ways: <c>LZ0008</c> requires every critical slice to
+/// <see cref="Path"/>. The relation is enforced both ways: <c>AF0008</c> requires every critical slice to
 /// have both a <see cref="JourneyPath.Happy"/> and a <see cref="JourneyPath.Sad"/> journey, and
-/// <c>LZ0010</c> requires every journey to cover a critical slice. So a journey is exactly the proof of a
+/// <c>AF0010</c> requires every journey to cover a critical slice. So a journey is exactly the proof of a
 /// critical operation — not a label for any flow: a voluntary end-to-end test that proves no critical slice
 /// is a plain <c>[E2E]</c> with no <c>[Journey]</c> (by convention a <c>*Flow.Tests.cs</c>, vs a
 /// <c>*Journey.Tests.cs</c>).

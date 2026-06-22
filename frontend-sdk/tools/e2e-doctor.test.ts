@@ -92,7 +92,7 @@ describe("checkE2e", () => {
     }
   });
 
-  // Depth (LZFE-JOURNEY-002): a spec existing is not coverage — a linked flow must drive its journey to a declared
+  // Depth (AFFE-JOURNEY-002): a spec existing is not coverage — a linked flow must drive its journey to a declared
   // terminal, and the spec must actually assert it. These are depthGaps (warn-tier), NOT hard existence gaps.
   it("flags a linked flow that declares no terminal — as a depth gap, not an existence gap", () => {
     const dir = tmp();

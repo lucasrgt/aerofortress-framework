@@ -6,7 +6,7 @@ import type { Item } from "./Items.viewModel";
 
 // CANONICAL LIST VIEW — THE list recipe (DESIGN-CONVENTIONS.md §Recipes): every async branch renders through the
 // kit (loading text, ErrorState with the spine's retry, EmptyState), the ready body is title + Card rows. Render
-// only (LZFE001); no isPending/isError here (LZFE010); everything visual through @/ui (LZFE024). Instantiate this
+// only (AFFE001); no isPending/isError here (AFFE010); everything visual through @/ui (AFFE024). Instantiate this
 // shape for any collection screen — never compose from blank.
 export function ItemsView() {
   const { t } = useTranslation("items");

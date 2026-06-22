@@ -13,7 +13,7 @@ public class UnboundedMaterializationAnalyzerTests
             {
                 static async System.Threading.Tasks.Task Handle(Db db, System.Threading.CancellationToken ct)
                 {
-                    var all = await db.Wallets.{|LZ0027:ToListAsync|}(ct);
+                    var all = await db.Wallets.{|AF0027:ToListAsync|}(ct);
                 }
             }
             """ + Stubs);
@@ -50,7 +50,7 @@ public class UnboundedMaterializationAnalyzerTests
                     var query = db.Wallets.AsQueryable();
                     if (q is not null)
                         query = query.Where(w => w.Id.ToString() == q);
-                    var hits = await query.{|LZ0027:ToListAsync|}(ct);
+                    var hits = await query.{|AF0027:ToListAsync|}(ct);
                 }
             }
             """ + Stubs);
@@ -139,7 +139,7 @@ public class UnboundedMaterializationAnalyzerTests
             {
                 static async System.Threading.Tasks.Task Handle(Db db, System.Guid org, System.Threading.CancellationToken ct)
                 {
-                    var all = await db.Wallets.Where(w => w.OrgId == org).{|LZ0027:ToListAsync|}(ct);
+                    var all = await db.Wallets.Where(w => w.OrgId == org).{|AF0027:ToListAsync|}(ct);
                 }
             }
             """ + Stubs);
@@ -156,7 +156,7 @@ public class UnboundedMaterializationAnalyzerTests
             {
                 static async System.Threading.Tasks.Task Handle(Db db, System.Threading.CancellationToken ct)
                 {
-                    var all = await db.Wallets.Where(w => w.DeletedAt == null).{|LZ0027:ToListAsync|}(ct);
+                    var all = await db.Wallets.Where(w => w.DeletedAt == null).{|AF0027:ToListAsync|}(ct);
                 }
             }
             """ + Stubs);
@@ -176,7 +176,7 @@ public class UnboundedMaterializationAnalyzerTests
                 static async System.Threading.Tasks.Task Handle(Db db, Input input, System.Threading.CancellationToken ct)
                 {
                     // The ENTITY side is the tenant scope (OrgId); input.AgencyId ending in Id must not exempt it.
-                    var all = await db.Wallets.Where(w => w.OrgId == input.AgencyId).{|LZ0027:ToListAsync|}(ct);
+                    var all = await db.Wallets.Where(w => w.OrgId == input.AgencyId).{|AF0027:ToListAsync|}(ct);
                 }
             }
             """ + Stubs);

@@ -8,15 +8,15 @@ import vitest from "@vitest/eslint-plugin";
 
 // Lint config for the canonical example (examples/sample-app/frontend). The example now lives at the repo root
 // (a sibling of frontend/), so type-aware linting of it runs once lazuli-net adopts a root npm workspace (shared
-// node_modules + a project that spans both) — the same monorepo shape the example itself demonstrates. The LZFE
+// node_modules + a project that spans both) — the same monorepo shape the example itself demonstrates. The AFFE
 // rules below are the contract it follows; `npm run lint` verifies the rules via the plugin self-test today.
 //
-// Curated community kit alongside the LZFE rules (prior art:
-// pleiades-os / corbanx both standardize on the same kit). Two of those compose cleanly with the LZFE rules:
+// Curated community kit alongside the AFFE rules (prior art:
+// pleiades-os / corbanx both standardize on the same kit). Two of those compose cleanly with the AFFE rules:
 //   - @tanstack/eslint-plugin-query — react-query correctness (exhaustive deps, stable keys, no rest-destructure);
-//     the LZFE rules cover architecture, this covers RQ usage — complementary, not overlapping.
+//     the AFFE rules cover architecture, this covers RQ usage — complementary, not overlapping.
 //   - eslint-plugin-no-secrets — entropy-based hardcoded-secret detection (the .env discipline, enforced in code).
-// The LZFE plugin is CommonJS; load it via createRequire.
+// The AFFE plugin is CommonJS; load it via createRequire.
 const require = createRequire(import.meta.url);
 const aerofortress = require("./packages/eslint-plugin/index.cjs");
 // Accessibility — web (DOM) uses jsx-a11y (alt / aria / href). The mobile RN counterpart (react-native-a11y)
@@ -53,7 +53,7 @@ export default [
       "aerofortress/design-tokens": "error",
       "aerofortress/mutation-error-handled": "error",
       "aerofortress/no-hardcoded-copy": "error",
-      // The routing harness (LZFE015–019 + 030) — declarative redirects, one session seam, a tri-state guard,
+      // The routing harness (AFFE015–019 + 030) — declarative redirects, one session seam, a tri-state guard,
       // guarded params + Back, and no cast on a navigation target (the typed-routes mute button). Error-tier
       // (correctness), router-agnostic (expo + TanStack). The default a generated app gets.
       "aerofortress/no-router-replace-in-effect": "error",
@@ -62,30 +62,30 @@ export default [
       "aerofortress/route-param-guard": "error",
       "aerofortress/safe-back": "error",
       "aerofortress/no-cast-navigation": "error",
-      // The form-validation pair (LZFE031–032) — every validation failure has a surface: the submit carries its
+      // The form-validation pair (AFFE031–032) — every validation failure has a surface: the submit carries its
       // invalid path (the spine's submitOrReveal), and a <Controller> surfaces its field's error. Warn-tier on
       // entry (a single-screen form with all errors visible inline is legitimate); promote together once the
       // primitive absorbs the common case.
       "aerofortress/submit-handles-invalid": "warn",
       "aerofortress/controller-field-state": "warn",
       "aerofortress/no-hardcoded-base-url": "error",
-      // The security pair (LZFE021–022) — the XSS door stays behind one sanitizing seam; a URL-supplied value
+      // The security pair (AFFE021–022) — the XSS door stays behind one sanitizing seam; a URL-supplied value
       // never becomes a navigation target without an allowlist. Error-tier (correctness, same bar as routing).
       "aerofortress/no-raw-html": "error",
       "aerofortress/no-open-redirect": "error",
-      // The design band (LZFE024–026, DESIGN-CONVENTIONS.md) — views render @/ui only, spacing/typography from the
+      // The design band (AFFE024–026, DESIGN-CONVENTIONS.md) — views render @/ui only, spacing/typography from the
       // scale, color by semantic role. Error-tier since the canonical screens landed (the recipes prove the bar).
       "aerofortress/ui-door": "error",
       "aerofortress/scale-only": "error",
       "aerofortress/semantic-colors": "error",
-      // The mutation band (LZFE027–028) — the QueryClient carries the write-side defaults (invalidate on success,
+      // The mutation band (AFFE027–028) — the QueryClient carries the write-side defaults (invalidate on success,
       // feedback on error), and the hand-rolled `onSuccess: refetch` ritual those defaults obsolete is revealed.
       "aerofortress/query-client-defaults": "error",
       "aerofortress/no-manual-refetch-ritual": "warn",
-      // The session-rotation door (LZFE029) — refresh is consumed by ONE seam (the client's single-flight
+      // The session-rotation door (AFFE029) — refresh is consumed by ONE seam (the client's single-flight
       // interceptor / the session seam); a second rotation path trips the backend's theft detection.
       "aerofortress/refresh-one-door": "error",
-      // The AVP bridge (LZFE033) — the front-side of the backend's LZ0030 and the closing leg of Clockwork: a
+      // The AVP bridge (AFFE033) — the front-side of the backend's AF0030 and the closing leg of Clockwork: a
       // `@verify <id>` obligation on a View/ViewModel must have a co-located `@avp <id>` proof. Error-tier.
       "aerofortress/verify-has-avp-proof": "error",
       // curated community kit (mirrors pleiades/corbanx)

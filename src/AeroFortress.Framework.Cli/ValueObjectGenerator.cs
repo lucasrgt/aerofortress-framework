@@ -4,7 +4,7 @@ namespace AeroFortress.Framework.Cli;
 
 /// <summary>
 /// Generates an always-valid value object — immutable, no public constructor, built only through a static
-/// <c>From</c> returning <c>Result&lt;T&gt;</c> (the <c>Money.From</c> shape) — so it passes <c>LZ0013</c> by
+/// <c>From</c> returning <c>Result&lt;T&gt;</c> (the <c>Money.From</c> shape) — so it passes <c>AF0013</c> by
 /// construction. The author fills in the invariant in <c>From</c>; the shape is born right, the way
 /// <c>g slice</c> scaffolds a conformant slice. Value objects are generic, so they land in
 /// <c>BuildingBlocks/</c>; a module-specific one can be moved into its module by hand.
@@ -43,7 +43,7 @@ public static class ValueObjectGenerator
         namespace {{appNamespace}}.BuildingBlocks;
 
         /// <summary>Error codes for the {{name}} value object — stable, namespaced i18n keys the frontend localizes
-        /// from. Codes are registry constants (LZ0018), so the set stays discoverable for the OpenAPI contract.</summary>
+        /// from. Codes are registry constants (AF0018), so the set stays discoverable for the OpenAPI contract.</summary>
         public static class {{name}}ErrorCodes
         {
             /// <summary>The value is missing or fails the {{name}} invariant.</summary>

@@ -20,7 +20,7 @@ dotnet_diagnostic.IDE0060.severity = suggestion
 # Roslyn code-analysis (CA) gate — curated, each rule elevated individually (never
 # a blanket AnalysisMode). So the gate fires only on a real mistake and can't break
 # the build on a structural false-positive (interface/abstract/static). Companion to
-# the AeroFortress doctor (LZ*): CA = generic .NET correctness/perf/security, LZ = AeroFortress
+# the AeroFortress doctor (AF*): CA = generic .NET correctness/perf/security, AF = AeroFortress
 # architecture.
 # ─────────────────────────────────────────────────────────────────────────────
 

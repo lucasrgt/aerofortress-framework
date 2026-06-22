@@ -9,8 +9,8 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 
 | Tier | Enforced by | Where |
 |---|---|---|
-| Unit | `LZFE005` (every ViewModel has a co-located `renderHook` test) | eslint, per-file |
-| Integration | `LZFE006` (every View has a co-located `render()` test) | eslint, per-file |
+| Unit | `AFFE005` (every ViewModel has a co-located `renderHook` test) | eslint, per-file |
+| Integration | `AFFE006` (every View has a co-located `render()` test) | eslint, per-file |
 | **E2E** | **`e2e-doctor.mjs`** (a curated `e2e/flows.json` + every listed flow has a spec + a runner) | this dir, **per-project** |
 
 E2E is flow-level and expensive, so it is **not** enforced per component — `checkE2e(root)` enforces a *curated
@@ -23,15 +23,15 @@ Hostpoint dogfood's `scripts/lzfe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) +
 journeys (its `Journeys/*.Tests.cs`), the frontend declares them in `flows.json` (linked explicitly via a
 `backendJourney` field) — and the doctor proves the two sets agree (no backend journey uncovered on the front, no
 front flow pointing at a journey the back lacks). The *endpoint* grain is already closed: `tsc` for front→back (you
-can't call a missing endpoint) and **LZFE008** for back→front (every endpoint is consumed by a ViewModel). So:
+can't call a missing endpoint) and **AFFE008** for back→front (every endpoint is consumed by a ViewModel). So:
 endpoints by type + coverage, journeys by parity — the same critical path proven on both sides.
 
 ## One report — the unified doctor
 
 `doctor.mjs` (`aggregateReport`) is the single front-door that captures the **whole crew** in one pass: `eslint
---format json` (every rule — the LZFE architecture rules, the community kit, expo's set — bucketed) plus the three
+--format json` (every rule — the AFFE architecture rules, the community kit, expo's set — bucketed) plus the three
 script-doctors above (endpoint coverage, e2e, journey parity). The core is pure (feed it the eslint results, each
-rule's configured level, and the loop summaries); a consumer CLI does the I/O. It surfaces the **LZFE roster
+rule's configured level, and the loop summaries); a consumer CLI does the I/O. It surfaces the **AFFE roster
 including clean (0-hit) rules** so a `warn`→`error` promotion is an evidence-backed move — you see, in one place,
 which rules gate, which are a revealed backlog, and which are already clean. See the Hostpoint dogfood's
 `scripts/lzfe-doctor.mjs` (`npm run doctor` / `doctor:json`) — a thin CLI over this core.
@@ -45,7 +45,7 @@ npm run scaffold -- <plural-name> [targetDir]
 
 Emits the four co-located files of the canonical unit — `<Feature>.viewModel.ts`, `<Feature>.view.tsx`,
 `<Feature>.test.tsx`, `<feature>.i18n.ts` — with names derived from the feature name. The emitted unit is the
-blessed `sample/items` shape with substitutions, so it **passes every LZFE rule and typechecks by construction**
+blessed `sample/items` shape with substitutions, so it **passes every AFFE rule and typechecks by construction**
 (`generate.test.ts` writes a unit to disk and lints it with the real rules to prove the emitter and the harness
 agree). Then refine the entity fields, wire the slice in `@/client.gen`, and fill the copy.
 
@@ -58,17 +58,17 @@ npm run assemble-i18n -- <featuresDir> <outFile>
 
 Discovers every `*.i18n.ts`, derives each namespace from the filename, and emits a generated module that imports the
 locale catalogs and composes `resources` (locale → namespace) — what an app otherwise wires by hand. The output
-typechecks, so a renamed/removed catalog fails the build; pair it with LZFE011 (key parity *within* each catalog) —
+typechecks, so a renamed/removed catalog fails the build; pair it with AFFE011 (key parity *within* each catalog) —
 the `aerofortress/i18n-completeness` rule in-scope, or `i18n-parity.mjs` below when the catalogs are cross-package.
 
-## i18n parity — cross-package catalogs (LZFE011, the other half)
+## i18n parity — cross-package catalogs (AFFE011, the other half)
 
 ```
 node tools/i18n-parity.mjs <catalogsDir> [...moreDirs]
 # e.g.  node tools/i18n-parity.mjs ../examples/sample-app/frontend/core/src
 ```
 
-LZFE011 has two mechanisms for two layouts. When the catalogs live *inside* the linted source, the
+AFFE011 has two mechanisms for two layouts. When the catalogs live *inside* the linted source, the
 `aerofortress/i18n-completeness` eslint rule pins parity per file at lint time — done. But in a **core-split** layout the
 catalogs sit in a SEPARATE package, outside the app's eslint scope, so the rule never sees them. `i18n-parity.mjs`
 reads them directly and enforces the same invariant (every locale object in a catalog declares the same keys; a key
@@ -83,7 +83,7 @@ node tools/error-code-coverage.mjs <catalog.i18n.ts> <errorBody.ts>
 # e.g.  node tools/error-code-coverage.mjs ../app-core/src/i18n/api-errors.i18n.ts ../app-core/src/client.gen/model/errorBody.ts
 ```
 
-The backend ships every error as a stable code (the registry constants behind `LZ0018`/`LZ0019`), enumerated into the
+The backend ships every error as a stable code (the registry constants behind `AF0018`/`AF0019`), enumerated into the
 OpenAPI `ErrorBody.code`. This proves every code in the generated union has a catalog entry — so no error reaches a
 user untranslated. It's the **coverage** half (code → copy); `i18n-parity.mjs` is the **parity** half (copy → every
 language). It reads the orval-generated `errorBody.ts` union directly, and is a **notice until the client is
@@ -114,7 +114,7 @@ node tools/client-scaffold.mjs <client-name> <contract-path> [target-dir]
 orval generates the hooks, but the **mutator** they all call through (auth injection, the base-URL port, the
 `X-Client: web` header that turns on the cookie session) and the **orval config** are hand-owned files nothing
 scaffolded — every pilot re-derived them. This renders both, conformant by construction: the base URL is an
-injectable default overridden at boot via `configureClient()` (the LZFE020-blessed shape), the token sink is the
+injectable default overridden at boot via `configureClient()` (the AFFE020-blessed shape), the token sink is the
 session seam's `setAccessToken`, the 401 rotation is the seam's single-flight `bootstrapSession` injected via
 `setTokenRefresher` (one door, cookie AND body — never a cookie-only fork baked into the transport file), and the
 audience filter keeps webhooks/internal endpoints out of the client (so endpoint coverage stays high-signal).

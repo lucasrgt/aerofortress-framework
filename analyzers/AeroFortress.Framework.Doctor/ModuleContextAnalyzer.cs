@@ -13,23 +13,23 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0004 — every module that owns a slice carries a <c>&lt;Module&gt;.ctx.md</c> with its spine: a
+/// AF0004 — every module that owns a slice carries a <c>&lt;Module&gt;.ctx.md</c> with its spine: a
 /// non-empty <c>## Boundaries</c> and a non-empty <c>## Design notes</c>. The ctx is the home for the
-/// business "why" the code cannot show; the doctor obliges its presence the same way <c>LZ0003</c>
+/// business "why" the code cannot show; the doctor obliges its presence the same way <c>AF0003</c>
 /// obliges a test, so a module never ships as undocumented code.
 ///
 /// The module is the last segment of a slice's namespace (<c>App.Api.Modules.Account</c> → Account),
 /// matching the convention that the namespace <em>is</em> the module. The ctx file is read from
 /// <c>AdditionalFiles</c> — the app opts in with <c>&lt;AdditionalFiles Include="**\*.ctx.md" /&gt;</c>
-/// — and matched by name (<c>Account.ctx.md</c>), the same textual approach as <c>LZ0003</c>. This
+/// — and matched by name (<c>Account.ctx.md</c>), the same textual approach as <c>AF0003</c>. This
 /// proves the spine sections exist and carry content, not that the content is correct; freshness (a ctx
-/// that names code which no longer exists) is <c>LZ0005</c>'s job.
+/// that names code which no longer exists) is <c>AF0005</c>'s job.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ModuleContextAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a module missing its ctx, or its spine sections.</summary>
-    public const string DiagnosticId = "LZ0004";
+    public const string DiagnosticId = "AF0004";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -147,7 +147,7 @@ public sealed class ModuleContextAnalyzer : DiagnosticAnalyzer
         return dot >= 0 ? name.Substring(dot + 1) : name;
     }
 
-    // Matches [Slice] by simple name (no reference to AeroFortress.Framework.Abstractions needed), like LZ0001/LZ0003.
+    // Matches [Slice] by simple name (no reference to AeroFortress.Framework.Abstractions needed), like AF0001/AF0003.
     private static bool IsSlice(ClassDeclarationSyntax cls) =>
         cls.AttributeLists
             .SelectMany(list => list.Attributes)

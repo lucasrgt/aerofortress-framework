@@ -1,41 +1,41 @@
-// LZFE doctor — the aggregation core behind the single front-door that captures "the whole crew" in one pass.
+// AFFE doctor — the aggregation core behind the single front-door that captures "the whole crew" in one pass.
 // A consumer (e.g. an app's `scripts/lzfe-doctor.mjs`) does the I/O — runs `eslint --format json`, resolves each
-// rule's configured level via `eslint --print-config`, and runs the script-doctors (LZFE008 endpoint coverage,
-// LZFE-E2E, LZFE-JOURNEY) — then feeds the raw results here. `aggregateReport` is PURE (no I/O), so it is unit-
+// rule's configured level via `eslint --print-config`, and runs the script-doctors (AFFE008 endpoint coverage,
+// AFFE-E2E, AFFE-JOURNEY) — then feeds the raw results here. `aggregateReport` is PURE (no I/O), so it is unit-
 // testable and the same core powers both the human dashboard and the `--json` machine output.
 //
-// Why one report: a frontend has many lint surfaces (LZFE architecture rules, the community kit, expo's set) plus
+// Why one report: a frontend has many lint surfaces (AFFE architecture rules, the community kit, expo's set) plus
 // the fullstack loops. Scattered across four commands they are easy to half-read. Aggregated and BUCKETED, a
 // warn->error promotion becomes an evidence-backed move: you can see, in one place, which rules are gated, which
 // are a revealed backlog, and which are already clean (0 hits) and therefore ready to promote.
 
-/** The LZFE rule -> code map. Drives the architecture bucket + the clean-roster view. */
-export const LZFE_CODES = {
-  "aerofortress/view-purity": "LZFE001",
-  "aerofortress/data-door": "LZFE002",
-  "aerofortress/no-mock": "LZFE003",
-  "aerofortress/test-colocated": "LZFE005",
-  "aerofortress/view-integration-test": "LZFE006",
-  "aerofortress/viewmodel-platform-agnostic": "LZFE009",
-  "aerofortress/state-completeness": "LZFE010",
-  "aerofortress/i18n-completeness": "LZFE011",
-  "aerofortress/design-tokens": "LZFE012",
-  "aerofortress/mutation-error-handled": "LZFE013",
-  "aerofortress/no-hardcoded-copy": "LZFE014",
-  "aerofortress/no-router-replace-in-effect": "LZFE015",
-  "aerofortress/session-one-door": "LZFE016",
-  "aerofortress/guard-tristate": "LZFE017",
-  "aerofortress/route-param-guard": "LZFE018",
-  "aerofortress/safe-back": "LZFE019",
-  "aerofortress/no-hardcoded-base-url": "LZFE020",
-  "aerofortress/no-raw-html": "LZFE021",
-  "aerofortress/no-open-redirect": "LZFE022",
-  "aerofortress/ui-door": "LZFE024",
-  "aerofortress/scale-only": "LZFE025",
-  "aerofortress/semantic-colors": "LZFE026",
-  "aerofortress/query-client-defaults": "LZFE027",
-  "aerofortress/no-manual-refetch-ritual": "LZFE028",
-  "aerofortress/refresh-one-door": "LZFE029",
+/** The AFFE rule -> code map. Drives the architecture bucket + the clean-roster view. */
+export const AFFE_CODES = {
+  "aerofortress/view-purity": "AFFE001",
+  "aerofortress/data-door": "AFFE002",
+  "aerofortress/no-mock": "AFFE003",
+  "aerofortress/test-colocated": "AFFE005",
+  "aerofortress/view-integration-test": "AFFE006",
+  "aerofortress/viewmodel-platform-agnostic": "AFFE009",
+  "aerofortress/state-completeness": "AFFE010",
+  "aerofortress/i18n-completeness": "AFFE011",
+  "aerofortress/design-tokens": "AFFE012",
+  "aerofortress/mutation-error-handled": "AFFE013",
+  "aerofortress/no-hardcoded-copy": "AFFE014",
+  "aerofortress/no-router-replace-in-effect": "AFFE015",
+  "aerofortress/session-one-door": "AFFE016",
+  "aerofortress/guard-tristate": "AFFE017",
+  "aerofortress/route-param-guard": "AFFE018",
+  "aerofortress/safe-back": "AFFE019",
+  "aerofortress/no-hardcoded-base-url": "AFFE020",
+  "aerofortress/no-raw-html": "AFFE021",
+  "aerofortress/no-open-redirect": "AFFE022",
+  "aerofortress/ui-door": "AFFE024",
+  "aerofortress/scale-only": "AFFE025",
+  "aerofortress/semantic-colors": "AFFE026",
+  "aerofortress/query-client-defaults": "AFFE027",
+  "aerofortress/no-manual-refetch-ritual": "AFFE028",
+  "aerofortress/refresh-one-door": "AFFE029",
 };
 
 /**
@@ -92,15 +92,15 @@ export function aggregateReport({ eslintResults, ruleLevels = {}, loops = {} }) 
       files: v.files.size,
       bucket: bucket(id),
       level: ruleLevels[id] ?? "?",
-      code: LZFE_CODES[id],
+      code: AFFE_CODES[id],
     };
   }
 
-  // LZFE rules with 0 hits — the clean roster. A `warn`-level clean rule is a promotion candidate; an `error`-level
+  // AFFE rules with 0 hits — the clean roster. A `warn`-level clean rule is a promotion candidate; an `error`-level
   // one is already a gate proving its invariant holds.
-  const cleanLzfe = Object.keys(LZFE_CODES)
+  const cleanLzfe = Object.keys(AFFE_CODES)
     .filter((id) => !byRule[id])
-    .map((id) => ({ id, code: LZFE_CODES[id], level: ruleLevels[id] ?? "?" }));
+    .map((id) => ({ id, code: AFFE_CODES[id], level: ruleLevels[id] ?? "?" }));
 
   return {
     summary: { errors, warnings, rules: Object.keys(byRule).length },

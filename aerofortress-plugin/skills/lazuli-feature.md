@@ -19,7 +19,7 @@ specialist; keep the order.
 5. **Frontend** (lazuli-frontend): scaffold/own the triple — ViewModel composes the generated
    hook and exposes loading/error/empty; View renders through `<Resource>`; copy goes to the
    feature's i18n (every locale); error codes get entries in `api-errors`.
-6. **Gate**: `lazuli doctor` + `lazuli test`. Any LZ*/LZFE* finding goes to lazuli-doctor —
+6. **Gate**: `lazuli doctor` + `lazuli test`. Any AF*/AFFE* finding goes to lazuli-doctor —
    fix the shape, never suppress.
 
 Report at the end: slice path, endpoints, error codes added, journeys written, doctor status.

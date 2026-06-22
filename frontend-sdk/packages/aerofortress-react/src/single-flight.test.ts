@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { singleFlight } from "./single-flight";
 
 // The single-flight gate exists so concurrent callers share ONE rotation — two 401s, or a double-invoked boot
-// effect (StrictMode), must not fire two refreshes and trip the backend's theft detection (the LZFE029 hazard).
+// effect (StrictMode), must not fire two refreshes and trip the backend's theft detection (the AFFE029 hazard).
 describe("singleFlight", () => {
   it("collapses concurrent calls into one execution, all sharing the result", async () => {
     let calls = 0;

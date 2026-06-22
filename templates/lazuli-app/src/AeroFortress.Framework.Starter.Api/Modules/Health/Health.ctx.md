@@ -12,5 +12,5 @@ pipeline (model binding → Handle → ToHttp) is wired end-to-end.
 ## Design notes
 
 ### Ping is a scaffold seed
-`Ping` exists so a fresh app has one passing slice + test (LZ0001/LZ0003 green) and a route to curl.
+`Ping` exists so a fresh app has one passing slice + test (AF0001/AF0003 green) and a route to curl.
 It carries no domain meaning — delete it once you generate a real slice.

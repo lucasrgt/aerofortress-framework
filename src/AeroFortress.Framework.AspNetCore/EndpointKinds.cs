@@ -6,7 +6,7 @@ namespace AeroFortress.Framework.AspNetCore;
 /// <summary>
 /// The closed vocabulary of an endpoint's <em>nature</em> — what kind of caller it is for. The default,
 /// <see cref="App"/>, is the dominant case (a AeroFortress app is UI-first): app-facing, so it must be wired by a
-/// frontend (the <c>LZFE008</c> coverage warning). The others are the legitimate exceptions that have no app
+/// frontend (the <c>AFFE008</c> coverage warning). The others are the legitimate exceptions that have no app
 /// wiring and so leave the generated client: a <see cref="Webhook"/> (third-party callback) and an
 /// <see cref="Internal"/> (server-to-server / dev-only). Classification, not suppression — the marker says what
 /// the endpoint <em>is</em>; the handler says what it does.

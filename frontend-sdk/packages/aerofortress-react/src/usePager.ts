@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 // The numbered-pager state for a searchable server-paginated list (the admin-table case). The hook owns the
 // STATE the generated hook is parameterized with — it never wraps the generated hook itself: the ViewModel
-// stays the one data door (LZFE002), calls its own `use<Slice>({ page: pager.page, q: pager.debouncedQ ||
+// stays the one data door (AFFE002), calls its own `use<Slice>({ page: pager.page, q: pager.debouncedQ ||
 // undefined })` and hands the pager through to the View. Wire over the data layer, not a dependency on it —
 // the same stance as toAsyncState. Graduated from the hostpoint pilot's PointsList.
 

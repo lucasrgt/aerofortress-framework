@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 // @ts-expect-error - plain .mjs tool module, typed by its JSDoc
 import { extractHooks, checkEndpointCoverage, isDataDoor } from "./endpoint-coverage.mjs";
 
-// LZFE008 — every app-facing generated hook should be consumed by a ViewModel; an unconsumed one is a warn-tier
+// AFFE008 — every app-facing generated hook should be consumed by a ViewModel; an unconsumed one is a warn-tier
 // "loose endpoint" (backend done, UI not wired). Pin extraction + the wired/loose split on the pure core.
 describe("extractHooks", () => {
   it("pulls use<Name> hooks from generated-client source (function or const exports)", () => {
@@ -42,7 +42,7 @@ describe("checkEndpointCoverage", () => {
 });
 
 describe("isDataDoor", () => {
-  it("counts the ViewModels and the LZFE002 infra seams (lib/session*, lib/guards*) as wiring", () => {
+  it("counts the ViewModels and the AFFE002 infra seams (lib/session*, lib/guards*) as wiring", () => {
     expect(isDataDoor("src/features/foo/Foo.viewModel.ts")).toBe(true);
     expect(isDataDoor("src/lib/session.ts")).toBe(true);
     expect(isDataDoor("src/lib/session/useSession.ts")).toBe(true);

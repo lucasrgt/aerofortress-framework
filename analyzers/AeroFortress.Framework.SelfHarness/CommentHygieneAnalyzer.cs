@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.SelfHarness;
 
 /// <summary>
-/// LZSELF002 — keeps comments in the AeroFortress libraries to documentation worth reading. It
+/// AFSELF002 — keeps comments in the AeroFortress libraries to documentation worth reading. It
 /// rejects tracking codes (the kind that pair capital letters with a number) and scratch
 /// markers such as TODO, FIXME, HACK and XXX, so the source stays something a .NET reviewer
 /// would be proud to read rather than a scratchpad of materialized thoughts. Work is tracked
@@ -17,7 +17,7 @@ namespace AeroFortress.Framework.SelfHarness;
 public sealed class CommentHygieneAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when a comment contains a banned marker.</summary>
-    public const string DiagnosticId = "LZSELF002";
+    public const string DiagnosticId = "AFSELF002";
 
     private static readonly Regex Banned = new(
         @"\bTODO\b|\bFIXME\b|\bHACK\b|\bXXX\b|\b[A-Z]{2,}-\d+\b",

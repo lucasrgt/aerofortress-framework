@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0003 — every <c>[Slice]</c> must have a co-located test. The framework's thesis is that the
+/// AF0003 — every <c>[Slice]</c> must have a co-located test. The framework's thesis is that the
 /// doctor obliges tests, not the author's discipline: a slice in <c>Foo.cs</c> with no
 /// <c>Foo.Tests.cs</c> beside it fails the build. The test files are excluded from the app's own
 /// compilation (no test dependencies ship), so the analyzer reads them as <c>AdditionalFiles</c> —
@@ -24,7 +24,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class RequireSliceTestAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a slice with no co-located test.</summary>
-    public const string DiagnosticId = "LZ0003";
+    public const string DiagnosticId = "AF0003";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -67,7 +67,7 @@ public sealed class RequireSliceTestAnalyzer : DiagnosticAnalyzer
     }
 
     // Matches [Slice] by simple name, so a project needs no reference to AeroFortress.Framework.Abstractions for the
-    // doctor to enforce the rule — the same approach as LZ0001.
+    // doctor to enforce the rule — the same approach as AF0001.
     private static bool IsSlice(ClassDeclarationSyntax cls) =>
         cls.AttributeLists
             .SelectMany(list => list.Attributes)

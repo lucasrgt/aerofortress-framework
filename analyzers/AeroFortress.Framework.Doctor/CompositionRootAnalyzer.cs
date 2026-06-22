@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// <c>LZ0017</c> — the composition root stays a thin index. The application's top-level statements
+/// <c>AF0017</c> — the composition root stays a thin index. The application's top-level statements
 /// (<c>Program.cs</c>) wire only the three named layers — <c>AddAeroFortress</c> / <c>AddPlatform</c> /
 /// <c>AddModules</c> and the matching <c>UseAeroFortress</c> / <c>UsePlatform</c> / <c>MapModules</c>. Any other
 /// service registration, request-pipeline step, or endpoint mapping there is drift: service registration belongs
@@ -26,7 +26,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class CompositionRootAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for infra wiring that leaked into the composition root.</summary>
-    public const string DiagnosticId = "LZ0017";
+    public const string DiagnosticId = "AF0017";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

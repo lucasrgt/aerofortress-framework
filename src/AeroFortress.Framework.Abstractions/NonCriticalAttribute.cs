@@ -7,7 +7,7 @@ namespace AeroFortress.Framework.Abstractions;
 /// pure marker — no runtime behavior.
 ///
 /// It earns its keep only under a stricter criticality policy (the <c>[testing] criticality</c> dial in
-/// <c>AeroFortress.toml</c>). Under <c>"explicit"</c> the doctor (<c>LZ0029</c>) requires every slice to carry
+/// <c>AeroFortress.toml</c>). Under <c>"explicit"</c> the doctor (<c>AF0029</c>) requires every slice to carry
 /// either <see cref="CriticalAttribute"/> or this marker, so no slice's criticality is left undecided.
 /// Under <c>"strict"</c> an unmarked slice is treated as critical, and this marker is the one explicit,
 /// auditable opt-out. Under the default <c>"opt-in"</c> policy it is inert — there is nothing to downgrade.

@@ -36,7 +36,7 @@ public class VerifyProofAnalyzerTests
     private const string Unproven = """
         using System;
 
-        [{|LZ0030:Verify("own-resource-only")|}]
+        [{|AF0030:Verify("own-resource-only")|}]
         public class Deposit { }
 
         sealed class VerifyAttribute : Attribute { public VerifyAttribute(string id) { } }

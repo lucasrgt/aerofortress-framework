@@ -4,8 +4,8 @@ namespace AeroFortress.Framework.Cli;
 
 /// <summary>
 /// Generates a conformant slice and its co-located tests — code that passes the doctor by
-/// construction (LZ0001's shape, LZ0003's test, LZ0012's endpoint name, LZ0018's registry constant,
-/// and for a critical slice LZ0008's journeys), so the
+/// construction (AF0001's shape, AF0003's test, AF0012's endpoint name, AF0018's registry constant,
+/// and for a critical slice AF0008's journeys), so the
 /// convention is born right instead of the author having to remember it. The root namespace is read
 /// from the project's .csproj in the target directory; the test namespace follows the
 /// <c>&lt;App&gt;.Api → &lt;App&gt;.Tests</c> convention.
@@ -47,7 +47,7 @@ public static class SliceGenerator
         Console.WriteLine($"created {slicePath}");
         Console.WriteLine($"created {testPath}");
 
-        // The scaffolded validation references a registry constant (LZ0018) — ensure the module's registry has it.
+        // The scaffolded validation references a registry constant (AF0018) — ensure the module's registry has it.
         ErrorCodeScaffold.EnsureModuleCode(Path.Combine(root, "Modules", module), appNamespace, module,
             "IdRequired", "id.required", "The id input is required.");
 

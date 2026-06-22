@@ -36,15 +36,15 @@ src/AeroFortress.Framework.Abstractions/      The thin wire: Result<T>, Error, V
 src/AeroFortress.Framework.AspNetCore/        The HTTP boundary: ToHttp, ErrorBody, AddAeroFortress/UseAeroFortress, slice-aware OpenAPI.
 src/AeroFortress.Framework.Auth/ + others     The optional component standards (auth, mail, sms, storage, testing) — each a small package.
 src/AeroFortress.Framework.Cli/               `af` — scaffolders (module/slice/entity/vo/…) that emit doctor-conformant code.
-analyzers/AeroFortress.Framework.Doctor/      SHIPPED harness. LZ* rules + the CA* security-floor globalconfig — run on the USER's code.
-analyzers/AeroFortress.Framework.SelfHarness/ FRAMEWORK-DEV ONLY. LZSELF* rules — run on OUR code. Never shipped.
-frontend-sdk/                 The front half: @aerofortress/react (the spine), eslint-plugin-aerofortress (LZFE* rules), tools/ (doctors).
+analyzers/AeroFortress.Framework.Doctor/      SHIPPED harness. AF* rules + the CA* security-floor globalconfig — run on the USER's code.
+analyzers/AeroFortress.Framework.SelfHarness/ FRAMEWORK-DEV ONLY. AFSELF* rules — run on OUR code. Never shipped.
+frontend-sdk/                 The front half: @aerofortress/react (the spine), eslint-plugin-aerofortress (AFFE* rules), tools/ (doctors).
 examples/sample-app/          The reference app + canonical slice (backend/Sample.Api, Sample.Tests, frontend/).
 templates/lazuli-app/         The `af new` starter the CLI scaffolds from.
 build/AeroFortress.Framework.Library.props    The library standard, declared once.
-docs/CONVENTIONS.md           The backend constitution + slice shape + full LZ* rule catalog.
-docs/FRONTEND-CONVENTIONS.md  The frontend constitution + MVVM shape + full LZFE* rule catalog.
-docs/DESIGN-CONVENTIONS.md    The design constitution: token taxonomy + closed kit shape + the LZFE design band.
+docs/CONVENTIONS.md           The backend constitution + slice shape + full AF* rule catalog.
+docs/FRONTEND-CONVENTIONS.md  The frontend constitution + MVVM shape + full AFFE* rule catalog.
+docs/DESIGN-CONVENTIONS.md    The design constitution: token taxonomy + closed kit shape + the AFFE design band.
 ```
 
 Ground every convention fact in `docs/CONVENTIONS.md` / `docs/FRONTEND-CONVENTIONS.md` /
@@ -56,14 +56,14 @@ Ground every convention fact in `docs/CONVENTIONS.md` / `docs/FRONTEND-CONVENTIO
 
 Every `AeroFortress.Framework.*` library file is held to the self-harness. Write to it from the start:
 
-- **File at or under 500 lines.** Past it, extract a concern — do not pack (`LZSELF001`).
+- **File at or under 500 lines.** Past it, extract a concern — do not pack (`AFSELF001`).
 - **Gold-standard XML docs on every public member.** Missing docs are a build error
   (`CS1591`). Lead with *why*, not *what*; use `<inheritdoc/>` on overrides.
 - **No junk comments.** No `TODO`/`FIXME`/`HACK`/`XXX`, no tracking codes (`WAR-001`,
-  `SPEC-001`), no materialized AI thoughts (`LZSELF002`). Only documentation worth reading.
+  `SPEC-001`), no materialized AI thoughts (`AFSELF002`). Only documentation worth reading.
 - **Tests with intent**, not `1 + 1 == 2`. A test states a behavior the code must keep.
 
-If the build fails on `LZSELF*`/`CS1591`, **fix the code — never suppress the rule.** The
+If the build fails on `AFSELF*`/`CS1591`, **fix the code — never suppress the rule.** The
 target is source a Microsoft .NET MVP would read and be proud of.
 
 ---
@@ -81,10 +81,10 @@ A green build means the conventions are held. Never leave the workspace red.
 
 ## The doctor vs the self-harness — keep them separate
 
-- **`LZ*` (`AeroFortress.Framework.Doctor`)** — rules on the **user's** code. Shipped. Enforces the slice
-  convention (e.g. `LZ0001`: a `[Slice]` is a static class with a nested `Input` and `Output`, a
+- **`AF*` (`AeroFortress.Framework.Doctor`)** — rules on the **user's** code. Shipped. Enforces the slice
+  convention (e.g. `AF0001`: a `[Slice]` is a static class with a nested `Input` and `Output`, a
   `Handle` returning `Task<Result<T>>`, and a `Map`).
-- **`LZSELF*` (`AeroFortress.Framework.SelfHarness`)** — rules on **our own** code. `IsPackable=false`,
+- **`AFSELF*` (`AeroFortress.Framework.SelfHarness`)** — rules on **our own** code. `IsPackable=false`,
   referenced with `ReferenceOutputAssembly="false"`. **Never packaged, never in the
   production CLI or the published `AeroFortress.Framework.Doctor`.** This is the `af` vs `aerofortress-dev`
   split: framework-dev tooling stays out of the published surface, always.

@@ -103,7 +103,7 @@ public class EndpointAuthAnalyzerTests
     }
 
     [Fact]
-    public Task Slice_without_a_map_is_left_to_LZ0001() =>
+    public Task Slice_without_a_map_is_left_to_AF0001() =>
         Verify("""
             using System;
 

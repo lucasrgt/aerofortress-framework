@@ -25,18 +25,18 @@ the doctor can check.
 
 Topology is declared in `AeroFortress.toml` (the single source of truth; `af doctor` validates it):
 
-- **Backend** `src/AeroFortress.Framework.Starter.Api` — .NET vertical slices; the `LZ*` Roslyn analyzers gate
+- **Backend** `src/AeroFortress.Framework.Starter.Api` — .NET vertical slices; the `AF*` Roslyn analyzers gate
   `AeroFortress.Framework.Starter.slnx`.
-- **Frontend** — add a React client under `clients/` (`af g`); the `LZFE*` ESLint plugin
+- **Frontend** — add a React client under `clients/` (`af g`); the `AFFE*` ESLint plugin
   (`clients/eslint-plugin-aerofortress`, the downstream mirror of the lazuli-net canonical) gates it.
 - **Doctor**: `af doctor` runs both legs.
 
 ---
 
-## Backend — the vertical slice (the .NET API, gated by `LZ*`)
+## Backend — the vertical slice (the .NET API, gated by `AF*`)
 
 One feature = **one file** (maximal locality: read the whole feature in one read). The canonical shape
-(`LZ0001`):
+(`AF0001`):
 
 ```csharp
 [Slice]                                    // pure marker; module derived from the namespace
@@ -54,72 +54,72 @@ public static class Deposit
 }
 ```
 
-- **DbContext direct** — no `IRepository` / unit-of-work / mapper profile (`LZ0006`). The endpoint stays thin,
-  an expression-bodied handler, never a statement block (`LZ0002`). Raw SQL never splices runtime values as
-  text — a `*Raw` EF call with interpolation/concat is flagged (`LZ0024`); use `FromSql`/`ExecuteSql`.
+- **DbContext direct** — no `IRepository` / unit-of-work / mapper profile (`AF0006`). The endpoint stays thin,
+  an expression-bodied handler, never a statement block (`AF0002`). Raw SQL never splices runtime values as
+  text — a `*Raw` EF call with interpolation/concat is flagged (`AF0024`); use `FromSql`/`ExecuteSql`.
 - **Security is a decision, never an omission**: every slice's endpoint declares its authorization —
   `.RequireAuthorization(…)` or an explicit `.AllowAnonymous()`, on its own `Map` chain or the module's route
-  group (`LZ0022`); a `Handle` that injects `ICurrentUser` and never reads it is a missing ownership check
-  (`LZ0023`). A curated CA* security floor (dropped `CancellationToken`, insecure deserialization, broken
+  group (`AF0022`); a `Handle` that injects `ICurrentUser` and never reads it is a missing ownership check
+  (`AF0023`). A curated CA* security floor (dropped `CancellationToken`, insecure deserialization, broken
   crypto/TLS) ships with the doctor at error tier (opt-out: `<AeroFortressSecurityAnalysis>false</…>`).
-- **Modules** own both halves of their wiring — `AddServices` + `Map` (`LZ0015/16`); `Program.cs` is only an
-  index (`LZ0017`). Each module carries a `<Module>.ctx.md` (`## Boundaries` + `## Design notes`, non-empty and
-  kept **fresh** — `LZ0004/05`).
+- **Modules** own both halves of their wiring — `AddServices` + `Map` (`AF0015/16`); `Program.cs` is only an
+  index (`AF0017`). Each module carries a `<Module>.ctx.md` (`## Boundaries` + `## Design notes`, non-empty and
+  kept **fresh** — `AF0004/05`).
 - **Domain is always-valid**: a `[ValueObject]`/`[Entity]` exposes no public constructor or setter and is built
-  only through a smart constructor returning `Result<T>` (`LZ0013/14`); a persisted or entity-owned type must
-  declare its mark (`LZ0021`). **Write-ownership**: a module writes only its own entities — on a `DbSet` or
-  through the untyped `db.Add(entity)` (`LZ0009`). A held `Result<T>` is **checked before unwrapped** —
-  `IsSuccess`/`IsFailure`/`Validation.Collect` before `.Value`/`.Error` (`LZ0025`). An entity a `[Critical]`
-  slice writes carries a concurrency token (`[Timestamp] RowVersion` — `LZ0026`, warn-tier).
+  only through a smart constructor returning `Result<T>` (`AF0013/14`); a persisted or entity-owned type must
+  declare its mark (`AF0021`). **Write-ownership**: a module writes only its own entities — on a `DbSet` or
+  through the untyped `db.Add(entity)` (`AF0009`). A held `Result<T>` is **checked before unwrapped** —
+  `IsSuccess`/`IsFailure`/`Validation.Collect` before `.Value`/`.Error` (`AF0025`). An entity a `[Critical]`
+  slice writes carries a concurrency token (`[Timestamp] RowVersion` — `AF0026`, warn-tier).
 - **Validation inline** at the top of `Handle`, accumulated with `Validation` — `Check`/`Collect` plus the
   shorthands `Require(guid, field, code)`, `NotBlank`, `InRange`.
-- **Errors are registry constants** on a `*ErrorCodes` class (`LZ0018/19`) — the OpenAPI + i18n seam.
-  `.WithName(nameof(Slice))` (`LZ0012`) is what the typed client turns into the `use<Slice>` hook.
-- **Tests**: every slice has a co-located `<Slice>.Tests.cs` (`LZ0003`); a `[Critical]` slice has a happy **and**
-  a sad `[Journey]` that asserts its post-condition (`LZ0008/10/20`). Files ≤ 500 LOC (`LZ0007`).
+- **Errors are registry constants** on a `*ErrorCodes` class (`AF0018/19`) — the OpenAPI + i18n seam.
+  `.WithName(nameof(Slice))` (`AF0012`) is what the typed client turns into the `use<Slice>` hook.
+- **Tests**: every slice has a co-located `<Slice>.Tests.cs` (`AF0003`); a `[Critical]` slice has a happy **and**
+  a sad `[Journey]` that asserts its post-condition (`AF0008/10/20`). Files ≤ 500 LOC (`AF0007`).
 
 ---
 
-## Frontend — MVVM + the spine (the React clients, gated by `LZFE*`)
+## Frontend — MVVM + the spine (the React clients, gated by `AFFE*`)
 
 A screen is a triple: a **View** that renders, a **ViewModel** that owns data, a test that mounts it.
 
-- **View renders only** (`LZFE001`); the **ViewModel is the one data door** to the generated client (`LZFE002`)
-  and is **platform-agnostic** — no `react-native`/`expo` (`LZFE009`), so the core is shared web↔mobile.
-- Async state flows through the spine's `AsyncState` + `<Resource>` (`LZFE010`), never raw `isPending`/`isError`
+- **View renders only** (`AFFE001`); the **ViewModel is the one data door** to the generated client (`AFFE002`)
+  and is **platform-agnostic** — no `react-native`/`expo` (`AFFE009`), so the core is shared web↔mobile.
+- Async state flows through the spine's `AsyncState` + `<Resource>` (`AFFE010`), never raw `isPending`/`isError`
   (multi-query screens fold with `combineAsyncStates`). Mutations surface their error — and an empty
-  `onError: () => {}` doesn't count (`LZFE013`). No mocks in production (`LZFE003`); co-located unit +
-  integration tests (`LZFE005/06`). Copy goes through i18n, with locale-key parity checked as flattened nested
-  paths (`LZFE011/14`); color through design tokens (`LZFE012`). The API base URL comes from config, never a
-  hardcoded host (`LZFE020`).
-- **Security** (`LZFE021–022`): no `dangerouslySetInnerHTML` outside the one audited `lib/html` seam (the XSS
+  `onError: () => {}` doesn't count (`AFFE013`). No mocks in production (`AFFE003`); co-located unit +
+  integration tests (`AFFE005/06`). Copy goes through i18n, with locale-key parity checked as flattened nested
+  paths (`AFFE011/14`); color through design tokens (`AFFE012`). The API base URL comes from config, never a
+  hardcoded host (`AFFE020`).
+- **Security** (`AFFE021–022`): no `dangerouslySetInnerHTML` outside the one audited `lib/html` seam (the XSS
   door); never navigate to a value that arrived in the URL — allowlist it first (open redirect).
-- **Routing & session** (`LZFE015–019`, `LZFE030`) — the navigation harness, born from real pilot bugs and
+- **Routing & session** (`AFFE015–019`, `AFFE030`) — the navigation harness, born from real pilot bugs and
   router-agnostic (recognizes expo-router ↔ TanStack):
-  - **`LZFE015`** — a redirect-on-state is declarative (`return <Redirect/Navigate …/>`), never `router.replace`
+  - **`AFFE015`** — a redirect-on-state is declarative (`return <Redirect/Navigate …/>`), never `router.replace`
     / `router.navigate` / a `useNavigate()` call inside a `useEffect`.
-  - **`LZFE016`** — the bearer token is written through **one seam** (`lib/session`) that pairs the write with a
+  - **`AFFE016`** — the bearer token is written through **one seam** (`lib/session`) that pairs the write with a
     `me`-cache **reset**; a scattered write — importing the setter directly **or** writing a token-ish key to
     `localStorage`/`AsyncStorage`/`SecureStore` — forgets the reset and bounces a just-authenticated user to login.
-  - **`LZFE017`** — a guard branches on a **tri-state** `SessionState` (`loading | authenticated | anonymous`),
+  - **`AFFE017`** — a guard branches on a **tri-state** `SessionState` (`loading | authenticated | anonymous`),
     never an `isAuthenticated` boolean (which reads "still loading" as "signed out").
-  - **`LZFE018`** — a route reading a required id param guards its absence with a declarative redirect (no ghost
+  - **`AFFE018`** — a route reading a required id param guards its absence with a declarative redirect (no ghost
     screen on an empty id); the spine's `requiredParam()` union (`missing | ready`) is the blessed guard shape.
-  - **`LZFE019`** — no bare `router.back()`/`history.back()`; Back goes through a guarded helper
+  - **`AFFE019`** — no bare `router.back()`/`history.back()`; Back goes through a guarded helper
     (`safeBack`/`useGoBack`) that falls back to a parent when there is no in-app history.
-  - **`LZFE030`** — no `as never`/`as any`/`as unknown` on a navigation target (a `router.push`/`replace`/
+  - **`AFFE030`** — no `as never`/`as any`/`as unknown` on a navigation target (a `router.push`/`replace`/
     `navigate` argument, a `useNavigate()` call, or the `href`/`to` of `<Redirect>`/`<Navigate>`/`<Link>`).
     The cast silences typed routes; silenced, a drifted route literal compiles clean and 404s in prod. Keep
     typed routes ON (expo-router `experiments.typedRoutes` / TanStack's route tree) — the rule's config pair.
   - When the **backend drives a navigation** (a pending card, a CTA), the contract carries a **closed kind
     enum**, never a route string — the client owns the `Record<Kind, Href>` map over the generated enum, so a
     new kind is a compile error until mapped and every target is a typed route.
-- **Forms & validation** (`LZFE031–032`, warn-tier) — a validation failure always has a surface:
-  - **`LZFE031`** — a one-argument `handleSubmit(onValid)` in a ViewModel swallows validation failures (the
-    mute submit button: the failure happens *before* the mutation, so `LZFE013/027` never see it). Use the
+- **Forms & validation** (`AFFE031–032`, warn-tier) — a validation failure always has a surface:
+  - **`AFFE031`** — a one-argument `handleSubmit(onValid)` in a ViewModel swallows validation failures (the
+    mute submit button: the failure happens *before* the mutation, so `AFFE013/027` never see it). Use the
     spine's `submitOrReveal(form.handleSubmit, onValid, { onInvalid })` — it forces the surface and resolves
     the first invalid field so a tab/step shell can navigate to it — or pass `onInvalid` by hand.
-  - **`LZFE032`** — a `<Controller>` render must read `fieldState` and surface the field's error
+  - **`AFFE032`** — a `<Controller>` render must read `fieldState` and surface the field's error
     (`error={fieldState.error?.message}`); a render that only takes `{ field }` leaves the error invisible.
   - The spine `@aerofortress/react` ships the primitives these steer toward: `SessionState`/`toSessionState`,
     `AsyncState`/`Resource`/`combineAsyncStates`, `safeBack`, `requiredParam`, `submitOrReveal`.
@@ -135,7 +135,7 @@ A badly-wired route **fails the build**.
 ## Build & verify — green before you are done
 
 ```
-af doctor      # validates AeroFortress.toml, then runs the backend (LZ*) + each client's lint/typecheck/test (LZFE*)
+af doctor      # validates AeroFortress.toml, then runs the backend (AF*) + each client's lint/typecheck/test (AFFE*)
 ```
 
 (Or the explicit commands in `AeroFortress.toml [tasks]`.) Never leave the workspace red. If the doctor is red,

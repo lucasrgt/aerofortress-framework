@@ -59,7 +59,7 @@ job; data is the ViewModel's. Two seams, never crossed.
 ### The shared core — the View is the only platform-specific layer
 
 Everything below the View — the ViewModel (a render-agnostic hook), the generated client, the contract types,
-the schemas — is **pure TypeScript with no platform dependency** (`LZFE009` enforces it). So the core is
+the schemas — is **pure TypeScript with no platform dependency** (`AFFE009` enforces it). So the core is
 **shareable web↔mobile**: a future web client (React + react-dom) and this mobile app (RN) consume the *same*
 ViewModels + client + types; only the Views differ. And it is **tested once, in Vitest** (jsdom), since none of
 it touches a native runtime. Platform capabilities (storage, navigation, push, camera) are **injected ports**
@@ -79,7 +79,7 @@ One screen = a co-located triple. The suffixes are the analyzer anchor, the way 
 features/<zone>/<name>/
   <Name>.view.tsx        # the View — pure render; consumes exactly one ViewModel
   <Name>.viewModel.ts    # the ViewModel — the only data door; composes generated slice-hooks
-  <Name>.test.tsx        # co-located test, as on the backend (LZ0003)
+  <Name>.test.tsx        # co-located test, as on the backend (AF0003)
   <name>.i18n.ts         # the feature's i18n namespace (ptBR/esES/enUS)
   panels/ | steps/       # for multi-panel/multi-step features (sub-views, same harness rules)
 ```
@@ -88,7 +88,7 @@ features/<zone>/<name>/
   the feature tree mirrors the **route tree** and how the product is *experienced* — e.g. Hostpoint:
   `features/{host,traveler,account,shared}/<name>/`. The domain axis (Catalog/Operations/…) is already
   carried by the generated client; re-mirroring the backend's modules on the front would scatter a single
-  audience across domains. The harness is depth-agnostic (`LZFE*` match by filename, not folder), so the
+  audience across domains. The harness is depth-agnostic (`AFFE*` match by filename, not folder), so the
   grouping is a free organizational choice. Single-persona apps can stay flat (`features/<name>/`).
 
 - **The ViewModel is a plain custom hook**, never a class: `useDepositModel(params) → { state,
@@ -101,15 +101,15 @@ features/<zone>/<name>/
   to police it for data discipline.
 - **TanStack Query is the Model.** The ViewModel *composes* Query (the generated slice-hooks); it
   never hides it behind a wrapper. A ViewModel that re-embeds every query in ceremony is the
-  frontend's `IRepository`/unit-of-work — the clean-arch bloat the backend cuts (`LZ0006`).
+  frontend's `IRepository`/unit-of-work — the clean-arch bloat the backend cuts (`AF0006`).
   **One ViewModel per screen, never per query.**
 - **Mandatory states.** A ViewModel exposing server data exposes `loading`, `error`, and `empty`
   as explicit state — never improvised in the View. This is the sad-path discipline of the back.
   The spine (`@aerofortress/react`) carries the primitives: the ViewModel projects each query through
   `toAsyncState` into the closed `AsyncState<T>` union (a multi-query screen folds them with
   `combineAsyncStates` — precedence `error > loading > empty > ready`, combined retry), and the
-  View renders it through `<Resource>` (`LZFE010`). Routes project raw params through
-  `requiredParam` (`missing | ready`) before rendering (`LZFE018`).
+  View renders it through `<Resource>` (`AFFE010`). Routes project raw params through
+  `requiredParam` (`missing | ready`) before rendering (`AFFE018`).
 
 The parallel to the slice is near-exact — the payoff is semantic density: the AI reads one
 ViewModel and knows the feature, as it reads one slice:
@@ -118,7 +118,7 @@ ViewModel and knows the feature, as it reads one slice:
 |---|---|
 | `Handle(Input) → Task<Result<Output>>` | `useModel(params) → { state, ...commands }` |
 | HTTP-agnostic → testable without a host | render-agnostic → testable without JSX |
-| `DbContext` direct, no repository (`LZ0006`) | TanStack Query direct, no wrapper |
+| `DbContext` direct, no repository (`AF0006`) | TanStack Query direct, no wrapper |
 | `Map` is the thin wire of transport | the `View` is the thin wire of render |
 | `Input`/`Output` records *are* the contract | the generated slice-hook *is* the contract |
 
@@ -136,7 +136,7 @@ rule (the frontend analog of the old `API-HANDLER-UNWIRED-001`: no silent 404).
 client.gen/              # GENERATED — never edited by hand, committed verbatim
   <slice>.gen.ts         #   one typed TanStack hook per slice (useDeposit, …)
 lazuli.client.ts         # the orval mutator — unwraps Result<T>, injects auth, maps error→state
-lib/query.ts             # the QueryClient factory — the write-side mutation defaults (LZFE027, below)
+lib/query.ts             # the QueryClient factory — the write-side mutation defaults (AFFE027, below)
 lib/feedback.ts          # the feedback seam — one door for toasts; the shell wires the sink at boot
 orval.config.ts          # the shipped convention config — the "poison" lives here
 ```
@@ -154,11 +154,11 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
 - **One backend micro-convention makes the 1:1 clean.** The slice's `Map` names its endpoint —
   `MapPost("/deposit", …).WithName("Deposit")` → the OpenAPI `operationId` → orval emits
   `useDeposit`. The contract of the `Handle` becomes the name of the wire, with nothing bespoke
-  in between. (`LZ0012` enforces it: endpoint name = slice name.)
+  in between. (`AF0012` enforces it: endpoint name = slice name.)
 - **Audience filters the client at the generator, not the rule.** orval is configured to include only
   endpoints tagged for *this* frontend's audience (`app`). Webhooks, internal/server-to-server, and
   other-audience endpoints carry a different `[Endpoint(...)]` kind (below), are tagged accordingly, and
-  never enter `client.gen/`. So `LZFE008` (loose-endpoint coverage) is high-signal by construction — the
+  never enter `client.gen/`. So `AFFE008` (loose-endpoint coverage) is high-signal by construction — the
   noise is removed in the plumbing (config of a stock tool), not papered over by the rule. This is the old
   lazuli's "audience SDK projection", done by tool config instead of a bespoke compiler.
 
@@ -187,7 +187,7 @@ hooks:
   lets the refetched head replace the list, blink-free.
 
 **The golden rule: the hooks are fetch-agnostic — they own STATE, never the request.** Neither hook
-wraps, imports, or calls the generated client; the ViewModel remains the one data door (`LZFE002`) and
+wraps, imports, or calls the generated client; the ViewModel remains the one data door (`AFFE002`) and
 wires the two ends itself:
 
 ```ts
@@ -230,7 +230,7 @@ subscriptions (no whole-form re-render per keystroke), dirty/touched/validation 
 submit path. Reimplementing that is the gesture the framework forbids.
 
 - **The `useForm` lives in the ViewModel.** It is form *logic*, not rendering, and RHF's core
-  imports no `react-native` — so the ViewModel stays platform-agnostic (`LZFE009`) and the same
+  imports no `react-native` — so the ViewModel stays platform-agnostic (`AFFE009`) and the same
   form would back a web client. The ViewModel exposes `control` + a `submit`; panels bind their
   slice with `<Controller>`. The View layer stays the only platform-specific piece.
 - **Validation is grounded in the contract.** The field *shape* and closed enums are already
@@ -249,16 +249,16 @@ Big forms decompose **panel-per-tab**: a hand-written spine (the ViewModel + the
 with a panel registry) plus one pure `panels/<X>Panel.view.tsx` per tab, each a function of the
 shared `control`. The panels are independent, so they migrate as panel-granularity fan-out.
 
-### Validation is never silent — `submitOrReveal` (LZFE031/032)
+### Validation is never silent — `submitOrReveal` (AFFE031/032)
 
-`LZFE013`/`LZFE027` guarantee a **failed mutation** surfaces — but a validation failure happens
+`AFFE013`/`AFFE027` guarantee a **failed mutation** surfaces — but a validation failure happens
 *before* the mutation, and RHF's `handleSubmit(onValid)` without the second argument runs **no code
 at all** on it. On a multi-tab editor that is the mute Save button shipped to prod: a field failing
 on a hidden tab (cep/lat/long on the Address tab) left the button doing literally nothing — no
 mutation, no toast, no visible error. Two rules + one primitive close the cycle "a validation error
 always shows":
 
-- **The submit always carries its invalid path** (`LZFE031`, warn). The blessed shape is the spine's
+- **The submit always carries its invalid path** (`AFFE031`, warn). The blessed shape is the spine's
   `submitOrReveal`, which makes the surface impossible to omit (the `onInvalid` option is required)
   and resolves the **first invalid field** so the shell can navigate to it:
 
@@ -273,7 +273,7 @@ always shows":
   if (first) setTab(FIELD_TAB[first]);
   ```
 
-- **Every `<Controller>` surfaces its `fieldState`** (`LZFE032`, warn). A render prop that only
+- **Every `<Controller>` surfaces its `fieldState`** (`AFFE032`, warn). A render prop that only
   destructures `{ field }` leaves that field's error with no surface even when the form-level toast
   fires — pass it through: `render={({ field, fieldState }) => <Input … error={fieldState.error?.message} />}`.
   Passing `error` on a field without validation is inert, so the rule is near-noise-free.
@@ -286,7 +286,7 @@ common case. The canonical instance is the sample's `Deposit.viewModel.ts`.
 
 ## Mutations — the write-side defaults (invalidate + feedback)
 
-The read side has long been covered (`AsyncState` → `<Resource>`, `LZFE010`); the write side was
+The read side has long been covered (`AsyncState` → `<Resource>`, `AFFE010`); the write side was
 convention-by-hope, and a pilot paid for it: **a created category only appeared after F5, with no
 toast** — the mutation succeeded on the server while the query cache kept serving the stale list.
 30 of 43 ViewModels hand-rolled `onSuccess: refetch`; the 13 that forgot were the bug. When 70% of
@@ -296,14 +296,14 @@ second cache and double the desync surface — TanStack Query *is* the Model); i
 write-side defaults where TanStack designed them to live:
 
 - **Write = the world is stale.** The app's QueryClient (scaffolded as `lib/query.ts`, enforced by
-  `LZFE027`) carries a global `MutationCache`: on every successful mutation it calls
+  `AFFE027`) carries a global `MutationCache`: on every successful mutation it calls
   `queryClient.invalidateQueries()` — every query marked stale, the **active** ones refetched
   immediately. For a business app this is cheap and **always correct**: no screen can forget to
   invalidate, because no screen is asked to. The safe, slightly-wasteful default; Rails would smile.
 - **Every outcome surfaces.** The same cache posts a success note through the **feedback seam**
-  (`lib/feedback.ts` — the one-door shape of `LZFE016` applied to toasts; the shell wires the
+  (`lib/feedback.ts` — the one-door shape of `AFFE016` applied to toasts; the shell wires the
   app's toast lib once at boot via `wireFeedback`, nothing below the shell imports a toast lib) and
-  routes every failure through it **unconditionally** — the global half of `LZFE013`. With the
+  routes every failure through it **unconditionally** — the global half of `AFFE013`. With the
   defaults wired, the app sets `mutation-error-handled: ["error", { globalSurface: true }]`: a bare
   `.mutate()` is surfaced by construction, and only the actively-swallowing `onError: () => {}`
   stays flagged.
@@ -313,7 +313,7 @@ write-side defaults where TanStack designed them to live:
 - **Targeted invalidation / optimistic updates are the opt-in, not the baseline.** A screen that
   *proves* it needs surgical `setQueryData`/optimistic UX layers it above the default. What dies is
   the hand-rolled `onSuccess: () => refetch()` ritual — with the defaults wired it is pure
-  redundancy, and `LZFE028` (warn) reveals it so it gets deleted instead of cargo-culted into the
+  redundancy, and `AFFE028` (warn) reveals it so it gets deleted instead of cargo-culted into the
   next screen.
 
 The parallel to the backend is exact: a slice's `Handle` does not opt into transactionality or
@@ -325,15 +325,15 @@ to where the boundary already is.
 except when the failure *is* a modeled, visible state the screen renders. The canonical case: an
 anonymous visitor's refresh probe failing IS the login screen, not an error to toast. The flag's
 name carries the bar: it marks an *expected* outcome the UI already shows, never a way to hide a
-real failure (an empty `onError` stays flagged by `LZFE013` regardless).
+real failure (an empty `onError` stays flagged by `AFFE013` regardless).
 
 ---
 
-## Session restore — one rotation path (LZFE029)
+## Session restore — one rotation path (AFFE029)
 
 The refresh credential — an httpOnly cookie on web, a secure-stored token on native — is **burned
 by parallel rotation**: the backend's theft detection sees a spent token replayed and revokes the
-whole session family. So session restore is a **one-door** discipline, the LZFE002/016 shape
+whole session family. So session restore is a **one-door** discipline, the AFFE002/016 shape
 applied to rotation:
 
 - **The one door: the session seam's `bootstrapSession`, injected into the client interceptor.** The
@@ -351,7 +351,7 @@ applied to rotation:
   single-flight, so the two never rotate in parallel.
 - **Never both.** A bootstrap probe in the session seam *and* a 401 interceptor in the client both
   fire on a cold load — two parallel rotations, one burned family. A pilot shipped each half in the
-  same week from different branches; the merge is where the race was caught. `LZFE029` closes the
+  same week from different branches; the merge is where the race was caught. `AFFE029` closes the
   door mechanically: the refresh hook/operation (and any hand-rolled POST to a refresh route) is
   consumable only inside `lib/aerofortress-client` / `lib/session`.
 
@@ -359,7 +359,7 @@ applied to rotation:
 
 ## Sign-in is an identity change, not a rotation — the seam's two resets
 
-The session seam (`lib/session`, `createSessionSeam`) writes the token through one door (`LZFE016`),
+The session seam (`lib/session`, `createSessionSeam`) writes the token through one door (`AFFE016`),
 pairing the write with a cache reset so a just-authenticated user is never bounced by a stale `me`.
 But **not every token write is the same kind of write**, and conflating the two is its own prod bug:
 
@@ -402,7 +402,7 @@ leaks the prior user's cache, so wire it.
 
 ## Route guards are symmetric — `guardSession`, one primitive both ways
 
-`LZFE017` polices the *shape* of a guard (branch on a tri-state `SessionState`, never a raw
+`AFFE017` polices the *shape* of a guard (branch on a tri-state `SessionState`, never a raw
 `isAuthenticated` boolean) — but it cannot catch a guard that is simply **absent**. The **pauta** bug was
 exactly that: `/login` and "create account" had *no* guest-guard, so a signed-in user reaching them was
 let straight through (and "create account" dropped them into the app). A private-route guard is a reflex;
@@ -428,12 +428,12 @@ rejected → `redirect`. The app binds it to its router **once**, in a ~10-line 
 + the router's `<Redirect>`/`<Navigate>`, and writes `<AuthRoute>` / `<GuestRoute>` from the same body —
 so the guest-guard stops being something to remember and becomes a flag on a shared primitive.
 
-> **No LZFE rule for the *absent* guard.** A solid "this public auth route has no guest-guard" rule was
+> **No AFFE rule for the *absent* guard.** A solid "this public auth route has no guest-guard" rule was
 > evaluated and **not shipped**: the signal is split across files the single-file linter can't correlate.
 > `signIn` is called in the login *ViewModel* (the data door), while the guest-guard lives in the route's
 > *layout* (`app/(auth)/_layout.tsx`) — two files away, and the idiomatic layout-guard placement means a
 > per-file rule flagging the login screen for "not self-wrapping" would false-positive every correctly
-> guarded app. `LZFE018` works only because its param read and its redirect are co-located in one route
+> guarded app. `AFFE018` works only because its param read and its redirect are co-located in one route
 > file; this isn't. Forcing the heuristic would trade the framework's near-zero-false-positive bar for
 > noise — so the primitive + this convention carry it, not a rule.
 
@@ -459,7 +459,7 @@ each **opt-in** so an app upgrades without a rewrite:
 
 - **A cold start fires one rotation, not two.** `bootstrapSession` is now wrapped in `singleFlight`: React
   StrictMode double-invokes effects in dev, and the boot can race the client's 401-interceptor — two refresh
-  rotations replay the spent token and the backend's theft-detection burns the whole family (the `LZFE029`
+  rotations replay the spent token and the backend's theft-detection burns the whole family (the `AFFE029`
   hazard, at boot). `singleFlight(fn)` collapses concurrent callers into one in-flight execution (the gate
   reopens on settle, resolve *or* reject). The seam's `bootstrapSession` is wrapped with it, and the client's
   401 interceptor shares that one gate by calling `bootstrapSession` through the injected `setTokenRefresher`
@@ -484,12 +484,12 @@ server-to-server, OAuth redirects, other-audience admin panels). So the framewor
 drives everything else. This is **classification, not suppression**: it does not say "ignore the rule here",
 it says "this endpoint *is* a webhook", and the harness derives that a webhook has no UI wiring.
 
-- **Opt-out, not opt-in.** The default is `App` — app-facing, *must* be wired (`LZFE008`). The dangerous
+- **Opt-out, not opt-in.** The default is `App` — app-facing, *must* be wired (`AFFE008`). The dangerous
   case (forgot to wire) must be loud by default; the legitimate exception (a webhook) costs one marker. (This
   is right *because* a AeroFortress app is UI-first/mobile — app-facing is dominant. An API-first product would
   reconsider.)
 - **One mark, many derivations** — the `[Critical]` pattern again. A single marker on the slice feeds: orval
-  (audience filter → non-app endpoints leave the client), `LZFE008` (covers only app-facing), and a future
+  (audience filter → non-app endpoints leave the client), `AFFE008` (covers only app-facing), and a future
   backend doctor rule (a `Webhook` must verify its signature / be idempotent). One declaration, several
   enforcements; intent flowing back→front.
 - **Closed enum of natures, zero behavior params** — the guard-rail against the mini-language the constitution
@@ -531,7 +531,7 @@ const PENDING_ROUTE: Record<PendingKind, Href> = {
 const openPending = (p: Pending) => router.push(PENDING_ROUTE[p.kind]);
 ```
 
-This composes with `LZFE030`: typed routes make the `Record`'s values compile-checked, and the
+This composes with `AFFE030`: typed routes make the `Record`'s values compile-checked, and the
 no-cast rule keeps anyone from smuggling a raw server string into `router.push` anyway. **The
 config pair matters** — expo-router needs `experiments.typedRoutes` on (TanStack gets it from its
 generated route tree); without typed routes the rule still bans the cast, but the literal degrades
@@ -566,7 +566,7 @@ behavior.
 
 ---
 
-## The harness — rule catalog (`LZFE*`)
+## The harness — rule catalog (`AFFE*`)
 
 The frontend doctor is an **ESLint custom plugin** (`eslint-plugin-aerofortress`) for in-file rules,
 plus a thin `ts-morph` pass for the cross-file shape, invoked alongside `af doctor`. ESLint
@@ -579,44 +579,44 @@ by construction, and completeness is the compiler. Every rule is born from obser
 
 | Rule | Enforces | Status | Origin |
 |------|----------|--------|--------|
-| `LZFE001` | View purity — a `*.view.tsx` imports no data layer (generated hooks, the client, `fetch`/`axios`); it consumes its ViewModel. Type-only imports of the contract are exempt | **shipped** | the wired-only seam — keeps the View mock-free |
-| `LZFE002` | ViewModel is the only data door — only `*.viewModel.ts` (plus the auth/routing infra seams, `lib/session`/`lib/guards`) may (value-)import the generated client. Re-exporting it (`export … from "client.gen"`) outside the doors is the laundering bypass, also flagged; type re-exports stay free | **shipped** | one data path, one policed surface |
-| `LZFE003` | **No mock in production code** — no import from `**/__mocks__`/`**/fixtures`/MSW outside `*.test.*` | **shipped** | hostpoint: `WAR-*` storybook fixtures shipped as data |
-| `LZFE004` | ViewModel is render-agnostic — a `*.viewModel.ts` imports no JSX/`react-dom` | planned | keeps the ViewModel unit-testable without rendering |
-| `LZFE005` | **Co-located test that exercises the ViewModel** — every `*.viewModel.ts` has a sibling `*.test.tsx` that imports it and calls `renderHook()`. Existence alone is not enough: mounting `useXModel()` compiles the ViewModel against the real generated client and proves the hook is callable. Behavior assertions stay per-screen judgment (no test-theater) | **shipped** | mirror of `LZ0003` — the triple's third leg; "renders + has a data door but no test" is not done |
-| `LZFE006` | **Co-located integration test for every screen** — a `*.view.tsx` with a sibling `*.viewModel.ts` has a `*.test.tsx` that `render()`s it through the shared Providers harness. Presentational fragments (no viewModel) are out of scope — covered via their shell | **shipped** | the integration tier — "renders but untested" is not done |
-| `LZFE007` | Mandatory states — a ViewModel exposing server data exposes `loading` + `error` + `empty` | planned | the sad-path discipline of `[Critical]` slices |
-| `LZFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 data door (a ViewModel, or the `lib/session`/`lib/guards` infra seams LZFE002 blesses — so the session hooks never pollute the list); an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | **shipped** (`tools/endpoint-coverage.mjs`) | back→front completeness — catches "backend done, UI not wired" |
-| `LZFE009` | **ViewModel is platform-agnostic** — a `*.viewModel.ts` imports no `react-native`/`expo-*` (value *or* type); platform capabilities are injected ports | **shipped** | keeps the ViewModel + core shareable web↔mobile and Vitest-testable |
-| `LZFE010` | **State completeness** — a `*.view.tsx` routes loading/error/empty through `<Resource>` (the spine), not raw `isPending`/`isError` | **shipped** | every async state handled by construction, not a hand-rolled branch that forgets one |
-| `LZFE011` | **i18n parity** — every locale object in a `*.i18n.ts` declares the same keys, compared as **flattened paths** (`empty.title`) so a key missing inside a nested group is caught too; a key in one language but not its siblings is a silent untranslated string. Two mechanisms by layout: the `i18n-completeness` eslint rule when catalogs are in lint scope, `tools/i18n-parity.mjs` when they are cross-package | **shipped** | no string ships untranslated in any language |
-| `LZFE012` | **Design tokens** — no inline hex color outside the token/theme/palette files; color comes from the theme | **shipped** | one palette; theming (dark mode, white-label) survives |
-| `LZFE013` | **Mutation surfaces its error** — a react-query `.mutate(...)`/`.mutateAsync(...)` in a ViewModel routes its failure somewhere (inline `onError`, a read `.isError` state, a try/catch or `.catch()` on `mutateAsync`, or a propagated return). An **empty** `onError: () => {}` is flagged too — the silent failure with paperwork. With the `LZFE027` defaults wired, the app sets `{ globalSurface: true }`: the global `MutationCache.onError` IS the surface (react-query fires it regardless of per-call handlers), so a bare `.mutate()` passes and only the empty handler stays flagged | **shipped** | the front-side of the backend's `error_handling` — no silent failure, no `onError` theater |
-| `LZFE014` | **No hardcoded copy** — user-facing JSX text + copy props (`placeholder`, `label`, `accessibilityLabel`…) in a View go through i18n (`t()`), not literals | **shipped** | feeds the catalog that `LZFE011` then keeps complete |
-| `LZFE015` | **No imperative redirect inside `useEffect`** — a redirect-on-state is declarative (`if (terminal) return <Redirect/Navigate … />`), never `router.replace`/`router.navigate`/a `useNavigate()` call in an effect: it runs after paint and re-fires every render (a flash on TanStack; on expo-router web the router freezes the source screen → an infinite navigation/refetch loop). `push`/`back` on a user action stay allowed. Scoped to the navigating layer (views + routes) | **shipped** | the pilot shipped this loop twice (Splash, then ChooseRole + 5 screens) before the rule existed |
-| `LZFE016` | **Session one door** — the bearer token is written through one seam (`lib/session`, where the write is paired with a `me`-cache reset); a `*.viewModel`/`*.view` importing the token setter (`setAccessToken`…) directly — **or writing a token-ish key straight to storage** (`localStorage`/`AsyncStorage`/`SecureStore.setItem("…token…", …)`) — is the scattered write that forgets the reset | **shipped** | pauta: a forgotten reset after registration bounced the new user back to `/login` |
-| `LZFE017` | **Guard tri-state** — a route guard redirects on a `SessionState` (`loading \| authenticated \| anonymous`), never a raw `isAuthenticated` boolean (which reads "still loading" as "signed out"). The read-side twin of `LZFE010` | **shipped** | the bounce-to-login root cause: a boolean collapses the still-loading case |
-| `LZFE018` | **Route param guard** — a route reading a required id param (expo-router `useLocalSearchParams`) guards its absence with a declarative redirect, so a param-less hit (bookmark / stale link) can't render a ghost screen on an empty id. The spine's `requiredParam()` union (`missing \| ready`) is the blessed guard shape (`if (id.status === "missing") return <Redirect/>`), recognized beside the bare `!id` form | **shipped** | hostpoint: a param-less `/messaging/chat` rendered an empty "ghost" thread |
-| `LZFE019` | **Safe back** — no bare `router.back()`/`history.back()`; Back goes through a guarded helper (the spine's `safeBack` / an app `useGoBack`) that falls back to a parent when there's no in-app history | **shipped** | hostpoint: deep-linked screens had a dead "Voltar" button (~13 screens migrated) |
-| `LZFE020` | **No hardcoded API base URL** — the base URL comes from configuration (env `VITE_API_URL`/`EXPO_PUBLIC_API_URL`, a relative base, or an injected default), never a host baked into `axios.create({ baseURL: "http://…" })`. The backend pins its dev port in `launchSettings`, so the two agree by construction | **shipped** | pauta: the front baked `:8080` while the API ran on the .NET default `:5000` → `me` 404'd → the registered user bounced to login |
-| `LZFE021` | **No raw HTML** — no `dangerouslySetInnerHTML` outside the one audited seam (`lib/html`). JSX escapes by construction; raw HTML is the XSS door, and if the app renders rich HTML (a CMS body) the sanitizer lives in that seam, reviewable | **shipped** | the single React opt-out of escaping must not scatter across screens |
-| `LZFE022` | **No open redirect** — never navigate to a value that arrived in the URL (`router.replace(returnTo)` / `location.href = next` off `useLocalSearchParams`/`useSearch`/`useSearchParams`); map the param through an **allowlist** of known in-app routes first | **shipped** | the phishing primitive: a crafted link sends the session-carrying browser anywhere the attacker chose |
-| `LZFE023` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `LZSELF002` — "almost done" is not done (renumbered as shipped rules claimed the lower slots) |
-| `LZFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui` (the app-owned kit). A missing primitive is extended in `ui/`, never inlined. The `LZFE002` one-door pattern applied to paint — the design band, [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md) | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every visual decision |
-| `LZFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`/`margin*`/`gap`/`rowGap`/`columnGap`/`borderRadius`/`fontSize`/`lineHeight`; `0` allowed), no Tailwind arbitrary value on a spacing/typography utility (`p-[13px]`, `text-[14px]`); layout dimensions (`max-w-[560px]`) stay free, mirroring the style half | **shipped** | off-scale values are how rhythm dies one screen at a time |
-| `LZFE026` | **Semantic colors** — outside token files: no `rgb()/hsl()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `LZFE012`: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
-| `LZFE027` | **QueryClient carries the mutation defaults** — every production `new QueryClient(...)` wires `mutationCache: new MutationCache({ onSuccess, onError })`: success invalidates every active query + posts the success note (`meta.silent` opts out of the note), failure routes through the feedback seam unconditionally. Tests and the shared test harness (`test/`, `test-utils/`) build bare clients freely. Scaffolded as `lib/query.ts` | **shipped** | pauta: a created category only appeared after F5, with no toast — 13 of 43 ViewModels had no invalidation at all |
-| `LZFE028` | **No manual refetch ritual** — an `onSuccess` whose entire body is refetch/invalidate calls (inline, named, or `useCallback`-wrapped) duplicates the `LZFE027` defaults; delete it. A handler that does *more* than refetch (navigate, reset, hand off an id) is behavior — never flagged. Warn-tier: reveals, does not gate | **shipped** | pauta: 30 of 43 ViewModels hand-rolled `onSuccess: refetch` — the convention the majority groped toward, pinned so the minority can't forget it |
-| `LZFE029` | **Refresh one-door** — the refresh hook/operation (and any hand-rolled `POST` to a refresh route) is consumed only inside the rotation doors (`lib/aerofortress-client`, `lib/session`); anywhere else is a second rotation path. Type-only imports stay free | **shipped** | pauta near-miss: a session-seam refresh bootstrap and a client 401 interceptor landed the same week from different branches — two cold-load rotations would have tripped the backend's theft detection and burned the session family |
-| `LZFE030` | **No cast on a navigation target** — no `as never`/`as any`/`as unknown` on the argument of `router.push`/`replace`/`navigate` (or a `useNavigate()` call), nor on the `href`/`to` of `<Redirect>`/`<Navigate>`/`<Link>`. The cast exists to silence typed routes; silenced, a drifted route literal compiles clean and 404s in prod. Pass a typed literal or the `{ pathname, params }` object. **Config pair**: typed routes ON (expo-router `experiments.typedRoutes` / TanStack's route tree) — without it the removed cast merely degrades to `string`. Error-tier, routing family | **shipped** | hostpoint: ~8 call sites cast `router.push(x as never)`; when the backend minted two routes that didn't exist (the sibling convention), the muted router compiled them clean → prod 404 |
-| `LZFE031` | **Submit handles the invalid path** — in a `*.viewModel.ts`, a one-argument `handleSubmit(onValid)` is flagged: a validation failure runs no code (it happens *before* the mutation, so `LZFE013`/`LZFE027` never see it). Use the spine's `submitOrReveal(form.handleSubmit, onValid, { onInvalid })` — it forces the surface and resolves the first invalid field for the shell to navigate to — or pass `onInvalid` by hand. Warn-tier on entry (a single-screen form with visible inline errors is legitimate); promotes with `LZFE032` | **shipped** | hostpoint: a 9-tab property editor's Save went completely mute when a hidden tab's field failed — no mutation, no toast, no error ("não está salvando a propriedade", in prod) |
-| `LZFE032` | **Controller surfaces its fieldState** — a `<Controller>` whose inline `render` never reads `fieldState` (destructured or accessed) leaves that field's validation error with no surface; pass `error={fieldState.error?.message}` to the field component. Near-zero false positives (`error` on an unvalidated field is inert); a deliberately surface-less control eslint-disables with its justification. Warn-tier, promoted together with `LZFE031` — the pair makes "a validation error always shows" hold by construction | **shipped** | hostpoint: the Description input destructured only `{ field }` — its validation failure had no surface at all (same incident as LZFE031) |
-| `LZFE033` | **A `@verify` obligation has its `@avp` proof** — the front-side of the backend's `LZ0030` (the `[Verify]`↔`[AVP]` bridge), the closing leg of AeroFortress Clockwork on the frontend. A `*.view.tsx`/`*.viewModel.ts` that declares a JSDoc `@verify <criterion-id>` (the AVP acceptance obligation, the twin of the backend `[Verify("id")]`) must have a co-located `*.test.tsx` carrying `@avp <criterion-id>` (the twin of `[AVP("id")]`) — the assay JS verification that the behaviour holds, not just that it was claimed. Markers are JSDoc, erased at runtime (doctor-removable); co-located scope mirrors `LZFE005`/`LZFE006`. Like `LZ0030`, it enforces the pairing EXISTS (Doctor 1); whether the proof passes is the test runner's job (Doctor 2). Error-tier, the AVP bridge | **shipped** | the frontend mirror of `LZ0030` — Clockwork's `clockwork-bind` emits `@verify` on a view, this rule makes the missing `@avp` proof a build failure |
+| `AFFE001` | View purity — a `*.view.tsx` imports no data layer (generated hooks, the client, `fetch`/`axios`); it consumes its ViewModel. Type-only imports of the contract are exempt | **shipped** | the wired-only seam — keeps the View mock-free |
+| `AFFE002` | ViewModel is the only data door — only `*.viewModel.ts` (plus the auth/routing infra seams, `lib/session`/`lib/guards`) may (value-)import the generated client. Re-exporting it (`export … from "client.gen"`) outside the doors is the laundering bypass, also flagged; type re-exports stay free | **shipped** | one data path, one policed surface |
+| `AFFE003` | **No mock in production code** — no import from `**/__mocks__`/`**/fixtures`/MSW outside `*.test.*` | **shipped** | hostpoint: `WAR-*` storybook fixtures shipped as data |
+| `AFFE004` | ViewModel is render-agnostic — a `*.viewModel.ts` imports no JSX/`react-dom` | planned | keeps the ViewModel unit-testable without rendering |
+| `AFFE005` | **Co-located test that exercises the ViewModel** — every `*.viewModel.ts` has a sibling `*.test.tsx` that imports it and calls `renderHook()`. Existence alone is not enough: mounting `useXModel()` compiles the ViewModel against the real generated client and proves the hook is callable. Behavior assertions stay per-screen judgment (no test-theater) | **shipped** | mirror of `AF0003` — the triple's third leg; "renders + has a data door but no test" is not done |
+| `AFFE006` | **Co-located integration test for every screen** — a `*.view.tsx` with a sibling `*.viewModel.ts` has a `*.test.tsx` that `render()`s it through the shared Providers harness. Presentational fragments (no viewModel) are out of scope — covered via their shell | **shipped** | the integration tier — "renders but untested" is not done |
+| `AFFE007` | Mandatory states — a ViewModel exposing server data exposes `loading` + `error` + `empty` | planned | the sad-path discipline of `[Critical]` slices |
+| `AFFE008` | **Endpoint coverage (back→front)** — every app-facing generated hook (`use<Slice>`) is referenced by ≥1 data door (a ViewModel, or the `lib/session`/`lib/guards` infra seams AFFE002 blesses — so the session hooks never pollute the list); an unreferenced hook is a **warning** ("loose endpoint"). Non-app endpoints leave by audience tag and never enter the client, so they never warn | **shipped** (`tools/endpoint-coverage.mjs`) | back→front completeness — catches "backend done, UI not wired" |
+| `AFFE009` | **ViewModel is platform-agnostic** — a `*.viewModel.ts` imports no `react-native`/`expo-*` (value *or* type); platform capabilities are injected ports | **shipped** | keeps the ViewModel + core shareable web↔mobile and Vitest-testable |
+| `AFFE010` | **State completeness** — a `*.view.tsx` routes loading/error/empty through `<Resource>` (the spine), not raw `isPending`/`isError` | **shipped** | every async state handled by construction, not a hand-rolled branch that forgets one |
+| `AFFE011` | **i18n parity** — every locale object in a `*.i18n.ts` declares the same keys, compared as **flattened paths** (`empty.title`) so a key missing inside a nested group is caught too; a key in one language but not its siblings is a silent untranslated string. Two mechanisms by layout: the `i18n-completeness` eslint rule when catalogs are in lint scope, `tools/i18n-parity.mjs` when they are cross-package | **shipped** | no string ships untranslated in any language |
+| `AFFE012` | **Design tokens** — no inline hex color outside the token/theme/palette files; color comes from the theme | **shipped** | one palette; theming (dark mode, white-label) survives |
+| `AFFE013` | **Mutation surfaces its error** — a react-query `.mutate(...)`/`.mutateAsync(...)` in a ViewModel routes its failure somewhere (inline `onError`, a read `.isError` state, a try/catch or `.catch()` on `mutateAsync`, or a propagated return). An **empty** `onError: () => {}` is flagged too — the silent failure with paperwork. With the `AFFE027` defaults wired, the app sets `{ globalSurface: true }`: the global `MutationCache.onError` IS the surface (react-query fires it regardless of per-call handlers), so a bare `.mutate()` passes and only the empty handler stays flagged | **shipped** | the front-side of the backend's `error_handling` — no silent failure, no `onError` theater |
+| `AFFE014` | **No hardcoded copy** — user-facing JSX text + copy props (`placeholder`, `label`, `accessibilityLabel`…) in a View go through i18n (`t()`), not literals | **shipped** | feeds the catalog that `AFFE011` then keeps complete |
+| `AFFE015` | **No imperative redirect inside `useEffect`** — a redirect-on-state is declarative (`if (terminal) return <Redirect/Navigate … />`), never `router.replace`/`router.navigate`/a `useNavigate()` call in an effect: it runs after paint and re-fires every render (a flash on TanStack; on expo-router web the router freezes the source screen → an infinite navigation/refetch loop). `push`/`back` on a user action stay allowed. Scoped to the navigating layer (views + routes) | **shipped** | the pilot shipped this loop twice (Splash, then ChooseRole + 5 screens) before the rule existed |
+| `AFFE016` | **Session one door** — the bearer token is written through one seam (`lib/session`, where the write is paired with a `me`-cache reset); a `*.viewModel`/`*.view` importing the token setter (`setAccessToken`…) directly — **or writing a token-ish key straight to storage** (`localStorage`/`AsyncStorage`/`SecureStore.setItem("…token…", …)`) — is the scattered write that forgets the reset | **shipped** | pauta: a forgotten reset after registration bounced the new user back to `/login` |
+| `AFFE017` | **Guard tri-state** — a route guard redirects on a `SessionState` (`loading \| authenticated \| anonymous`), never a raw `isAuthenticated` boolean (which reads "still loading" as "signed out"). The read-side twin of `AFFE010` | **shipped** | the bounce-to-login root cause: a boolean collapses the still-loading case |
+| `AFFE018` | **Route param guard** — a route reading a required id param (expo-router `useLocalSearchParams`) guards its absence with a declarative redirect, so a param-less hit (bookmark / stale link) can't render a ghost screen on an empty id. The spine's `requiredParam()` union (`missing \| ready`) is the blessed guard shape (`if (id.status === "missing") return <Redirect/>`), recognized beside the bare `!id` form | **shipped** | hostpoint: a param-less `/messaging/chat` rendered an empty "ghost" thread |
+| `AFFE019` | **Safe back** — no bare `router.back()`/`history.back()`; Back goes through a guarded helper (the spine's `safeBack` / an app `useGoBack`) that falls back to a parent when there's no in-app history | **shipped** | hostpoint: deep-linked screens had a dead "Voltar" button (~13 screens migrated) |
+| `AFFE020` | **No hardcoded API base URL** — the base URL comes from configuration (env `VITE_API_URL`/`EXPO_PUBLIC_API_URL`, a relative base, or an injected default), never a host baked into `axios.create({ baseURL: "http://…" })`. The backend pins its dev port in `launchSettings`, so the two agree by construction | **shipped** | pauta: the front baked `:8080` while the API ran on the .NET default `:5000` → `me` 404'd → the registered user bounced to login |
+| `AFFE021` | **No raw HTML** — no `dangerouslySetInnerHTML` outside the one audited seam (`lib/html`). JSX escapes by construction; raw HTML is the XSS door, and if the app renders rich HTML (a CMS body) the sanitizer lives in that seam, reviewable | **shipped** | the single React opt-out of escaping must not scatter across screens |
+| `AFFE022` | **No open redirect** — never navigate to a value that arrived in the URL (`router.replace(returnTo)` / `location.href = next` off `useLocalSearchParams`/`useSearch`/`useSearchParams`); map the param through an **allowlist** of known in-app routes first | **shipped** | the phishing primitive: a crafted link sends the session-carrying browser anywhere the attacker chose |
+| `AFFE023` | No orphan placeholder — `// wire later`, `TODO`/`FIXME`, `WAR-*`, or `@ts-expect-error` on a data call | planned | mirror of `AFSELF002` — "almost done" is not done (renumbered as shipped rules claimed the lower slots) |
+| `AFFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui` (the app-owned kit). A missing primitive is extended in `ui/`, never inlined. The `AFFE002` one-door pattern applied to paint — the design band, [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md) | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every visual decision |
+| `AFFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`/`margin*`/`gap`/`rowGap`/`columnGap`/`borderRadius`/`fontSize`/`lineHeight`; `0` allowed), no Tailwind arbitrary value on a spacing/typography utility (`p-[13px]`, `text-[14px]`); layout dimensions (`max-w-[560px]`) stay free, mirroring the style half | **shipped** | off-scale values are how rhythm dies one screen at a time |
+| `AFFE026` | **Semantic colors** — outside token files: no `rgb()/hsl()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`. Completes `AFFE012`: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex was only one spelling of the leak |
+| `AFFE027` | **QueryClient carries the mutation defaults** — every production `new QueryClient(...)` wires `mutationCache: new MutationCache({ onSuccess, onError })`: success invalidates every active query + posts the success note (`meta.silent` opts out of the note), failure routes through the feedback seam unconditionally. Tests and the shared test harness (`test/`, `test-utils/`) build bare clients freely. Scaffolded as `lib/query.ts` | **shipped** | pauta: a created category only appeared after F5, with no toast — 13 of 43 ViewModels had no invalidation at all |
+| `AFFE028` | **No manual refetch ritual** — an `onSuccess` whose entire body is refetch/invalidate calls (inline, named, or `useCallback`-wrapped) duplicates the `AFFE027` defaults; delete it. A handler that does *more* than refetch (navigate, reset, hand off an id) is behavior — never flagged. Warn-tier: reveals, does not gate | **shipped** | pauta: 30 of 43 ViewModels hand-rolled `onSuccess: refetch` — the convention the majority groped toward, pinned so the minority can't forget it |
+| `AFFE029` | **Refresh one-door** — the refresh hook/operation (and any hand-rolled `POST` to a refresh route) is consumed only inside the rotation doors (`lib/aerofortress-client`, `lib/session`); anywhere else is a second rotation path. Type-only imports stay free | **shipped** | pauta near-miss: a session-seam refresh bootstrap and a client 401 interceptor landed the same week from different branches — two cold-load rotations would have tripped the backend's theft detection and burned the session family |
+| `AFFE030` | **No cast on a navigation target** — no `as never`/`as any`/`as unknown` on the argument of `router.push`/`replace`/`navigate` (or a `useNavigate()` call), nor on the `href`/`to` of `<Redirect>`/`<Navigate>`/`<Link>`. The cast exists to silence typed routes; silenced, a drifted route literal compiles clean and 404s in prod. Pass a typed literal or the `{ pathname, params }` object. **Config pair**: typed routes ON (expo-router `experiments.typedRoutes` / TanStack's route tree) — without it the removed cast merely degrades to `string`. Error-tier, routing family | **shipped** | hostpoint: ~8 call sites cast `router.push(x as never)`; when the backend minted two routes that didn't exist (the sibling convention), the muted router compiled them clean → prod 404 |
+| `AFFE031` | **Submit handles the invalid path** — in a `*.viewModel.ts`, a one-argument `handleSubmit(onValid)` is flagged: a validation failure runs no code (it happens *before* the mutation, so `AFFE013`/`AFFE027` never see it). Use the spine's `submitOrReveal(form.handleSubmit, onValid, { onInvalid })` — it forces the surface and resolves the first invalid field for the shell to navigate to — or pass `onInvalid` by hand. Warn-tier on entry (a single-screen form with visible inline errors is legitimate); promotes with `AFFE032` | **shipped** | hostpoint: a 9-tab property editor's Save went completely mute when a hidden tab's field failed — no mutation, no toast, no error ("não está salvando a propriedade", in prod) |
+| `AFFE032` | **Controller surfaces its fieldState** — a `<Controller>` whose inline `render` never reads `fieldState` (destructured or accessed) leaves that field's validation error with no surface; pass `error={fieldState.error?.message}` to the field component. Near-zero false positives (`error` on an unvalidated field is inert); a deliberately surface-less control eslint-disables with its justification. Warn-tier, promoted together with `AFFE031` — the pair makes "a validation error always shows" hold by construction | **shipped** | hostpoint: the Description input destructured only `{ field }` — its validation failure had no surface at all (same incident as AFFE031) |
+| `AFFE033` | **A `@verify` obligation has its `@avp` proof** — the front-side of the backend's `AF0030` (the `[Verify]`↔`[AVP]` bridge), the closing leg of AeroFortress Clockwork on the frontend. A `*.view.tsx`/`*.viewModel.ts` that declares a JSDoc `@verify <criterion-id>` (the AVP acceptance obligation, the twin of the backend `[Verify("id")]`) must have a co-located `*.test.tsx` carrying `@avp <criterion-id>` (the twin of `[AVP("id")]`) — the assay JS verification that the behaviour holds, not just that it was claimed. Markers are JSDoc, erased at runtime (doctor-removable); co-located scope mirrors `AFFE005`/`AFFE006`. Like `AF0030`, it enforces the pairing EXISTS (Doctor 1); whether the proof passes is the test runner's job (Doctor 2). Error-tier, the AVP bridge | **shipped** | the frontend mirror of `AF0030` — Clockwork's `clockwork-bind` emits `@verify` on a view, this rule makes the missing `@avp` proof a build failure |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
 generated, so it can't compile). **back→front** (the endpoint exists, nothing wired it yet) is a
-legitimate intermediate state → a **warning** (`LZFE008`). Failing the build there would be wrong;
+legitimate intermediate state → a **warning** (`AFFE008`). Failing the build there would be wrong;
 revealing it is the point. The completeness gate — "does this call a real endpoint?" — is **not** a
 rule. It is `tsc` against the generated client. Lean on the type system; the harness only forbids the
 bypass and surfaces the loose ends.
@@ -639,10 +639,10 @@ covered. Each entry is `{ name, target?: "web"|"native", spec, backendJourney?, 
 
 - **Existence** (hard `gaps`): the `spec` file exists and a runner for its `target` is configured
   (Playwright for web, Maestro/Detox for native).
-- **Set parity** (`tools/journey-parity.mjs`, LZFE-JOURNEY): a `backendJourney` (the
+- **Set parity** (`tools/journey-parity.mjs`, AFFE-JOURNEY): a `backendJourney` (the
   `Journeys/<key>.Tests.cs` twin) links the flow to its backend journey, checked both directions — so
   no critical journey is half-built (tested on the back but never end-to-end on the front, or vice-versa).
-- **Depth** (`depthGaps`, warn-tier, **LZFE-JOURNEY-002**): a spec *existing* is not coverage — it can
+- **Depth** (`depthGaps`, warn-tier, **AFFE-JOURNEY-002**): a spec *existing* is not coverage — it can
   stop at the door. A **linked** flow must declare `terminal` (the testID or route its spec asserts
   *after* entry, to prove the journey reaches its end), and the spec must actually reference it; a spec
   that asserts only the entry screen is flagged. *Why this exists:* a pilot's onboarding shipped a
@@ -682,18 +682,18 @@ useTranslation("<feat>")` and renders `t("some.key")`. Adding a locale is a seco
 a framework mechanism; this is Hostpoint's.)
 
 **Error codes — translated in every language, enforced.** The backend ships every error as a stable code
-(`ErrorBody.code`, the registry constants behind `LZ0018`/`LZ0019`); the front owns the copy. Two gates guarantee no
+(`ErrorBody.code`, the registry constants behind `AF0018`/`AF0019`); the front owns the copy. Two gates guarantee no
 error reaches a user untranslated: **coverage** — every code in the generated `ErrorBody.code` union has an
 `api-errors` catalog entry (`lzfe-error-codes`; a notice until the client is regenerated against the enum-bearing
-OpenAPI, a hard gate after) — and **parity** (`LZFE011`) — that entry exists in every locale. Composed: code → copy
-→ in every language. This is the front end of the same full-stack discipline `LZ0018`/`LZ0019` enforce on the back.
+OpenAPI, a hard gate after) — and **parity** (`AFFE011`) — that entry exists in every locale. Composed: code → copy
+→ in every language. This is the front end of the same full-stack discipline `AF0018`/`AF0019` enforce on the back.
 
 ## Accessibility — enforced, ecosystem-specific
 
 a11y is part of the harness, but unlike the architecture rules it has **no cross-ecosystem parity to
 share**: the web speaks DOM (`alt`, `aria-*`, `href`), React Native speaks accessibility props
 (`accessibilityRole`, `accessible`, `accessibilityLabel`). So it is a **mirrored exclusive** — same
-intent, one plugin per ecosystem, wired in the ESLint config (not the LZFE plugin, which owns
+intent, one plugin per ecosystem, wired in the ESLint config (not the AFFE plugin, which owns
 architecture):
 
 - **web** → [`eslint-plugin-jsx-a11y`](https://www.npmjs.com/package/eslint-plugin-jsx-a11y) (the `flat/recommended` set).
@@ -702,14 +702,14 @@ architecture):
 Both are **warn-first** — a revealed backlog promoted to error per-rule once cleared — with
 `has-accessibility-hint` **off**: a hint is supplementary (only for non-obvious actions), and on by
 default it buries the high-signal rules under noise. This is the same posture as the curated
-community kit (`sonarjs`, `no-secrets`, `@tanstack/query`): external rules wired *alongside* the LZFE
+community kit (`sonarjs`, `no-secrets`, `@tanstack/query`): external rules wired *alongside* the AFFE
 plugin, never reinvented inside it. The design layer raised this bar exactly once: with the
 canonical screens (the recipes — [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md)), **web jsx-a11y
 runs at error** for the sample tree — the exemplar proved green reachable, so the bar rose with it.
 
 ## Scope — and non-goals
 
-**In:** the MVVM feature convention, the `LZFE*` harness, a `g view` scaffold, and `lazuli gen
+**In:** the MVVM feature convention, the `AFFE*` harness, a `g view` scaffold, and `lazuli gen
 client` (stock orval, wrapped) with the shipped config + mutator. One blessed frontend shape.
 
 **Out (non-goals), by decision:**
@@ -726,7 +726,7 @@ client` (stock orval, wrapped) with the shipped config + mutator. One blessed fr
   once. What is no longer free-invented is the **vocabulary**: the token taxonomy (names + types),
   the closed kit shape (the app-owned `ui/`), and the ui-door discipline are the convention,
   constitutionalized in [DESIGN-CONVENTIONS.md](DESIGN-CONVENTIONS.md) and enforced by the design
-  band (`LZFE024–026`, beside `LZFE012`). Token **values** stay the app's — that is the entire
+  band (`AFFE024–026`, beside `AFFE012`). Token **values** stay the app's — that is the entire
   theming story. (Hostpoint keeps NativeWind + its own finished components; if it ever adopts, it is
   by aliasing values onto the taxonomy with zero visual delta — the mechanism choice is untouched.)
 - **No TS decorators (`@Slice`/`@Journey`/`@Critical`).** The backend's `[Slice]` is a first-class

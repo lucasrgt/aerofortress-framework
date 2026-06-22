@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0013 — a type marked <c>[ValueObject]</c> must be <em>always-valid by construction</em>: immutable,
+/// AF0013 — a type marked <c>[ValueObject]</c> must be <em>always-valid by construction</em>: immutable,
 /// with no public constructor and no public setter, built only through a static smart constructor that
 /// returns a <c>Result&lt;T&gt;</c> (the <c>Money.From</c> shape). The payoff is that an invalid instance can
 /// never exist, so there is no "validate afterwards" step a caller can forget — the type itself is the rule.
@@ -20,7 +20,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class ValueObjectAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a value object that is not always-valid by construction.</summary>
-    public const string DiagnosticId = "LZ0013";
+    public const string DiagnosticId = "AF0013";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

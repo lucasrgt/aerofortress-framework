@@ -27,13 +27,13 @@ framework way — generators first, hand-writing only what generators don't cove
 ## What generated shapes must keep
 
 - Slice: static class, nested Input/Output records, `Handle(Input, AppDb, CancellationToken)
-  → Task<Result<Output>>`, `Map(IEndpointRouteBuilder)` — in that order (LZ0001), endpoint as
-  expression body (LZ0002), `.WithName("<SliceName>")` (LZ0012 — it becomes the frontend hook name).
+  → Task<Result<Output>>`, `Map(IEndpointRouteBuilder)` — in that order (AF0001), endpoint as
+  expression body (AF0002), `.WithName("<SliceName>")` (AF0012 — it becomes the frontend hook name).
 - Module: `[Module]` static class with `AddServices(IServiceCollection, IConfiguration)` and
-  `Map(...)` (LZ0015), registered explicitly in `Modules.cs` (LZ0016 — no reflection).
+  `Map(...)` (AF0015), registered explicitly in `Modules.cs` (AF0016 — no reflection).
 - Program.cs stays an index: `AddLazuli() + AddPlatform(config) + AddModules(config)` and the
-  matching Use/Map calls — nothing else (LZ0017).
-- Every module gets a `<Module>.ctx.md` with `## Boundaries` + `## Design notes` filled (LZ0004).
+  matching Use/Map calls — nothing else (AF0017).
+- Every module gets a `<Module>.ctx.md` with `## Boundaries` + `## Design notes` filled (AF0004).
 
 ## After scaffolding
 

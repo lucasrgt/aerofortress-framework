@@ -12,7 +12,7 @@ const plugin = require("../packages/eslint-plugin/index.cjs");
 
 // The scaffolded unit must be conformant BY CONSTRUCTION — there is no point generating a feature the harness then
 // rejects. So we render one, write it to disk (so test-colocated can see the sibling test), and lint every file
-// with the real LZFE rules: zero messages is the contract. This is the generator's analogue of the plugin's own
+// with the real AFFE rules: zero messages is the contract. This is the generator's analogue of the plugin's own
 // self-test — proving the emitter and the enforcer agree.
 const lintConfig = [
   {
@@ -34,7 +34,7 @@ const lintConfig = [
       "aerofortress/state-completeness": "error",
       "aerofortress/i18n-completeness": "error",
       "aerofortress/design-tokens": "error",
-      // The design band (LZFE024–026): the emitted View composes @/ui only — no host elements, no
+      // The design band (AFFE024–026): the emitted View composes @/ui only — no host elements, no
       // free-form styling, no raw color. The emitter and the enforcer agree here too.
       "aerofortress/ui-door": "error",
       "aerofortress/scale-only": "error",
@@ -69,7 +69,7 @@ describe("renderFeature", () => {
     for (const locale of ["ptBR", "esES", "enUS"]) expect(i18n).toContain(`export const ${locale}`);
   });
 
-  it("emits a unit that passes every LZFE rule (conformant by construction)", () => {
+  it("emits a unit that passes every AFFE rule (conformant by construction)", () => {
     // Write under the repo (cwd) so the flat-config `files` globs match and test-colocated resolves the sibling.
     const dir = mkdtempSync(join(process.cwd(), "tools", ".scaffold-tmp-"));
     try {

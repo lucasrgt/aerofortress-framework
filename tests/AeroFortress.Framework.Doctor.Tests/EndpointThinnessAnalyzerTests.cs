@@ -36,7 +36,7 @@ public class EndpointThinnessAnalyzerTests
 
         public class Endpoints
         {
-            public void Register(Routes app) => app.MapPost("/x", () => {|LZ0002:{ return 1; }|});
+            public void Register(Routes app) => app.MapPost("/x", () => {|AF0002:{ return 1; }|});
         }
         """;
 }

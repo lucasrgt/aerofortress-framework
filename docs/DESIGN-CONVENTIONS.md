@@ -13,7 +13,7 @@ in four layers of decreasing strength:
 
 1. **Closed vocabulary** — kit props are unions of token names; a wrong value is *inexpressible*.
    What cannot be typed cannot be wrong. (The strongest layer; everything else guards it.)
-2. **Mechanical enforcement** — the design band (`LZFE024–026`, beside `LZFE012`) trips every
+2. **Mechanical enforcement** — the design band (`AFFE024–026`, beside `AFFE012`) trips every
    named escape hatch: raw elements, off-scale values, raw color.
 3. **Copyable exemplars** — canonical screens (the recipes). An agent instantiates the nearest
    recipe; it never composes a screen from a blank file.
@@ -48,7 +48,7 @@ what things are *called* and what shape the door has — because names and shape
 The single source of truth is one plain TS file the app owns — canonically
 `core/src/design/tokens.ts` (tokens are platform-neutral data; they live in the shared core, the
 hostpoint precedent). Scaffolded by `af`'s design scaffold; edited freely **in values**, never
-in names. Hex belongs ONLY in this file (`LZFE012` exempts it by filename; `LZFE026` completes the
+in names. Hex belongs ONLY in this file (`AFFE012` exempts it by filename; `AFFE026` completes the
 pair for every other raw-color spelling).
 
 ```ts
@@ -121,7 +121,7 @@ ErrorState({ title, retryLabel, onRetry })
 ```
 
 - **No `className`. No `style`. No `as`. No render props.** One escape hatch reopens 100% of the
-  decision space, and the ui-door rule (`LZFE024`) would then police a fiction. The door is closed.
+  decision space, and the ui-door rule (`AFFE024`) would then police a fiction. The door is closed.
 - **A missing primitive is extended in YOUR `ui/`** — following this constitution (tokens only, the
   five states, the a11y wiring) — never worked around with inline paint. The kit is the app's code;
   growing it is normal. (Overlay primitives — Dialog, Select, Toast — are deliberately not in v1:
@@ -154,7 +154,7 @@ Field
 
 - Field-level validation errors render **inside the Field** — never as a toast, never only at the top.
 - The **mutation error** (the command failed) is a separate `role="alert"` block rendered above the
-  submit (`Text role="label" tone="danger" alert`) — the visible half of the `LZFE013` discipline
+  submit (`Text role="label" tone="danger" alert`) — the visible half of the `AFFE013` discipline
   (every mutation surfaces its error).
 - The submit `Button` carries `loading` while the mutation is pending. Double-submit is a kit
   guarantee (loading blocks), not a per-form fix.
@@ -185,8 +185,8 @@ Field
 
 ## Color discipline — roles, never values
 
-- Components reference `color.<role>` only. Raw values — hex (`LZFE012`), `rgb()/hsl()/oklch()`,
-  CSS named colors, and Tailwind palette-family utilities (`bg-red-500`, `text-blue-600`) (`LZFE026`) —
+- Components reference `color.<role>` only. Raw values — hex (`AFFE012`), `rgb()/hsl()/oklch()`,
+  CSS named colors, and Tailwind palette-family utilities (`bg-red-500`, `text-blue-600`) (`AFFE026`) —
   live exclusively in the tokens file / the theme; a screen uses semantic, theme-mapped utilities
   (`bg-primary`, `text-danger`) instead.
 - Anything rendered **on** a filled role uses its on-pair: `onPrimary` on `primary`, `onDanger` on
@@ -233,7 +233,7 @@ Field
 
 ## The design band — rule catalog
 
-The enforcement half. Same grain as the `LZFE*` catalog in
+The enforcement half. Same grain as the `AFFE*` catalog in
 [FRONTEND-CONVENTIONS.md](FRONTEND-CONVENTIONS.md) (these rows are mirrored there); same posture as
 every band before it: **warn-first, promoted to error when the canonical code is clean**. What the
 kit guarantees by construction (states, anatomy) is deliberately NOT linted — heuristic lint on
@@ -241,13 +241,13 @@ undecidable properties teaches agents to suppress, the worst harness outcome.
 
 | Rule | Enforces | Status | Origin |
 |------|----------|--------|--------|
-| `LZFE012` | **Design tokens (hex half)** — no inline hex outside token/theme/palette files | **shipped** | one palette; theming survives |
-| `LZFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui`. A missing primitive is extended in the app's `ui/`, never inlined. The `LZFE002` one-door pattern applied to paint | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every decision |
-| `LZFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`, `margin*`, `gap`, `rowGap`, `columnGap`, `borderRadius`, `fontSize`, `lineHeight`; `0` allowed), and no Tailwind arbitrary value on a **spacing/typography utility** (`p-[13px]`, `text-[14px]`, `gap-[7px]`). Layout dimensions (`max-w-[560px]`, `h-[80vh]`) are deliberately free — the style half allows `width: 320`, and the class spelling of the same decision must agree (asymmetry caught by the hostpoint-os dogfood) | **shipped** | off-scale values are how rhythm dies one screen at a time |
-| `LZFE026` | **Semantic colors** — outside token files: no `rgb()/rgba()/hsl()/hsla()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`, and no Tailwind palette-family utility (`bg-red-500`, `hover:border-rose-400/50`) in a `className` outside `ui/`. Completes `LZFE012` (hex) — together: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex and `bg-red-500` were just other spellings of the leak |
+| `AFFE012` | **Design tokens (hex half)** — no inline hex outside token/theme/palette files | **shipped** | one palette; theming survives |
+| `AFFE024` | **UI door** — a `*.view.tsx` renders no host element (no lowercase JSX) and carries no `style`/`className` attribute; everything visual comes from `@/ui`. A missing primitive is extended in the app's `ui/`, never inlined. The `AFFE002` one-door pattern applied to paint | planned (design band) | the sample's pre-kit `ui.tsx` leaked `className` — one passthrough reopened every decision |
+| `AFFE025` | **Scale only** — outside `ui/`, token files, and tests: no numeric literal in spacing/typography style keys (`padding*`, `margin*`, `gap`, `rowGap`, `columnGap`, `borderRadius`, `fontSize`, `lineHeight`; `0` allowed), and no Tailwind arbitrary value on a **spacing/typography utility** (`p-[13px]`, `text-[14px]`, `gap-[7px]`). Layout dimensions (`max-w-[560px]`, `h-[80vh]`) are deliberately free — the style half allows `width: 320`, and the class spelling of the same decision must agree (asymmetry caught by the hostpoint-os dogfood) | **shipped** | off-scale values are how rhythm dies one screen at a time |
+| `AFFE026` | **Semantic colors** — outside token files: no `rgb()/rgba()/hsl()/hsla()/oklch()` literals, no CSS named colors in color-ish style keys, no value-import of a raw palette export outside `ui/`, and no Tailwind palette-family utility (`bg-red-500`, `hover:border-rose-400/50`) in a `className` outside `ui/`. Completes `AFFE012` (hex) — together: color is a role, or it does not ship | planned (design band) | a forked palette defeats theming silently; hex and `bg-red-500` were just other spellings of the leak |
 
 Exemption boundaries, locked: the app's `ui/` folder (the kit implements the vocabulary, so it
-touches primitives and values), the token files (`LZFE012`'s filename pattern:
+touches primitives and values), the token files (`AFFE012`'s filename pattern:
 `theme|tokens|palette|colors`), and tests.
 
 ---
@@ -271,7 +271,7 @@ spec the recipe) — dashboards, wizards, settings screens arrive that way, neve
 
 ## Scope — and non-goals
 
-**In:** the token taxonomy, the closed kit API + scaffold, the design band (`LZFE024–026`), the
+**In:** the token taxonomy, the closed kit API + scaffold, the design band (`AFFE024–026`), the
 recipes, the `aerofortress-design` skill.
 
 **Out (non-goals), by decision:**

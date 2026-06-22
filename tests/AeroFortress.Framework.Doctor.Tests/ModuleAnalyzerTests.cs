@@ -41,12 +41,12 @@ public class ModuleAnalyzerTests
         public sealed class ModuleAttribute : Attribute { }
         """;
 
-    // Static methods present and wired, but the class itself is not static — LZ0015 (shape) only.
+    // Static methods present and wired, but the class itself is not static — AF0015 (shape) only.
     private const string NotStatic = """
         using System;
 
         [Module]
-        public class {|LZ0015:WalletsModule|}
+        public class {|AF0015:WalletsModule|}
         {
             public static int AddServices(int services, int configuration) => services;
             public static void Map(int app) { }
@@ -64,12 +64,12 @@ public class ModuleAnalyzerTests
         public sealed class ModuleAttribute : Attribute { }
         """;
 
-    // Map is present and wired, but there is no AddServices — LZ0015 (shape) only, never a redundant LZ0016.
+    // Map is present and wired, but there is no AddServices — AF0015 (shape) only, never a redundant AF0016.
     private const string MissingAddServices = """
         using System;
 
         [Module]
-        public static class {|LZ0015:WalletsModule|}
+        public static class {|AF0015:WalletsModule|}
         {
             public static void Map(int app) { }
         }
@@ -82,12 +82,12 @@ public class ModuleAnalyzerTests
         public sealed class ModuleAttribute : Attribute { }
         """;
 
-    // Conformant shape and mapped, but AddServices is never wired into the registry — LZ0016 (registration).
+    // Conformant shape and mapped, but AddServices is never wired into the registry — AF0016 (registration).
     private const string NotRegistered = """
         using System;
 
         [Module]
-        public static class {|LZ0016:WalletsModule|}
+        public static class {|AF0016:WalletsModule|}
         {
             public static int AddServices(int services, int configuration) => services;
             public static void Map(int app) { }

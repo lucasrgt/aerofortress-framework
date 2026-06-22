@@ -21,9 +21,9 @@ return args switch
 };
 
 // The doctor is bidirectional — one verdict over both halves of the stack. The backend leg is the build-time
-// Roslyn analyzers (a clean build = a clean bill of health; an LZ#### error fails it). The frontend leg, for
+// Roslyn analyzers (a clean build = a clean bill of health; an AF#### error fails it). The frontend leg, for
 // each AeroFortress client (a dir under clients/ carrying eslint.config.js), is the TS-world harness: eslint
-// (eslint-plugin-aerofortress, the LZFE* rules) + tsc (the "wired" gate against the generated client). One command,
+// (eslint-plugin-aerofortress, the AFFE* rules) + tsc (the "wired" gate against the generated client). One command,
 // both sides — so nothing is left loose in either direction.
 static int Doctor(string[] rest)
 {

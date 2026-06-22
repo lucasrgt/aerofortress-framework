@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Text;
 namespace AeroFortress.Framework.SelfHarness;
 
 /// <summary>
-/// LZSELF001 — keeps every AeroFortress library source file at or under 500 lines, the same
+/// AFSELF001 — keeps every AeroFortress library source file at or under 500 lines, the same
 /// ceiling the Rails codebase holds itself to. A file that grows past it is the signal to
 /// extract a concern into its own file, not to keep packing.
 /// </summary>
@@ -17,7 +17,7 @@ public sealed class FileSizeAnalyzer : DiagnosticAnalyzer
     public const int MaxLines = 500;
 
     /// <summary>The identifier reported when a file exceeds <see cref="MaxLines"/>.</summary>
-    public const string DiagnosticId = "LZSELF001";
+    public const string DiagnosticId = "AFSELF001";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

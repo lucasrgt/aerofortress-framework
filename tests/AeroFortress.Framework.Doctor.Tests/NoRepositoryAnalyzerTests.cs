@@ -22,18 +22,18 @@ public class NoRepositoryAnalyzerTests
     [Fact]
     public Task A_repository_interface_is_flagged() =>
         Harness<NoRepositoryAnalyzer>.Verify("""
-            interface {|LZ0006:IUserRepository|} { }
+            interface {|AF0006:IUserRepository|} { }
             """);
 
     [Fact]
     public Task A_repository_class_is_flagged() =>
         Harness<NoRepositoryAnalyzer>.Verify("""
-            class {|LZ0006:OrderRepository|} { }
+            class {|AF0006:OrderRepository|} { }
             """);
 
     [Fact]
     public Task A_unit_of_work_interface_is_flagged() =>
         Harness<NoRepositoryAnalyzer>.Verify("""
-            interface {|LZ0006:IUnitOfWork|} { }
+            interface {|AF0006:IUnitOfWork|} { }
             """);
 }

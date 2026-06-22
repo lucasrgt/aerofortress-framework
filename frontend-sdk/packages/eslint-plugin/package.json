@@ -1,7 +1,7 @@
 {
   "name": "eslint-plugin-aerofortress",
   "version": "0.10.0",
-  "description": "The AeroFortress Framework frontend harness — LZFE* rules that keep React Native + web screens wired, not mocked.",
+  "description": "The AeroFortress Framework frontend harness — AFFE* rules that keep React Native + web screens wired, not mocked.",
   "license": "MIT",
   "author": "Lucas Tinoco",
   "repository": {

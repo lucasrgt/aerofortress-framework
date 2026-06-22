@@ -7,7 +7,7 @@
 ## Identity (read first)
 
 AeroFortress is a **Rails-style meta-framework for .NET** — **no language** (`.lzi`/`.lzx` retired). The "compiler" is
-the analyzers: **`LZ*`** (Roslyn, backend) + **`LZFE*`** (ESLint, frontend) that fail the build. One thing, called
+the analyzers: **`AF*`** (Roslyn, backend) + **`AFFE*`** (ESLint, frontend) that fail the build. One thing, called
 **AeroFortress** (the "Lazurite" distro name is retired); the workspace manifest is **`AeroFortress.toml`**.
 
 ## The shape
@@ -15,7 +15,7 @@ the analyzers: **`LZ*`** (Roslyn, backend) + **`LZFE*`** (ESLint, frontend) that
 ```
 AeroFortress.toml                         # the manifest = single source of truth; the `af` CLI reads it and delegates
 backends/
-  hostpoint-app-api/                # .NET — MSBuild + LZ* analyzers (native, no package.json shim)
+  hostpoint-app-api/                # .NET — MSBuild + AF* analyzers (native, no package.json shim)
   hostpoint-os-api/                 # (when the os product lands)
   hostpoint-barcos-api/             # (when barcos lands)
 frontends/
@@ -49,7 +49,7 @@ npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@h
 3. **Ports & adapters (hexagonal).** Every platform capability is an interface in `core/ports/` (or `kernel/ports/`)
    — `IStorage, INavigator, IPush, IFilePicker, ILinking, IMaps` — implemented per shell (RN impls in `mobile`,
    web impls in `web`/`os`), wired at the shell, **never imported into a ViewModel**. This is what makes `core`
-   genuinely platform-agnostic (the package boundary enforces it structurally; LZFE009 lints it).
+   genuinely platform-agnostic (the package boundary enforces it structurally; AFFE009 lints it).
 
 4. **`AeroFortress.toml` is the single source of truth.** It **generates** the npm-workspaces config (root `package.json`
    `workspaces`) + the turbo pipeline, and a **`af doctor` check validates** that the declared topology
@@ -66,13 +66,13 @@ npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@h
 
 ## Harness change this requires (lazuli-net)
 
-`LZFE005`/`LZFE006` today assume **co-location** (a `*.view.tsx` with a sibling `*.viewModel.ts`). With the split,
+`AFFE005`/`AFFE006` today assume **co-location** (a `*.view.tsx` with a sibling `*.viewModel.ts`). With the split,
 the ViewModel is in `core` and the View in `mobile`/`web` — different packages. So the rules must detect the link by
 **import**, not sibling file: a `*.view.tsx` is a "screen" if it **imports a ViewModel**; its co-located test must
 render it; the ViewModel's `renderHook` test lives with the ViewModel in `core`. (This is the one framework change
 the migration depends on — do it first.)
 
-**Done in canon (2026-06-06).** `LZFE006` now detects screens by import — off the View's `ImportDeclaration`s: it is a
+**Done in canon (2026-06-06).** `AFFE006` now detects screens by import — off the View's `ImportDeclaration`s: it is a
 screen if it imports a `*.viewModel` module **or** a `use<Name>Model` data-door hook (co-located OR cross-package).
 Self-tests pin both edges (a VM-consuming View fires `missing`; a fragment passes). This import-based form is strictly
 *more correct* than the old sibling heuristic: run against hostpoint it surfaced **32 real screens the sibling rule
@@ -104,8 +104,8 @@ packages = ["@hostpoint/kernel", "@hostpoint/ui-web", "@hostpoint/ui-mobile"]
 "hostpoint-app" = { from = "hostpoint-app-api", to = "frontends/hostpoint-app/core/src/client.gen" }
 
 [doctor]
-backend  = "tdd-iron-hand"                     # LZ* Roslyn rules
-frontend = "tdd-iron-hand"                     # LZFE* ESLint + the doctors
+backend  = "tdd-iron-hand"                     # AF* Roslyn rules
+frontend = "tdd-iron-hand"                     # AFFE* ESLint + the doctors
 
 [tasks]                                        # the `af` CLI delegates (wire, not reimplement)
 build = ["dotnet:build", "turbo:build"]
@@ -118,7 +118,7 @@ The `af` CLI is the conductor (`af build/test/new/doctor/gen:client`); it **dele
 ## Migration sequence (big-bang, but in green-verified milestones)
 
 1. **(this doc)** capture — **done** (lazuli-net `d9ac8cf`).
-2. **lazuli-net**: evolve `LZFE006` to import-based detection (+ self-tests) — **done** (`716378b`). *Prereq.*
+2. **lazuli-net**: evolve `AFFE006` to import-based detection (+ self-tests) — **done** (`716378b`). *Prereq.*
 3. **hostpoint**: `AeroFortress.toml` + `af doctor` (topology single-source + drift validator) — **done** (hostpoint
    `f30ab3b`). The `backends/`/`frontends/` *folder* rename is deferred: with one backend it is cosmetic + YAGNI
    (decision F); the manifest points at `src/` + `clients/` today and moves with the split.
@@ -146,10 +146,10 @@ Turnkey steps:
 1. **Workspace**: root `package.json` with `"workspaces": ["frontends/hostpoint-app/*", "clients/website", ...]` +
    `turbo.json`. Move the Expo app to `frontends/hostpoint-app/mobile`; create `frontends/hostpoint-app/core`
    (`name: "@hostpoint/app-core"`, deps: react-query/axios/zod/i18next — **no** react-native/expo).
-2. **Move into core** (it is already platform-agnostic — LZFE009 is green, so this is a *physical* move, not a
+2. **Move into core** (it is already platform-agnostic — AFFE009 is green, so this is a *physical* move, not a
    decoupling): `client.gen/` (the 507 orval files), every `*.viewModel.ts` (+ its co-located `*.test.tsx` /
    `*.i18n.ts`), the model/`cells`. Point `orval.config.ts` output at `core/src/client.gen`.
-3. **Rewire**: View imports of `./X.viewModel` → `@hostpoint/app-core`. The import-based `LZFE006` (milestone 2)
+3. **Rewire**: View imports of `./X.viewModel` → `@hostpoint/app-core`. The import-based `AFFE006` (milestone 2)
    already handles the cross-package link; flip the hostpoint mirror to the import form now and write each screen's
    co-located render test as it lands in `mobile/` (fills the 32-screen backlog in place).
 4. **Metro monorepo config** (`mobile/metro.config.js`): `watchFolders = [workspaceRoot]`,
@@ -191,11 +191,11 @@ Rewiring (deterministic, scriptable):
   stays valid (or update `orval.config.ts` `mutator.path` + `output.target`/`schemas` to the app-core paths and
   regenerate — don't hand-edit generated files).
 
-Two **rule evolutions** the move forces (same shape as the LZFE006 import-based upgrade already shipped):
+Two **rule evolutions** the move forces (same shape as the AFFE006 import-based upgrade already shipped):
 
-- `LZFE002` (data-door) must recognize `@hostpoint/app-core` (or the package's client subpath) as the generated
+- `AFFE002` (data-door) must recognize `@hostpoint/app-core` (or the package's client subpath) as the generated
   client source, not just the `client.gen/` path regex — else cross-package client imports go unpoliced.
-- flip the **hostpoint** `LZFE006` mirror to the import form (canon already is) + write each screen's co-located
+- flip the **hostpoint** `AFFE006` mirror to the import form (canon already is) + write each screen's co-located
   render test as it lands in `mobile/` (closes the 32-screen backlog in place).
 
 ### 4b-i SHIPPED (branch `refactor/front-core-split`, commit `5fe3910`) + refined VM-move shape
@@ -205,18 +205,18 @@ the mutator). The hard workspace plumbing is **done + verified green** (hostpoin
 vitest 73/73, lint pristine, `af doctor` green): npm workspaces + turbo, the Metro monorepo config
 (`watchFolders` + `nodeModulesPaths`), a **single react/react-dom via root `overrides`** (the hoist had created a
 second react → null hooks dispatcher; `npm dedupe` collapsed it to 19.2.3), cross-package tsc/vitest aliases, orval
-retargeted, and the LZFE008 coverage doctor + `AeroFortress.toml` updated. **Operator verify: `npx expo export`.**
+retargeted, and the AFFE008 coverage doctor + `AeroFortress.toml` updated. **Operator verify: `npx expo export`.**
 
 Refinements learned for the VM move (4b-ii), which is now de-risked but is its own intricate pass:
 
 - **No session/refresh-token port is needed yet.** `lib/session/refresh-token.ts` (native) is currently an
   *in-memory* fallback and `.web.ts` is a no-op — neither imports expo today (secure-store is a future TODO). So
   `session.ts`/`useSession.ts` are already agnostic and move to core (or kernel) without a port. Add the port only
-  when expo-secure-store lands (else it leaks expo into core — LZFE009 won't catch it, it's not a `.viewModel`).
+  when expo-secure-store lands (else it leaks expo into core — AFFE009 won't catch it, it's not a `.viewModel`).
 - **The real work is splitting the tests.** Each screen's `*.test.tsx` currently holds BOTH the VM renderHook
-  tests AND the View render test (LZFE006) in one file. The split (VM→core, View→shell) forces splitting those
+  tests AND the View render test (AFFE006) in one file. The split (VM→core, View→shell) forces splitting those
   ~33 files into ~66 (VM-unit test beside the VM in core; View-render test beside the View in the shell), plus
-  evolving `LZFE005` to the import form (like `LZFE006`), plus a core-side test harness (a QueryClient wrapper) so
+  evolving `AFFE005` to the import form (like `AFFE006`), plus a core-side test harness (a QueryClient wrapper) so
   the moved renderHook tests don't depend on the shell's `@test/render`.
 - Transitive deps to move with the VMs: `@/i18n` (33 importers), `lib/async/async-state` (the spine),
   `theme/tokens/reference` (color constants), `cells/messaging/ChatExperience`, `lib/session/*`. All agnostic.
@@ -232,7 +232,7 @@ the app-refactor described below: the type contracts (`service-types.ts`, `chat-
 UI-coupled `icon` fields widened to `string`, and the View/cell casts to `IconName` at the render site — so the
 ViewModels name an icon as data and the platform layer owns the UI type.
 
-**LZFE006 re-enforced (done).** Flipped the hostpoint mirror to the import-based form. Doing so exposed an
+**AFFE006 re-enforced (done).** Flipped the hostpoint mirror to the import-based form. Doing so exposed an
 over-gating bug in the rule: keying on "imports anything from a `*.viewModel` module" wrongly flagged the
 property-edit/onboarding panels that import only a *type* (`PanelProps`) and take their data + form `control` as
 props from a parent shell (props-in fragments). Refined canon + mirror to gate on the **data-door hook**

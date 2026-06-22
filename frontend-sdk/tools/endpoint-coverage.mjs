@@ -1,9 +1,9 @@
-// LZFE008 — back->front endpoint coverage. Every app-facing generated hook (`use<Slice>`) should be consumed by at
+// AFFE008 — back->front endpoint coverage. Every app-facing generated hook (`use<Slice>`) should be consumed by at
 // least one ViewModel; one with no consumer is a "loose endpoint" — the backend slice exists but no screen wired it.
 // This is a WARNING, never a build failure: the front->back direction (a UI calling an endpoint that does not exist)
 // is the hard gate and it is free from `tsc` (the hook isn't generated, so it can't compile). back->front only
 // reveals "backend done, UI not wired." Non-app endpoints never reach the client (orval's audience filter drops
-// them), so the metric is high-signal by construction. See docs/FRONTEND-CONVENTIONS.md (LZFE008).
+// them), so the metric is high-signal by construction. See docs/FRONTEND-CONVENTIONS.md (AFFE008).
 //
 // The core (`extractHooks` + `checkEndpointCoverage`) is pure (no I/O) so it is unit-testable; the CLI tail wires it
 // to the filesystem. Same split as journey-parity.mjs.
@@ -18,7 +18,7 @@ export function extractHooks(clientText) {
 
 /**
  * Whether a file is a legal data door whose hook references count as "wired": a screen's `*.viewModel.ts`, or
- * the auth/routing infra seams (`lib/session*`, `lib/guards*`) that LZFE002 already blesses as client consumers.
+ * the auth/routing infra seams (`lib/session*`, `lib/guards*`) that AFFE002 already blesses as client consumers.
  * Without the doors, the session hooks (`useMe`/`useRefresh`/`useLogout`) report loose from day one — wallpaper
  * that buries the real gaps the metric exists to reveal.
  */
@@ -69,7 +69,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(2);
   }
   if (!existsSync(clientFile)) {
-    console.log(`LZFE008 endpoint coverage: no generated client at ${clientFile} (bootstrap) — nothing to check yet.`);
+    console.log(`AFFE008 endpoint coverage: no generated client at ${clientFile} (bootstrap) — nothing to check yet.`);
     process.exit(0);
   }
   const hooks = extractHooks(readFileSync(clientFile, "utf8"));
@@ -77,7 +77,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     .map((p) => readFileSync(p, "utf8"))
     .join("\n");
   const r = checkEndpointCoverage(hooks, wiredText);
-  console.log(`LZFE008 endpoint coverage: ${r.wired}/${r.total} app-facing hooks wired by a ViewModel.`);
+  console.log(`AFFE008 endpoint coverage: ${r.wired}/${r.total} app-facing hooks wired by a ViewModel.`);
   for (const m of r.messages) console.log(`  ${m}`);
   process.exit(0); // warning-only — front->back (tsc) is the hard gate
 }

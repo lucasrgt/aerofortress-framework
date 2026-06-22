@@ -1,5 +1,5 @@
 # AeroFortress's security floor for the built-in .NET analyzers (CA*). Curated, not exhaustive: each rule
-# here closes a defect class the doctor's LZ* rules don't cover, at error tier so it gates the build
+# here closes a defect class the doctor's AF* rules don't cover, at error tier so it gates the build
 # the same way they do. Removable like the rest of the harness: set <AeroFortressSecurityAnalysis>false
 # </AeroFortressSecurityAnalysis> (or remove the package) and the build still compiles and runs.
 is_global = true
@@ -10,7 +10,7 @@ global_level = 50
 dotnet_diagnostic.CA2016.severity = error
 
 # SQL built from non-constant strings on the ADO surface (IDbCommand/IDataAdapter). The EF Core
-# surface is LZ0024's concern; this covers the layer beneath it.
+# surface is AF0024's concern; this covers the layer beneath it.
 dotnet_diagnostic.CA2100.severity = warning
 
 # Insecure deserializers — running BinaryFormatter (or friends) on attacker-reachable bytes is

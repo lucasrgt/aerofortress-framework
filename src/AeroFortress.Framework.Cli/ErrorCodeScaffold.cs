@@ -2,7 +2,7 @@ namespace AeroFortress.Framework.Cli;
 
 /// <summary>
 /// Shared scaffolding for the <c>*ErrorCodes</c> registries the generators reference. Every error code a slice or
-/// entity raises must be a constant on a registry (doctor rule <c>LZ0018</c>), so generated code references one
+/// entity raises must be a constant on a registry (doctor rule <c>AF0018</c>), so generated code references one
 /// and this ensures the constant exists in the module's registry — creating the registry file if absent,
 /// appending the constant if missing. Idempotent: re-running never duplicates or clobbers.
 /// </summary>
@@ -41,7 +41,7 @@ internal static class ErrorCodeScaffold
         namespace {{appNamespace}}.Modules.{{module}};
 
         /// <summary>The {{module}} module's error codes — stable, namespaced i18n keys the frontend localizes from.
-        /// Every Error/Check references a const here (LZ0018), so the full set stays discoverable: AddAeroFortressOpenApi
+        /// Every Error/Check references a const here (AF0018), so the full set stays discoverable: AddAeroFortressOpenApi
         /// enumerates it into the OpenAPI ErrorBody.code schema for the typed client.</summary>
         public static class {{module}}ErrorCodes
         {

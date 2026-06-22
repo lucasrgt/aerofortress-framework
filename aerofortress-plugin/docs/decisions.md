@@ -8,12 +8,12 @@
 
 - **Journey depth enforcement**: Tier A — linked flows declare `terminal` in flows.json and the
   spec asserts it after entry (entry-only flagged); skipped gate-class flows fail the CI gate.
-  Tier B — `[Journey]` bodies must assert post-conditions (LZ0020, heuristic warning).
+  Tier B — `[Journey]` bodies must assert post-conditions (AF0020, heuristic warning).
   Tier B4 (spike) — lifecycle-advancing `[Critical]` slices need a frontend flow proving
   post-transition navigation. Tier C (runtime) — mutation score on critical journeys only.
   Honest ceiling: semantic adequacy of an assertion is undecidable by analyzer.
 
-- **Unmarked domain type (LZ0021)**: catch the UNMARKED entity/VO, not just police the marked —
+- **Unmarked domain type (AF0021)**: catch the UNMARKED entity/VO, not just police the marked —
   `DbSet<T>` with unmarked T requires `[Entity]`; complex members of entities require
   `[ValueObject]`. Omission of the mark was the evasion (a pilot shipped an anemic `User`);
   marks become the only way to model state.

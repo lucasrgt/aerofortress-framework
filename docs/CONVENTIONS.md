@@ -52,7 +52,7 @@ inherit from, magic discovery — is **out**, by construction.
 ## The slice convention
 
 One feature = **one file** (maximal locality: the agent reads the whole feature in one
-read). The canonical shape (enforced by `LZ0001`):
+read). The canonical shape (enforced by `AF0001`):
 
 ```csharp
 [Slice]                                  // pure marker; module is derived from the namespace
@@ -71,12 +71,12 @@ public static class Deposit
     public static void Map(IEndpointRouteBuilder app) =>       // transport — one thin line
         app.MapPost("/deposit", async (Input input, AppDb db, CancellationToken ct) =>
                 (await Handle(input, db, ct)).ToHttp())
-            .WithName(nameof(Deposit));                        // the operationId the typed client hooks from (LZ0012)
+            .WithName(nameof(Deposit));                        // the operationId the typed client hooks from (AF0012)
 }
 ```
 
 - **DbContext direct** in the handler. The repository/UoW layer is the clean-architecture
-  bloat we cut; the doctor forbids reintroducing it (`LZ0006`).
+  bloat we cut; the doctor forbids reintroducing it (`AF0006`).
 - **Handlers are HTTP-agnostic.** They return `Result<T>`; the API boundary maps it to a
   status code (`ResultHttpExtensions.ToHttp`). This keeps them unit-testable without a host.
 - **Errors carry a code, not just copy.** An `Error` is `(Kind, Code, Message[, Fields])`. `Kind` is the closed
@@ -87,7 +87,7 @@ public static class Deposit
   `Collect` inherits the value object's own code.
 - **A code is a registry constant, not a literal.** Each module owns a `<Module>ErrorCodes` static class of
   `const string` codes — the readable catalog of what can go wrong there — and every `Error`/`Check`/`FieldError`
-  references one (`WalletsErrorCodes.NotFound`), never a bare string. The doctor (`LZ0018`) enforces it, which keeps
+  references one (`WalletsErrorCodes.NotFound`), never a bare string. The doctor (`AF0018`) enforces it, which keeps
   the set **discoverable**: `AddAeroFortressOpenApi` reflects over the registries and enumerates them into the
   `ErrorBody.code` schema, and `ToHttp` advertises the `ErrorBody` envelope on every endpoint — so the generated
   client is typed on the closed set of codes and the frontend's i18n can be checked for an exhaustive translation of
@@ -102,7 +102,7 @@ public static class Deposit
 - **A module owns both halves of its wiring** — `AddServices(IServiceCollection, IConfiguration)` (its own DI)
   and `Map(IEndpointRouteBuilder)` (its routes) — and is marked `[Module]`. An explicit registry (`Modules.cs`,
   with `AddModules` / `MapModules`) lists every module on both sides. No reflection, no discovery: the registry
-  is plain code, and the doctor (`LZ0015` / `LZ0016`) checks the shape and that every `[Module]` is registered.
+  is plain code, and the doctor (`AF0015` / `AF0016`) checks the shape and that every `[Module]` is registered.
 - **The composition root is three named layers, not a dumping ground.** `Program.cs` stays a thin index —
   `AddAeroFortress()` + `AddPlatform(config)` + `AddModules(config)`, then the matching `UseAeroFortress()` /
   `UsePlatform()` / `MapModules()`. **`AddAeroFortress`** is the framework's universal conventions (OpenAPI,
@@ -114,18 +114,18 @@ public static class Deposit
   each a partial of one `Platform` class, composed explicitly (no discovery); a single-concern app is just one
   `Platform.cs`. It grows by adding a concern file, never by fattening `Program.cs`. **`AddModules`** is the
   registry above. A vendor or domain service belongs in the module that owns it (its `AddServices`), never the
-  platform. The doctor (`LZ0017`) keeps the index pure: any service registration, pipeline step, or endpoint
+  platform. The doctor (`AF0017`) keeps the index pure: any service registration, pipeline step, or endpoint
   mapping that leaks into `Program.cs` is a build error, redirected to the platform or a module — so the index
   can't rot back into a dumping ground.
 - **Authorization is a decision, never an omission.** Every slice's endpoint carries an explicit posture —
   `.RequireAuthorization(…)` or `.AllowAnonymous()` — on its own `Map` chain or on the module's route group
-  (`app.MapGroup("/wallets").RequireAuthorization()`); an endpoint with neither is a build error (`LZ0022`).
+  (`app.MapGroup("/wallets").RequireAuthorization()`); an endpoint with neither is a build error (`AF0022`).
   Inside the handler, the caller arrives as an injected `ICurrentUser` (claims-based, from `AeroFortress.Framework.Auth`) and
   the slice does its own ownership/role/org check — a `Handle` that injects `ICurrentUser` and never reads it
-  is flagged (`LZ0023`): the signature would claim a check the body doesn't make.
+  is flagged (`AF0023`): the signature would claim a check the body doesn't make.
 - **Co-located `<Module>.ctx.md`** carries the business "why" — the rules that are not in the
   control flow. One per module (not per slice). Shape + rationale in
-  [The ctx.md schema](#the-ctxmd-schema); presence + spine are gated by `LZ0004`.
+  [The ctx.md schema](#the-ctxmd-schema); presence + spine are gated by `AF0004`.
 - **LAW — validation is always inline at the top of the Handle; never extracted to a method.**
   Build the value objects, accumulate with `Validation` (`Check` for an inline condition,
   `Collect` for a value object's verdict, and the shorthands for the recurring shapes —
@@ -159,7 +159,7 @@ and compose. The pieces:
   total) cannot be written. Filter first — `AcrossOrgs()`, `Where(...)` — then order, then page.
 - **Order by a unique key.** `OrderBy(x => x.Name).ThenBy(x => x.Id)` — equal sort values with no
   tiebreaker make page boundaries non-deterministic (rows repeat and vanish between pages). The doctor's
-  `LZ0028` (warning) reads the ordering chain feeding `ToPageAsync` and flags the final key when no key
+  `AF0028` (warning) reads the ordering chain feeding `ToPageAsync` and flags the final key when no key
   in the chain is the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id`
   declared on the queried entity itself. A *foreign* `*Id` (`CustomerId` on a Wallet) is many-rows-shared
   and earns nothing. An ordering the analyzer cannot read (a pre-ordered local crossing the statement)
@@ -183,10 +183,10 @@ and compose. The pieces:
   numbered pager needs ("1–20 of 87") and it is deliberately visible, not hidden behind a flag. When a
   pilot one day needs a high-volume infinite feed, cursor pagination arrives as a **second** primitive
   (`CursorPage<T>`), never unified with the offset shape into one premature abstraction.
-- The canonical slice is the sample's `ListWallets`; the doctor's `LZ0027` (warning) flags a
+- The canonical slice is the sample's `ListWallets`; the doctor's `AF0027` (warning) flags a
   `DbSet`-rooted query materialized with no `Take`/`ToPageAsync` — the list that ships fine at ten
   development rows and degrades as a tenant's data grows.
-- **When `LZ0027` fires, the remediation ladder** (one answer per shape — never a third invention):
+- **When `AF0027` fires, the remediation ladder** (one answer per shape — never a third invention):
   1. **The set has a domain bound you can name** → `.Take(N)` where `N` is that bound as a named
      const (`MaxQueue`), the comment saying *why* the set is small. A generous cap you cannot
      justify is not a fix — it is silent truncation at overflow with no UI affordance, a lie with
@@ -200,7 +200,7 @@ and compose. The pieces:
      `ExecuteUpdateAsync`/`ExecuteDeleteAsync` (or a batched job) — never a synthetic `Take`,
      which would simply *not perform* part of the write.
   4. **None of the above yet** → leave the warning standing. Warning tier *is* the adoption
-     ledger: an open `LZ0027` is a decision still pending, and a release may ship with pending
+     ledger: an open `AF0027` is a decision still pending, and a release may ship with pending
      decisions. Suppressing the rule is never the move.
 - **What the parent-scope exemption deliberately does not see**: `Where(m => m.ChatId == id)` is
   exempt because most child sets are bounded by their parent's cardinality (the steps of one job,
@@ -225,14 +225,14 @@ value is a typed route.
 
 The same boundary line generalizes: the server speaks **domain vocabulary** (kinds, statuses, codes —
 closed enums and registry constants); the client owns the **presentation mapping** (route, copy,
-icon). It is the error-code discipline (`LZ0018`/`LZ0019`: stable code on the wire, copy in i18n)
+icon). It is the error-code discipline (`AF0018`/`AF0019`: stable code on the wire, copy in i18n)
 applied to navigation.
 
 *Analyzer decision (2026-06): evaluated and **not shipped**.* The heuristic — flag a `"/"`-prefixed
 string literal in a slice-payload property named `*Target`/`*Route`/`*Href`/`*Path` — has plausible
 false positives that are themselves legitimate contract data (API paths, storage object paths,
 webhook URLs), and the consumption side is already gated mechanically: the client cannot navigate to
-an arbitrary server string without a cast, and `LZFE030` makes that cast an error. A false positive
+an arbitrary server string without a cast, and `AFFE030` makes that cast an error. A false positive
 teaches suppression; the convention + the front-side gate close the loop. Revisit only if a pilot
 ships another server-minted route *after* this convention landed.
 
@@ -248,7 +248,7 @@ the two laws. The result is plain C# that happens to be hard to misuse.
 - **Value objects (`[ValueObject]`) are always-valid by construction.** An identity-less domain value
   (`Money`, `Cpf`, `Email`) is immutable, has no public constructor, and is built only through a static smart
   constructor returning `Result<T>` — the `Money.From` shape. Because an invalid instance can never come to
-  exist, there is no "validate afterwards" step to forget: any `Money` in the system is already valid. `LZ0013`
+  exist, there is no "validate afterwards" step to forget: any `Money` in the system is already valid. `AF0013`
   enforces the shape. Value objects live in `BuildingBlocks/` when generic, inside the module when specific.
 
 - **Entities (`[Entity]`) encapsulate state and guard invariants.** An entity has identity and a lifecycle. It
@@ -256,13 +256,13 @@ the two laws. The result is plain C# that happens to be hard to misuse.
   through a private parameterless one), no public setter (state changes only through intention-revealing
   methods like `Deposit` / `Withdraw`), and a single private invariant funnel — `EnsureValid` returning
   `Result<T>` — that every create and mutate path returns through. So the entity can never be observed or
-  persisted broken, and the invariant cannot be bypassed by a slice that forgets to check. `LZ0014` enforces
+  persisted broken, and the invariant cannot be bypassed by a slice that forgets to check. `AF0014` enforces
   the shape. The required private parameterless constructor is exactly the one EF Core materialises through —
   the convention and the ORM ask for the same thing, so encapsulation costs nothing at the storage boundary.
   An entity that a `[Critical]` slice writes also declares its **concurrency posture**: a `[Timestamp]
   public byte[]? RowVersion { get; private set; }` (or `[ConcurrencyCheck]` on a domain field), so two
   concurrent requests can't silently last-write-win each other on exactly the high-stakes operations —
-  `LZ0026` (warning-tier) watches for the missing token.
+  `AF0026` (warning-tier) watches for the missing token.
 
 - **Scalar value objects are transparent on the wire.** A scalar `[ValueObject]` that crosses the API
   boundary subclasses `ScalarJsonConverter<TVo, TPrimitive>` (next to the type, pointed at by
@@ -283,9 +283,9 @@ the two laws. The result is plain C# that happens to be hard to misuse.
 The markers are **pure markers** (like `[Slice]`): no base class, nothing to inherit, no EF semantics. Delete
 the doctor and they become inert decoration — the domain still compiles and runs (Law 2).
 
-- **The mark is not optional where the type is persisted or owned.** `LZ0013`/`LZ0014` grade a type that is
+- **The mark is not optional where the type is persisted or owned.** `AF0013`/`AF0014` grade a type that is
   *already* marked — so leaving the mark off used to be a silent way to skip enforcement entirely (the pauta
-  port shipped an anemic `User` table this way). `LZ0021` closes that on-ramp from below: a type that is a
+  port shipped an anemic `User` table this way). `AF0021` closes that on-ramp from below: a type that is a
   `DbSet<T>` (a table) must be `[Entity]`, and a complex member of an `[Entity]` must be `[ValueObject]` —
   the two places where "what this is" is structurally certain. It does not guess beyond those two signals: a
   DTO, an options bag, or a dead unused record is not forced to wear a mark. See
@@ -324,7 +324,7 @@ tests/<App>.Tests/                 # thin runner: globs the co-located *.Tests.c
 - **Modular monolith: one `AppDb`, modules are bounded contexts by convention.** Every module shares one
   DbContext, so a read can join across modules in-process — a dashboard (the host home) is one query, not a
   composition. What keeps a module liftable later is cheap discipline, not isolation: it **writes only its
-  own entities** (LZ0009) and references other modules **by id, never an EF foreign key**. Reads / joins /
+  own entities** (AF0009) and references other modules **by id, never an EF foreign key**. Reads / joins /
   in-process calls across modules are free; a cross-module *effect* goes through the owner's service or a
   job, and domain events + an outbox are reserved for genuinely-async external integrations (a payment
   webhook), not internal decoupling. Extracting a module later re-platforms only its cross-module reads — a
@@ -362,7 +362,7 @@ is **not** a mirror of the code: anything recoverable from the types, the tests,
 duplication, and duplication rots. (corbanx's 16-section feature doc was the reference; we graded its
 sections against that one test and kept about a third.)
 
-**Spine — required, gated by `LZ0004`:**
+**Spine — required, gated by `AF0004`:**
 
 - `# <module>` + a 1–3 line purpose paragraph.
 - `## Boundaries` — Inside / Outside (and non-goals). Where the module's seams are, and where *not* to
@@ -382,7 +382,7 @@ request/response examples, code-pointer file lists, and change logs (procedence 
 normative — decisions go to an ADR + git, never the ctx). **No Mermaid / flow diagrams** either: a
 non-linear flow is explained in prose in the Design notes.
 
-`LZ0005` keeps it honest by **freshness as citation-resolution**, not mtime: a ctx that names a slice or
+`AF0005` keeps it honest by **freshness as citation-resolution**, not mtime: a ctx that names a slice or
 type which no longer exists is stale. An mtime rule would be wrong here — because the ctx does not
 duplicate the code, adding a field must *not* force a ctx edit. A citation resolves against this module's
 source, a referenced assembly, **or a co-located `*.Tests.cs`** the project feeds the doctor as an
@@ -416,18 +416,18 @@ compiles them via glob. No mirror-the-architecture test tree.
 - **Assertions and mocking are the app's free choice** — the kit ships and mandates none
   (FluentAssertions, Shouldly, NSubstitute, xUnit-native all work). The one deliberate coupling is
   the **runner: xUnit** (the categories are xUnit traits).
-- `LZ0003` makes every slice carry a co-located test; the build fails without one.
+- `AF0003` makes every slice carry a co-located test; the build fails without one.
 - **`[Critical]` slices must prove failure, not just success.** A `[Slice] [Critical]` operation —
   one where failure costs money or trust — must be covered end-to-end on **both** paths: a happy
   journey and at least one sad journey, each declared with `[Journey(typeof(Slice),
-  JourneyPath.Happy|Sad)]` on the `[E2E]` test. `LZ0008` enforces both exist. The sad journey asserts
+  JourneyPath.Happy|Sad)]` on the `[E2E]` test. `AF0008` enforces both exist. The sad journey asserts
   the failure status **and** that no state changed — the no-partial-state property only an end-to-end
   test proves. Mark `[Critical]` sparingly (the few high-stakes operations); the broader set of flows
   stays human-curated, since "which flow matters" lives in the domain, not the code.
 - **`[Journey]` is not a category — it is the proof of a `[Critical]` slice, both ways.** `[Unit]` /
   `[Integration]` / `[E2E]` are the categories (pick one); `[Journey]` is a *marker on an `[E2E]` test*
-  binding it to the critical slice it covers. The relation is enforced in both directions: `LZ0008`
-  (critical slice ⟹ has happy + sad journeys) and `LZ0010` (a journey ⟹ covers a critical slice). So a
+  binding it to the critical slice it covers. The relation is enforced in both directions: `AF0008`
+  (critical slice ⟹ has happy + sad journeys) and `AF0010` (a journey ⟹ covers a critical slice). So a
   `[Journey]` exists exactly for a critical operation. A cross-module `[E2E]` that proves a whole *flow*
   rather than one critical slice carries **no** `[Journey]` — e.g. the onboarding traversal. Naming follows:
   **`*Journey.Tests.cs`** = critical-slice proofs, **`*Flow.Tests.cs`** = plain `[E2E]` flows.
@@ -442,19 +442,19 @@ compiles them via glob. No mirror-the-architecture test tree.
   ```toml
   [testing]
   criticality = "opt-in"   # default — only a [Critical] slice needs journeys (today's behavior)
-  #            = "explicit" # every slice must carry [Critical] or [NonCritical], else LZ0029 (mirrors LZ0022)
+  #            = "explicit" # every slice must carry [Critical] or [NonCritical], else AF0029 (mirrors AF0022)
   #            = "strict"   # an undecided slice is treated as [Critical] and must prove journeys
   ```
   Under `"explicit"` the new **`[NonCritical]`** marker is the reviewed downgrade — the positive,
   challengeable counterpart to `[Critical]`, so a non-critical slice says so out loud instead of being silent.
-  Under `"strict"` an unmarked slice *is* critical (`LZ0008`/`LZ0010` demand its happy + sad journeys) and
+  Under `"strict"` an unmarked slice *is* critical (`AF0008`/`AF0010` demand its happy + sad journeys) and
   `[NonCritical]` is the one explicit opt-out. The doctor reads the dial through MSBuild (no TOML parsing in
   the analyzer), so the policy ships and is removed with the harness. Reach for a stricter level only when the
   domain warrants it; the default keeps `[Critical]` the sparing, meaningful mark it is meant to be.
 - **A generator that scaffolds a `[Critical]` slice ships its journeys too.** `af g auth`
   (`Login`/`Refresh`/`Register`) and every augment (`g auth:otp` → `VerifyPhone`) emit the matching
-  `Journeys/*.Tests.cs` beside the slice — otherwise the generated app fails `LZ0008` on its first
-  `doctor`. The rule is self-enforcing: `LZ0008` is exactly what makes "the augment forgot the journey"
+  `Journeys/*.Tests.cs` beside the slice — otherwise the generated app fails `AF0008` on its first
+  `doctor`. The rule is self-enforcing: `AF0008` is exactly what makes "the augment forgot the journey"
   impossible to ship. When a journey can't be driven purely over HTTP (an SMS or email code never crosses
   the wire), the generated journey layers a **capturing provider** over the booted app through the
   `SwapStores` / `WithWebHostBuilder` hook — the same test seam, with zero production change.
@@ -468,42 +468,42 @@ never speculation. Keep it minimal; add only on real drift.
 
 | Rule | Enforces | Status | Origin |
 |------|----------|--------|--------|
-| `LZ0001` | Slice conformance (static class; nested `Input` and `Output`; `Handle → Task<Result<T>>`; `Map`; ordered Input → Output → Handle → Map) | **shipped** | corbanx: "deviated from architecture" |
-| `LZ0002` | Endpoint stays thin (a route handler is an expression-bodied lambda or method group, never a statement block) | **shipped** | corbanx: "business logic in routes" |
-| `LZ0003` | Every slice has a co-located `<Slice>.Tests.cs` | **shipped** | corbanx: "didn't write tests" |
-| `LZ0004` | Every module has a `<Module>.ctx.md` with the spine (`## Boundaries` + `## Design notes`, non-empty) | **shipped** | corbanx: "forgot to write ai.context" |
-| `LZ0005` | `.ctx.md` is fresh — a backticked identifier it cites resolves in source, a reference, or a co-located `*.Tests.cs` (not mtime) | **shipped** | corbanx: "ai.context drifted" |
-| `LZ0006` | No `IRepository` / unit-of-work abstraction in a slice | **shipped** | clean-arch bloat cut |
-| `LZ0007` | File ≤ 500 LOC (EF `Migrations/` exempt — tool-emitted, append-only) | **shipped** | Rails-repo discipline |
-| `LZ0008` | A `[Critical]` slice has a happy **and** a sad journey covering it | **shipped** | high-stakes ops must prove failure E2E |
-| `LZ0009` | **Write-ownership**: a module writes only its own entities — a write (Add/Update/Remove/…) on another module's entity is flagged, on a `DbSet` *or* through the untyped `DbContext.Add(entity)` form; reads/joins/calls across modules are free. `.Tests.cs` exempt | **shipped** | modular monolith — write-ownership keeps a context carvable later |
-| `LZ0010` | A `[Journey]` covers a `[Critical]` slice — the inverse of `LZ0008`. A journey on a non-critical slice (inert metadata) is flagged: mark it `[Critical]` or use a plain `[E2E]` | **shipped** | journeys were silently inert off a critical slice |
-| `LZ0011` | **Tests live in `src/`**: a test method (`[Fact]`/`[Theory]`/`[Unit]`/`[Integration]`/`[E2E]`/`[Journey]`) authored outside a `src/` directory is flagged. The `tests/<App>.Tests` project is infrastructure only (WebApplicationFactory, DB harness, shared bootstrap); unit tests sit next to their slice, journeys under `src/.../Journeys` | **shipped** | keeps tests co-located + doctor-visible; the runner project stays pure infra |
-| `LZ0012` | **Endpoint named after the slice**: a `[Slice]`'s `Map` must call `.WithName("<SliceName>")` (or `nameof`). That name is the OpenAPI `operationId` the typed client generates its hook from (`use<SliceName>`), keeping backend↔frontend 1:1. A missing `Map` is LZ0001's concern, not this rule's | **shipped** | the back→front naming seam — a forgotten name drifts the generated client |
-| `LZ0013` | **Value object always-valid**: a `[ValueObject]` is immutable, exposes no public constructor and no public setter, and is built only through a static smart constructor returning `Result<T>` (the `Money.From` shape) — so an invalid instance can never exist | **shipped** | anemic domain — a value must be unconstructable when invalid, not validated after the fact |
-| `LZ0014` | **Entity encapsulation + invariant funnel**: an `[Entity]` exposes no public constructor (born via a factory, rehydrated by EF via a private one) and no public setter, and declares a private `EnsureValid()` (or `Validate()`) returning `Result<T>` that every create/mutate path returns through | **shipped** | anemic domain — invariants must live on the entity, unbypassable (the sample's own `Wallet` was a setter bag) |
-| `LZ0015` | **Module shape**: a `[Module]` is a static class declaring a public static `AddServices(IServiceCollection, IConfiguration)` (its own DI) and a public static `Map(IEndpointRouteBuilder)` (its routes) — it owns both halves of its wiring | **shipped** | the composition root drifts into a dumping ground; a module's DI scatters across `Program.cs` |
-| `LZ0016` | **Module registered**: every `[Module]`'s `AddServices` and `Map` are actually called in the explicit registry (`AddModules` / `MapModules`) — a compile-time reachability check, no reflection | **shipped** | generating a module and forgetting to wire it — a silent 404 instead of a build error |
-| `LZ0017` | **Composition root is an index**: the top-level statements (`Program.cs`) wire only `AddAeroFortress` / `AddPlatform` / `AddModules` and the matching `UseAeroFortress` / `UsePlatform` / `MapModules`; any other service registration (`IServiceCollection`), pipeline step, or endpoint mapping (`Use*`/`Map*`) there is flagged and redirected to the platform or a module | **shipped** | the index rots into a dumping ground — infra creeps back into `Program.cs`, drifts, and bit-rots there unwatched |
-| `LZ0018` | **Error code is a registry constant**: the `code` passed to an `Error` factory / `Validation.Check` / `Validation.Add` / `FieldError` must reference a `const` on a class named `*ErrorCodes` (e.g. `WalletsErrorCodes.NotFound`), never an inline literal | **shipped** | a code invisible to reflection can't be enumerated into the OpenAPI contract — it would reach a user untranslated; the registry keeps the set discoverable + typed end-to-end |
-| `LZ0019` | **Error code constant is used**: every `const` on an `*ErrorCodes` registry must be referenced by an `Error`/`Validation` call somewhere in the compilation — the reverse of `LZ0018` | **shipped** | drop a flow and leave its code behind → a dead code still ships in the OpenAPI enum + the i18n catalog; this keeps the registry the exact, live set (no orphans) |
-| `LZ0020` | **A `[Journey]` asserts its post-condition**: the journey test body must contain an assertion (xUnit `Assert`, FluentAssertions `Should`, or a `Verify`/`Expect` helper) — the depth rung above `LZ0008` (which proves the journey exists). Warning-tier; textual over the journey AdditionalFiles | **shipped** | an assertion-free journey is theater — it runs the path and proves nothing |
-| `LZ0021` | **A persisted or entity-owned type declares its mark**: a `DbSet<T>` whose `T` is unmarked must be `[Entity]`; a complex member of an `[Entity]` (after one nullable/collection layer) that is neither `[ValueObject]`, `[Entity]`, nor an enum must be `[ValueObject]`. The rung *beneath* LZ0013/LZ0014, which only fire on already-marked types — so an unmarked domain type would otherwise escape every encapsulation check. Does not flag dead/unused types or framework types | **shipped** | the pauta port shipped an anemic `User` (a table, no `[Entity]`) past a green doctor — the omission of the mark was the evasion |
-| `LZ0022` | **An endpoint's authorization is a decision, never an omission**: every `[Slice]` carries an explicit posture — `.RequireAuthorization(…)` or `.AllowAnonymous()` — on its own `Map` chain or on the route group the module mounts it on (`app.MapGroup("/x").RequireAuthorization()`). `.AllowAnonymous()` is not a loophole: it is the same decision, made visible and reviewable. A missing `Map` is LZ0001's concern | **shipped** | the classic silent failure — a new endpoint ships open because nobody decided anything |
-| `LZ0023` | **An injected `ICurrentUser` is consulted**: a `[Slice]` `Handle` that takes an `ICurrentUser` parameter and never reads it is flagged — the caller was wired in to scope the operation, so an unread parameter is a missing ownership/role/org check, not dead code. Consult the caller or remove the parameter | **shipped** | the signature claims an authorization posture the body doesn't have — the check was meant and then silently dropped |
-| `LZ0024` | **Raw SQL never absorbs runtime values as text**: a `*Raw` EF call (`FromSqlRaw`, `ExecuteSqlRaw`/`Async`, `SqlQueryRaw`) whose SQL argument interpolates or concatenates a non-literal is flagged — the SQL-injection shape. The fix is one token: `FromSql`/`ExecuteSql`/`SqlQuery` take the same interpolated string and turn every hole into a `DbParameter`. Constant SQL through `*Raw` stays legal | **shipped** | injection hides in the one raw query an app eventually needs — the safe twin costs nothing |
-| `LZ0025` | **A held `Result<T>` is checked before it is unwrapped**: reading `.Value`/`.Error` on a result stored in a local or parameter with no earlier outcome consult in the same member (`IsSuccess`/`IsFailure`, an `is { IsSuccess: … }` pattern, or a `Validation.Collect` fold) is flagged — on the wrong outcome the access throws. Unwrapping *inline* on a fresh construction (`Money.From(10m).Value` in a seed/test) stays legal: it is the deliberate known-valid idiom | **shipped** | the type's number-one misuse — `result.Value` straight through, an exception where an `Error` was supposed to flow |
-| `LZ0026` | **A `[Critical]` write declares its concurrency posture**: a `[Critical]` slice whose `Handle` saves changes against an entity with no visible concurrency token (no `[Timestamp]`/`[ConcurrencyCheck]` member, no `RowVersion` property) is flagged — concurrent requests are last-write-wins on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration is invisible to the doctor; name the property `RowVersion` or tune the severity | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
-| `LZ0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
-| `LZ0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
-| `LZ0029` | **A slice decides its criticality under the explicit policy**: when `AeroFortress.toml`'s `[testing] criticality = "explicit"`, a `[Slice]` carrying neither `[Critical]` nor `[NonCritical]` is flagged — criticality becomes a decision on every slice, the mirror of `LZ0022`'s posture on authorization. Inert under the default `"opt-in"` (only `[Critical]` matters) and under `"strict"` (where an undecided slice is *treated as* critical and `LZ0008`/`LZ0010` demand its journeys). The dial is read from the manifest through MSBuild and projected to the analyzers — no TOML parsing in the doctor | **shipped** | criticality was opt-in-only; a team wanting it considered on every slice (like auth) had no enforcement, and a forced `[NonCritical]` is reviewable where a silent absence is not |
-| `LZ0030` | **A `[Verify("id")]` obligation has a matching AVP proof**: code that declares it must be proven against an AVP acceptance criterion (`[Verify("own-resource-only")]`) is flagged unless an `[AVP("id")]` verification for the same id exists in the compilation or its test files (`AdditionalFiles`). This couples the static doctor to the runtime verifier (AVP / Assay.Net) — the build refuses a slice that names a proof obligation it never proves. Detection is textual by attribute name, so the framework takes no dependency on the AVP package (the relation stays one-way: framework knows AVP, never the reverse) | **shipped** | the spec-driven bridge — an acceptance criterion declared on a slice must be a verifiable proof, not a comment |
-| `LZ0031` | **A `[Critical]` slice declares a proven criterion**: a slice critical under the active policy (`[Critical]`, or any slice under `"strict"`) that carries no `[Verify("id")]` — on the slice or a method within it — is flagged. The reverse of `LZ0030` on the other axis: LZ0030 forces a declared criterion to have an `[AVP]` proof (criterion ⟹ proof); this forces a high-stakes behaviour to declare a criterion at all (critical ⟹ criterion), closing the bridge both ways. One rung finer than `LZ0008`'s journeys — a journey proves the path runs, the AVP criterion proves a named property holds — and reads "critical" through the same `CriticalityPolicy`, so LZ0008/LZ0010/LZ0029/LZ0031 agree. Detection is textual by attribute name (no dependency on the AVP package) | **shipped** | a high-stakes slice could ship its journeys yet name no AVP criterion — the bridge's critical→criterion direction was open |
+| `AF0001` | Slice conformance (static class; nested `Input` and `Output`; `Handle → Task<Result<T>>`; `Map`; ordered Input → Output → Handle → Map) | **shipped** | corbanx: "deviated from architecture" |
+| `AF0002` | Endpoint stays thin (a route handler is an expression-bodied lambda or method group, never a statement block) | **shipped** | corbanx: "business logic in routes" |
+| `AF0003` | Every slice has a co-located `<Slice>.Tests.cs` | **shipped** | corbanx: "didn't write tests" |
+| `AF0004` | Every module has a `<Module>.ctx.md` with the spine (`## Boundaries` + `## Design notes`, non-empty) | **shipped** | corbanx: "forgot to write ai.context" |
+| `AF0005` | `.ctx.md` is fresh — a backticked identifier it cites resolves in source, a reference, or a co-located `*.Tests.cs` (not mtime) | **shipped** | corbanx: "ai.context drifted" |
+| `AF0006` | No `IRepository` / unit-of-work abstraction in a slice | **shipped** | clean-arch bloat cut |
+| `AF0007` | File ≤ 500 LOC (EF `Migrations/` exempt — tool-emitted, append-only) | **shipped** | Rails-repo discipline |
+| `AF0008` | A `[Critical]` slice has a happy **and** a sad journey covering it | **shipped** | high-stakes ops must prove failure E2E |
+| `AF0009` | **Write-ownership**: a module writes only its own entities — a write (Add/Update/Remove/…) on another module's entity is flagged, on a `DbSet` *or* through the untyped `DbContext.Add(entity)` form; reads/joins/calls across modules are free. `.Tests.cs` exempt | **shipped** | modular monolith — write-ownership keeps a context carvable later |
+| `AF0010` | A `[Journey]` covers a `[Critical]` slice — the inverse of `AF0008`. A journey on a non-critical slice (inert metadata) is flagged: mark it `[Critical]` or use a plain `[E2E]` | **shipped** | journeys were silently inert off a critical slice |
+| `AF0011` | **Tests live in `src/`**: a test method (`[Fact]`/`[Theory]`/`[Unit]`/`[Integration]`/`[E2E]`/`[Journey]`) authored outside a `src/` directory is flagged. The `tests/<App>.Tests` project is infrastructure only (WebApplicationFactory, DB harness, shared bootstrap); unit tests sit next to their slice, journeys under `src/.../Journeys` | **shipped** | keeps tests co-located + doctor-visible; the runner project stays pure infra |
+| `AF0012` | **Endpoint named after the slice**: a `[Slice]`'s `Map` must call `.WithName("<SliceName>")` (or `nameof`). That name is the OpenAPI `operationId` the typed client generates its hook from (`use<SliceName>`), keeping backend↔frontend 1:1. A missing `Map` is AF0001's concern, not this rule's | **shipped** | the back→front naming seam — a forgotten name drifts the generated client |
+| `AF0013` | **Value object always-valid**: a `[ValueObject]` is immutable, exposes no public constructor and no public setter, and is built only through a static smart constructor returning `Result<T>` (the `Money.From` shape) — so an invalid instance can never exist | **shipped** | anemic domain — a value must be unconstructable when invalid, not validated after the fact |
+| `AF0014` | **Entity encapsulation + invariant funnel**: an `[Entity]` exposes no public constructor (born via a factory, rehydrated by EF via a private one) and no public setter, and declares a private `EnsureValid()` (or `Validate()`) returning `Result<T>` that every create/mutate path returns through | **shipped** | anemic domain — invariants must live on the entity, unbypassable (the sample's own `Wallet` was a setter bag) |
+| `AF0015` | **Module shape**: a `[Module]` is a static class declaring a public static `AddServices(IServiceCollection, IConfiguration)` (its own DI) and a public static `Map(IEndpointRouteBuilder)` (its routes) — it owns both halves of its wiring | **shipped** | the composition root drifts into a dumping ground; a module's DI scatters across `Program.cs` |
+| `AF0016` | **Module registered**: every `[Module]`'s `AddServices` and `Map` are actually called in the explicit registry (`AddModules` / `MapModules`) — a compile-time reachability check, no reflection | **shipped** | generating a module and forgetting to wire it — a silent 404 instead of a build error |
+| `AF0017` | **Composition root is an index**: the top-level statements (`Program.cs`) wire only `AddAeroFortress` / `AddPlatform` / `AddModules` and the matching `UseAeroFortress` / `UsePlatform` / `MapModules`; any other service registration (`IServiceCollection`), pipeline step, or endpoint mapping (`Use*`/`Map*`) there is flagged and redirected to the platform or a module | **shipped** | the index rots into a dumping ground — infra creeps back into `Program.cs`, drifts, and bit-rots there unwatched |
+| `AF0018` | **Error code is a registry constant**: the `code` passed to an `Error` factory / `Validation.Check` / `Validation.Add` / `FieldError` must reference a `const` on a class named `*ErrorCodes` (e.g. `WalletsErrorCodes.NotFound`), never an inline literal | **shipped** | a code invisible to reflection can't be enumerated into the OpenAPI contract — it would reach a user untranslated; the registry keeps the set discoverable + typed end-to-end |
+| `AF0019` | **Error code constant is used**: every `const` on an `*ErrorCodes` registry must be referenced by an `Error`/`Validation` call somewhere in the compilation — the reverse of `AF0018` | **shipped** | drop a flow and leave its code behind → a dead code still ships in the OpenAPI enum + the i18n catalog; this keeps the registry the exact, live set (no orphans) |
+| `AF0020` | **A `[Journey]` asserts its post-condition**: the journey test body must contain an assertion (xUnit `Assert`, FluentAssertions `Should`, or a `Verify`/`Expect` helper) — the depth rung above `AF0008` (which proves the journey exists). Warning-tier; textual over the journey AdditionalFiles | **shipped** | an assertion-free journey is theater — it runs the path and proves nothing |
+| `AF0021` | **A persisted or entity-owned type declares its mark**: a `DbSet<T>` whose `T` is unmarked must be `[Entity]`; a complex member of an `[Entity]` (after one nullable/collection layer) that is neither `[ValueObject]`, `[Entity]`, nor an enum must be `[ValueObject]`. The rung *beneath* AF0013/AF0014, which only fire on already-marked types — so an unmarked domain type would otherwise escape every encapsulation check. Does not flag dead/unused types or framework types | **shipped** | the pauta port shipped an anemic `User` (a table, no `[Entity]`) past a green doctor — the omission of the mark was the evasion |
+| `AF0022` | **An endpoint's authorization is a decision, never an omission**: every `[Slice]` carries an explicit posture — `.RequireAuthorization(…)` or `.AllowAnonymous()` — on its own `Map` chain or on the route group the module mounts it on (`app.MapGroup("/x").RequireAuthorization()`). `.AllowAnonymous()` is not a loophole: it is the same decision, made visible and reviewable. A missing `Map` is AF0001's concern | **shipped** | the classic silent failure — a new endpoint ships open because nobody decided anything |
+| `AF0023` | **An injected `ICurrentUser` is consulted**: a `[Slice]` `Handle` that takes an `ICurrentUser` parameter and never reads it is flagged — the caller was wired in to scope the operation, so an unread parameter is a missing ownership/role/org check, not dead code. Consult the caller or remove the parameter | **shipped** | the signature claims an authorization posture the body doesn't have — the check was meant and then silently dropped |
+| `AF0024` | **Raw SQL never absorbs runtime values as text**: a `*Raw` EF call (`FromSqlRaw`, `ExecuteSqlRaw`/`Async`, `SqlQueryRaw`) whose SQL argument interpolates or concatenates a non-literal is flagged — the SQL-injection shape. The fix is one token: `FromSql`/`ExecuteSql`/`SqlQuery` take the same interpolated string and turn every hole into a `DbParameter`. Constant SQL through `*Raw` stays legal | **shipped** | injection hides in the one raw query an app eventually needs — the safe twin costs nothing |
+| `AF0025` | **A held `Result<T>` is checked before it is unwrapped**: reading `.Value`/`.Error` on a result stored in a local or parameter with no earlier outcome consult in the same member (`IsSuccess`/`IsFailure`, an `is { IsSuccess: … }` pattern, or a `Validation.Collect` fold) is flagged — on the wrong outcome the access throws. Unwrapping *inline* on a fresh construction (`Money.From(10m).Value` in a seed/test) stays legal: it is the deliberate known-valid idiom | **shipped** | the type's number-one misuse — `result.Value` straight through, an exception where an `Error` was supposed to flow |
+| `AF0026` | **A `[Critical]` write declares its concurrency posture**: a `[Critical]` slice whose `Handle` saves changes against an entity with no visible concurrency token (no `[Timestamp]`/`[ConcurrencyCheck]` member, no `RowVersion` property) is flagged — concurrent requests are last-write-wins on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration is invisible to the doctor; name the property `RowVersion` or tune the severity | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
+| `AF0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
+| `AF0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
+| `AF0029` | **A slice decides its criticality under the explicit policy**: when `AeroFortress.toml`'s `[testing] criticality = "explicit"`, a `[Slice]` carrying neither `[Critical]` nor `[NonCritical]` is flagged — criticality becomes a decision on every slice, the mirror of `AF0022`'s posture on authorization. Inert under the default `"opt-in"` (only `[Critical]` matters) and under `"strict"` (where an undecided slice is *treated as* critical and `AF0008`/`AF0010` demand its journeys). The dial is read from the manifest through MSBuild and projected to the analyzers — no TOML parsing in the doctor | **shipped** | criticality was opt-in-only; a team wanting it considered on every slice (like auth) had no enforcement, and a forced `[NonCritical]` is reviewable where a silent absence is not |
+| `AF0030` | **A `[Verify("id")]` obligation has a matching AVP proof**: code that declares it must be proven against an AVP acceptance criterion (`[Verify("own-resource-only")]`) is flagged unless an `[AVP("id")]` verification for the same id exists in the compilation or its test files (`AdditionalFiles`). This couples the static doctor to the runtime verifier (AVP / Assay.Net) — the build refuses a slice that names a proof obligation it never proves. Detection is textual by attribute name, so the framework takes no dependency on the AVP package (the relation stays one-way: framework knows AVP, never the reverse) | **shipped** | the spec-driven bridge — an acceptance criterion declared on a slice must be a verifiable proof, not a comment |
+| `AF0031` | **A `[Critical]` slice declares a proven criterion**: a slice critical under the active policy (`[Critical]`, or any slice under `"strict"`) that carries no `[Verify("id")]` — on the slice or a method within it — is flagged. The reverse of `AF0030` on the other axis: AF0030 forces a declared criterion to have an `[AVP]` proof (criterion ⟹ proof); this forces a high-stakes behaviour to declare a criterion at all (critical ⟹ criterion), closing the bridge both ways. One rung finer than `AF0008`'s journeys — a journey proves the path runs, the AVP criterion proves a named property holds — and reads "critical" through the same `CriticalityPolicy`, so AF0008/AF0010/AF0029/AF0031 agree. Detection is textual by attribute name (no dependency on the AVP package) | **shipped** | a high-stakes slice could ship its journeys yet name no AVP criterion — the bridge's critical→criterion direction was open |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
 
-Beside the LZ* rules the doctor ships a **security floor** for the built-in .NET analyzers
+Beside the AF* rules the doctor ships a **security floor** for the built-in .NET analyzers
 (`buildTransitive/aerofortress.globalconfig`): a curated CA* set — dropped `CancellationToken`
 (CA2016), insecure deserialization (CA23xx), broken crypto / disabled cert validation /
 deprecated TLS (CA53xx) — raised to error tier. Same removability story: opt out per-project
@@ -525,13 +525,13 @@ tooling stays out of the published surface, always.
 
 | Rule | Enforces | Applies to |
 |------|----------|------------|
-| `LZSELF001` | File at or under 500 lines | `AeroFortress.Framework.*` libraries |
-| `LZSELF002` | No tracking codes or scratch markers in comments (TODO, FIXME, HACK, XXX, capital-letter/number codes) | `AeroFortress.Framework.*` libraries |
+| `AFSELF001` | File at or under 500 lines | `AeroFortress.Framework.*` libraries |
+| `AFSELF002` | No tracking codes or scratch markers in comments (TODO, FIXME, HACK, XXX, capital-letter/number codes) | `AeroFortress.Framework.*` libraries |
 | `CS1591` (built-in) | Every public member carries XML documentation | `AeroFortress.Framework.*` libraries |
 
 Settings live once in `build/AeroFortress.Framework.Library.props`, imported by every `AeroFortress.Framework.*` project. The
 bar is code a Microsoft .NET MVP would read and be proud of: gold-standard docs, no junk,
-small files. The **user's app is not** held to these — `LZSELF*` never touches a generated
+small files. The **user's app is not** held to these — `AFSELF*` never touches a generated
 user project.
 
 ---

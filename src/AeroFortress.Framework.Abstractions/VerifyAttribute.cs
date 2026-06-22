@@ -3,7 +3,7 @@ namespace AeroFortress.Framework.Abstractions;
 /// <summary>
 /// Declares that a <c>[Slice]</c> (or a method within one) must be PROVEN against a named AVP
 /// acceptance criterion: there must exist an <c>[AVP("&lt;id&gt;")]</c> verification for the same id.
-/// The doctor (<c>LZ0030</c>) reads this marker and fails the build when the proof is missing — the
+/// The doctor (<c>AF0030</c>) reads this marker and fails the build when the proof is missing — the
 /// obligation is enforced at compile time, not left to a checklist.
 ///
 /// AVP (the Acceptance Verification Protocol) is a separate, standalone verifier package; this marker

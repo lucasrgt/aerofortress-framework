@@ -14,25 +14,25 @@ public class ErrorCodeAnalyzerTests
     [Fact]
     public Task Inline_literal_in_a_factory_is_flagged() =>
         Harness<ErrorCodeAnalyzer>.Verify(Code("""
-            Error.NotFound({|LZ0018:"wallets.not_found"|}, "not found");
+            Error.NotFound({|AF0018:"wallets.not_found"|}, "not found");
             """));
 
     [Fact]
     public Task Inline_literal_in_a_check_is_flagged() =>
         Harness<ErrorCodeAnalyzer>.Verify(Code("""
-            new Validation().Check(true, "amount", {|LZ0018:"amount.required"|}, "is required");
+            new Validation().Check(true, "amount", {|AF0018:"amount.required"|}, "is required");
             """));
 
     [Fact]
     public Task Inline_literal_in_a_field_error_is_flagged() =>
         Harness<ErrorCodeAnalyzer>.Verify(Code("""
-            var _ = new FieldError("amount", {|LZ0018:"amount.required"|}, "is required");
+            var _ = new FieldError("amount", {|AF0018:"amount.required"|}, "is required");
             """));
 
     [Fact]
     public Task A_constant_not_on_an_ErrorCodes_registry_is_flagged() =>
         Harness<ErrorCodeAnalyzer>.Verify(Code("""
-            Error.NotFound({|LZ0018:Other.NotFound|}, "not found");
+            Error.NotFound({|AF0018:Other.NotFound|}, "not found");
             """));
 
     [Fact]
@@ -46,7 +46,7 @@ public class ErrorCodeAnalyzerTests
         Harness<ErrorCodeAnalyzer>.Verify("""
             public static class WidgetsErrorCodes
             {
-                public const string {|LZ0019:NotFound|} = "widgets.not_found";
+                public const string {|AF0019:NotFound|} = "widgets.not_found";
             }
             """);
 
@@ -72,7 +72,7 @@ public class ErrorCodeAnalyzerTests
 
         public static class Subject
         {
-            // Keeps WalletsErrorCodes.NotFound referenced so LZ0019 (dead-code) never fires in the LZ0018 cases.
+            // Keeps WalletsErrorCodes.NotFound referenced so AF0019 (dead-code) never fires in the AF0018 cases.
             public static readonly string KeepAlive = WalletsErrorCodes.NotFound;
 
             public static void M()

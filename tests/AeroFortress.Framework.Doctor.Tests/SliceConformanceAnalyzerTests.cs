@@ -40,7 +40,7 @@ public class SliceConformanceAnalyzerTests
         using System.Threading.Tasks;
 
         [Slice]
-        public class {|LZ0001:Deposit|}
+        public class {|AF0001:Deposit|}
         {
             public record Input(int X);
             public record Output(int Y);
@@ -57,7 +57,7 @@ public class SliceConformanceAnalyzerTests
         using System.Threading.Tasks;
 
         [Slice]
-        public static class {|LZ0001:Deposit|}
+        public static class {|AF0001:Deposit|}
         {
             public record Output(int Y);
             public static Task<Result<Output>> Handle(Output input) => Task.FromResult(default(Result<Output>));
@@ -73,7 +73,7 @@ public class SliceConformanceAnalyzerTests
         using System.Threading.Tasks;
 
         [Slice]
-        public static class {|LZ0001:Deposit|}
+        public static class {|AF0001:Deposit|}
         {
             public static Task<Result<Output>> Handle(Input input) => Task.FromResult(default(Result<Output>));
             public record Input(int X);

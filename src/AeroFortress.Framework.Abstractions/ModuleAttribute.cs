@@ -4,7 +4,7 @@ namespace AeroFortress.Framework.Abstractions;
 /// Marks a class as a module's wiring root — the one place a bounded context plugs into the host. It pairs the
 /// two halves of a module's composition: <c>AddServices(IServiceCollection, IConfiguration)</c> (its own DI) and
 /// <c>Map(IEndpointRouteBuilder)</c> (its routes), so the module owns both and the composition root stays a thin
-/// index. The doctor enforces it: <c>LZ0015</c> checks the shape (both halves are declared), and <c>LZ0016</c>
+/// index. The doctor enforces it: <c>AF0015</c> checks the shape (both halves are declared), and <c>AF0016</c>
 /// checks every <c>[Module]</c> is wired in the app's explicit module registry — so generating a module and
 /// forgetting to register it is a build error, not a silent 404.
 ///

@@ -1,6 +1,6 @@
 // The error-code → copy bridge — the runtime half of the error-code discipline. The backend ships every
 // failure as an ErrorBody { error, code, message, fields } where `code` is a stable, language-neutral registry
-// key (LZ0018/19) enumerated into the OpenAPI contract; the front owns the copy in an "api-errors" i18n
+// key (AF0018/19) enumerated into the OpenAPI contract; the front owns the copy in an "api-errors" i18n
 // namespace whose completeness the error-code-coverage tool proves. This consumes that pair: code off the
 // failed request, copy out of the catalog, a generic fallback when the error carries no known code — so a
 // ViewModel never hardcodes a per-screen error string. Structural like the rest of the spine: the i18n

@@ -1,15 +1,15 @@
 # Decision: the doctor must catch the *unmarked* entity / value object, not only police the marked one
 
-**Status:** accepted; implemented (`LZ0021`, `analyzers/AeroFortress.Framework.Doctor/UnmarkedDomainTypeAnalyzer.cs`) + tests
+**Status:** accepted; implemented (`AF0021`, `analyzers/AeroFortress.Framework.Doctor/UnmarkedDomainTypeAnalyzer.cs`) + tests
 (`tests/AeroFortress.Framework.Doctor.Tests/UnmarkedDomainTypeAnalyzerTests.cs`, 5 cases, green). Self-graded
 **8.7 — PASS** (see §Grading).
 **Date:** 2026-06-08.
-**Supersedes/extends:** `ValueObjectAnalyzer` (LZ0013) + `EntityAnalyzer` (LZ0014). It does not replace
+**Supersedes/extends:** `ValueObjectAnalyzer` (AF0013) + `EntityAnalyzer` (AF0014). It does not replace
 them — it adds the rung *below* them: they grade a type that is already marked; this rule catches the type
 that should be marked and isn't.
 **Lineage:** the same anti-theater intent as the journey-depth decision
 ([`lazuli-net-journey-depth-enforcement.md`](lazuli-net-journey-depth-enforcement.md)) — "a green doctor is
-not shipping safety" — applied to the **domain-mark** grain. A green LZ0013/LZ0014 says nothing about the
+not shipping safety" — applied to the **domain-mark** grain. A green AF0013/AF0014 says nothing about the
 class that simply never opted in.
 
 ---
@@ -32,12 +32,12 @@ The pauta port (Go/`.lzi` → .NET) surfaced the hole in a code review. Three ob
 
 The load-bearing fact is **why the doctor stayed green through all three**:
 
-> **LZ0013 and LZ0014 only fire on a type that is *already* marked.** `EntityAnalyzer.cs:55` returns early
+> **AF0013 and AF0014 only fire on a type that is *already* marked.** `EntityAnalyzer.cs:55` returns early
 > when `!IsEntity(cls)`; `ValueObjectAnalyzer.cs:52` returns early when `!IsValueObject(type)`. An anemic
 > class that never says `[Entity]` is not a *broken* entity to them — it is *not an entity at all*, so they
 > never look. **The omission of the mark is the evasion.**
 
-This is structurally identical to the journey decision's hole (LZ0008 proves a journey *exists*; it never
+This is structurally identical to the journey decision's hole (AF0008 proves a journey *exists*; it never
 read the body). Here the marks are the on-ramp to enforcement, and an author — or a porting agent — can skip
 enforcement entirely by skipping the on-ramp. The framework documents a domain discipline
 (`CONVENTIONS.md` §"The domain") that its analyzers cannot see a violation of, because the violation is an
@@ -47,7 +47,7 @@ There is a ceiling worth naming up front, because it bounds what this rule can h
 
 | Rung | Claim | Statically enforceable? |
 |---|---|---|
-| 1. Marked-shape | "a type *marked* `[Entity]`/`[ValueObject]` obeys the shape" | ✅ — LZ0013 / LZ0014 today |
+| 1. Marked-shape | "a type *marked* `[Entity]`/`[ValueObject]` obeys the shape" | ✅ — AF0013 / AF0014 today |
 | 2. Mark-required (persisted) | "a type that is a **table** is marked `[Entity]`" | ✅ — DbSet is an exact signal (this rule, Detector A) |
 | 3. Mark-required (owned) | "a complex member of an entity is a marked value object" | ✅ — *in this architecture* (this rule, Detector B) |
 | 4. Mark-required (general) | "any class that *models a domain concept* is marked" | ❌ — undecidable; "domain concept" has no syntax |
@@ -59,7 +59,7 @@ every DTO and options bag — which would train authors to suppress the rule, de
 
 ## Decision
 
-Add **LZ0021 — a persisted or entity-owned type must declare its mark**, with two detectors, each keyed to a
+Add **AF0021 — a persisted or entity-owned type must declare its mark**, with two detectors, each keyed to a
 fact that is exact under these conventions (so the rule is `Error`, not a heuristic warning):
 
 ### Detector A — DbSet ⟹ `[Entity]`
@@ -74,7 +74,7 @@ A property on an `[Entity]` whose type (after stripping one `Nullable<>` and one
 project-owned class/record that is **not** `[ValueObject]`, **not** `[Entity]`, and **not** an `enum` is
 entity state with no mark. This is exact *here* because the convention fixes what entity state may be —
 value objects + primitives + enums + ids, with cross-module references carried **by id, never an EF
-navigation** (`CONVENTIONS.md` §"Project layout", modular-monolith bullet; enforced adjacent by LZ0009). So
+navigation** (`CONVENTIONS.md` §"Project layout", modular-monolith bullet; enforced adjacent by AF0009). So
 a bare complex member is a value object that forgot `[ValueObject]`. Reported at the property. *This is the
 precise catch for an `Address`-on-`Agency` that had shipped unmarked.*
 
@@ -86,30 +86,30 @@ precise catch for an `Address`-on-`Agency` that had shipped unmarked.*
   is deletion + consolidation, tracked in the port, not in this rule.
 - **It does not flag types it doesn't own.** A member typed `string`, `Guid`, `DateTime`, or any framework
   type (no source location) is never required to be marked.
-- **It does not re-check shape.** Once a type *is* marked, LZ0013/LZ0014 own its shape. LZ0021 is purely the
+- **It does not re-check shape.** Once a type *is* marked, AF0013/AF0014 own its shape. AF0021 is purely the
   "you forgot the mark" rung beneath them.
 
 ## New diagnostics
 
 Net-new, none exists today (honest per the rubric's Criterion 8.5):
 
-- `LZ0021` — a `DbSet<T>` whose `T` is unmarked (Detector A), or an `[Entity]` member of an unmarked complex
-  type (Detector B). Next free id; LZ0001–LZ0020 are taken (LZ0020 = `JourneyAssertionAnalyzer`).
+- `AF0021` — a `DbSet<T>` whose `T` is unmarked (Detector A), or an `[Entity]` member of an unmarked complex
+  type (Detector B). Next free id; AF0001–AF0020 are taken (AF0020 = `JourneyAssertionAnalyzer`).
 
-Existing, cited as-is: `LZ0013` (`ValueObjectAnalyzer.cs:23`), `LZ0014` (`EntityAnalyzer.cs:26`), `LZ0009`
+Existing, cited as-is: `AF0013` (`ValueObjectAnalyzer.cs:23`), `AF0014` (`EntityAnalyzer.cs:26`), `AF0009`
 (`ModuleBoundaryAnalyzer` — the by-id, no-navigation rule Detector B leans on).
 
 ## Scope / boundary
 
 Generic, in-boundary. Every AeroFortress app has entities and value objects; the marks and the `DbContext` are
 framework-conventional. This hardens an existing in-boundary mechanism (the marks) rather than moving the
-80/20 line — so the one-pilot pauta incident plus the LZ0013/LZ0014 lineage is sufficient justification. No
+80/20 line — so the one-pilot pauta incident plus the AF0013/AF0014 lineage is sufficient justification. No
 provider names, no DI/transport mechanics, no runtime invasion: a pure syntactic+semantic analyzer,
 doctor-removable like every other (`CONVENTIONS.md` Law 2).
 
 ## What it removes
 
-The false confidence that a clean LZ0013/LZ0014 means "the domain is encapsulated." Before this, the cheapest
+The false confidence that a clean AF0013/AF0014 means "the domain is encapsulated." Before this, the cheapest
 way to a green domain was to *not mark the type* — enforcement was opt-in, and the opt-out was silent. After
 this, a persisted or owned type cannot stay unmarked: the marks become the only way to model state, and
 "unmarked" stops being a hiding place. It adds one diagnostic, zero namespaces, zero authoring surface (you
@@ -124,8 +124,8 @@ Gate: ≥ 8.5 weighted **and** no criterion < 7 → PASS; any < 6 → BLOCK; bou
 | 1 | Cold-read legibility of the resulting convention | 9.0 | the rung table draws the exact line; "marks are the on-ramp" frames it in one sentence | an author must learn *why* a DTO is fine but an entity member isn't — answered by the rung table, not obvious without it |
 | 2 | Scope / boundary discipline (80/20, no runtime invasion) | 9.5 | reuses the framework's own marks + DbContext; pure analyzer, doctor-removable | Detector B leans on the by-id convention — correct *here*, would mislead a codebase that allows EF navigations (which this framework forbids, so in-boundary) |
 | 3 | Determinism — one signal per detector | 9.0 | DbSet (A) and entity-member-type (B) are each a single structural fact, no author fork | "one collection layer / one nullable layer" of unwrap is a bounded choice; a `List<List<Address>>` would slip (no real case) |
-| 4 | Doctor enforcement named + severity path | 8.5 | `LZ0021`, `Error`, implemented + 5 green tests | severity not yet mapped across `production`/`strict`/`prototype` profiles |
-| 5 | Diagnostic-ID truthfulness (rubric C8.5) | 9.5 | `LZ0021` is genuinely net-new; the id collision check (LZ0020 taken) is in the code comment | none material |
+| 4 | Doctor enforcement named + severity path | 8.5 | `AF0021`, `Error`, implemented + 5 green tests | severity not yet mapped across `production`/`strict`/`prototype` profiles |
+| 5 | Diagnostic-ID truthfulness (rubric C8.5) | 9.5 | `AF0021` is genuinely net-new; the id collision check (AF0020 taken) is in the code comment | none material |
 | 6 | Testability | 9.0 | five cases: valid, DbSet-unmarked, member-unmarked, nullable-unwrap, the full allowed-state regression | no test yet for `[Keyless]` opt-out or `[NotMapped]` skip (both coded, both unexercised) |
 | 7 | Anti-theater honesty — does it catch the bug it claims? | 8.5 | Detector A catches the exact `User` bug; Detector B the exact `Address`-on-entity bug; the orphan is honestly declared out-of-scope | it does **not** catch the orphan the reviewer first pointed at — defensible (dead code), but must be said plainly, not hidden |
 | 8 | Smallness / what it removes | 8.5 | removes "unmarked = invisible"; +1 diagnostic, 0 namespaces, 0 authoring surface | adds a third domain rule — real surface, justified by the evasion it closes |
@@ -134,14 +134,14 @@ Weighted ≈ **8.7**. No criterion < 7 → **PASS.**
 
 **Cruel summary.** The rule's honesty hinges on resisting rung 4. Detectors A and B are exact *because they
 refuse to ask "is this a domain concept?"* and instead ask "is this a table?" / "is this entity state?" —
-both of which have a syntax. The day someone asks LZ0021 to also flag the orphan `Address`, or any
+both of which have a syntax. The day someone asks AF0021 to also flag the orphan `Address`, or any
 "looks-domainish" class, it becomes a heuristic, earns suppressions, and dies. Keep it at rungs 2–3. The one
 soft floor is C6: the `[Keyless]` and `[NotMapped]` opt-outs are coded but untested — add those two cases
 before the next profile-severity pass.
 
 ### Tracked cuts (PASS)
 
-- Map `LZ0021` to `production`/`strict`/`prototype` severities (it is `Error` by default today).
+- Map `AF0021` to `production`/`strict`/`prototype` severities (it is `Error` by default today).
 - Add test cases for the `[Keyless]` (Detector A) and `[NotMapped]` (Detector B) opt-outs.
 - Port-side follow-through (not this rule): finish `User` as `[Entity]`, consolidate the five `Address`
   types to one shared `[ValueObject]`, delete the orphan.

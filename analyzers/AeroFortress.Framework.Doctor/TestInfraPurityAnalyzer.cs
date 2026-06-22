@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0011 — tests live in <c>src/</c>, not in the test-runner project. A test method (carrying
+/// AF0011 — tests live in <c>src/</c>, not in the test-runner project. A test method (carrying
 /// <c>[Fact]</c>/<c>[Theory]</c> or a AeroFortress category like <c>[Unit]</c>/<c>[Integration]</c>/<c>[E2E]</c>/
 /// <c>[Journey]</c>) must be authored under a <c>src/</c> directory — a unit test co-located next to its
 /// slice, or a journey under <c>src/.../Journeys</c>. The test project (<c>tests/&lt;App&gt;.Tests</c>) is
@@ -23,7 +23,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class TestInfraPurityAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a test authored in the test-infrastructure project.</summary>
-    public const string DiagnosticId = "LZ0011";
+    public const string DiagnosticId = "AF0011";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

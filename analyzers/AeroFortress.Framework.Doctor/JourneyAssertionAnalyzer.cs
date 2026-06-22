@@ -9,13 +9,13 @@ using Microsoft.CodeAnalysis.Text;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0020 — a <c>[Journey]</c> must assert its post-condition, not merely run. <c>LZ0008</c> proves a
+/// AF0020 — a <c>[Journey]</c> must assert its post-condition, not merely run. <c>AF0008</c> proves a
 /// critical slice HAS its happy + sad journeys; this proves each journey actually checks something — the
 /// depth rung above existence. A happy journey asserts the observable effect; a sad journey asserts the
 /// failure (and, ideally, that no state changed). An assertion-free journey is theater: it exercises the
 /// path and proves nothing.
 ///
-/// Like <c>LZ0008</c>/<c>LZ0010</c>, journeys live in test files excluded from the app compilation, so this
+/// Like <c>AF0008</c>/<c>AF0010</c>, journeys live in test files excluded from the app compilation, so this
 /// reads them as <c>AdditionalFiles</c> and works textually: for each <c>[Journey(...)]</c> it brace-matches
 /// the test method body and looks for an assertion token (<c>Assert</c>, FluentAssertions' <c>Should</c>, or
 /// a <c>Verify</c>/<c>Expect</c>/<c>Ensure</c> helper — <c>EnsureSuccessStatusCode()</c> is a real assertion: it throws on failure). Warning-tier — the heuristic is lenient by design (a body that
@@ -25,7 +25,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class JourneyAssertionAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a journey whose body asserts nothing.</summary>
-    public const string DiagnosticId = "LZ0020";
+    public const string DiagnosticId = "AF0020";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -39,7 +39,7 @@ public sealed class JourneyAssertionAnalyzer : DiagnosticAnalyzer
                    + "drop [Journey] for a plain [E2E] flow test.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
 
-    // [Journey(typeof(Slice), JourneyPath.Happy|Sad)] — mirrors LZ0008's grammar; captures the slice for the message.
+    // [Journey(typeof(Slice), JourneyPath.Happy|Sad)] — mirrors AF0008's grammar; captures the slice for the message.
     private static readonly Regex JourneyPattern = new(
         @"\[\s*Journey\s*\(\s*(?:covers\s*:\s*)?typeof\s*\(\s*(?<slice>[\w.]+)\s*\)\s*,\s*(?:\w+\s*\.\s*)?(?:Happy|Sad)\b[^\]]*\]",
         RegexOptions.Compiled);

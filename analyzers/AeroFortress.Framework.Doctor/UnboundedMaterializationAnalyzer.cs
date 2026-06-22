@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0027 — <b>a slice must not materialize an unbounded set</b>. A <c>ToListAsync</c>/<c>ToList</c> (or the
+/// AF0027 — <b>a slice must not materialize an unbounded set</b>. A <c>ToListAsync</c>/<c>ToList</c> (or the
 /// array twins) at the end of a <c>DbSet</c>-rooted chain with no <c>Take</c> and no <c>ToPageAsync</c> on the
 /// way serves a whole table as one response. The defect is invisible in development — ten rows always come back
 /// fast — and degrades in production as the tenant's data grows, months later. Warning tier on purpose:
@@ -25,7 +25,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class UnboundedMaterializationAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when a slice materializes a DbSet-rooted query with no bound.</summary>
-    public const string DiagnosticId = "LZ0027";
+    public const string DiagnosticId = "AF0027";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

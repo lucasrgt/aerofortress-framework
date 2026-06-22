@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0009 — write-ownership across modules. In the modular monolith every module shares one
+/// AF0009 — write-ownership across modules. In the modular monolith every module shares one
 /// <c>DbContext</c>, so reading or joining another module's tables is fine (a dashboard is one query). What
 /// stays forbidden is <em>writing</em> another module's entity: a slice may only <c>Add</c>/<c>Update</c>/
 /// <c>Remove</c> entities of its own module. To affect another module, call its service (in-process) or
@@ -28,7 +28,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class ModuleBoundaryAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a write into another module's entity.</summary>
-    public const string DiagnosticId = "LZ0009";
+    public const string DiagnosticId = "AF0009";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -137,7 +137,7 @@ public sealed class ModuleBoundaryAnalyzer : DiagnosticAnalyzer
         return dot < 0 ? rest : rest.Substring(0, dot);
     }
 
-    // A test file under the framework's <Concern>.Tests.cs convention (the same signal LZ0003 keys on).
+    // A test file under the framework's <Concern>.Tests.cs convention (the same signal AF0003 keys on).
     private static bool IsTestFile(string? path) =>
         path is not null && path.EndsWith(".Tests.cs", System.StringComparison.Ordinal);
 

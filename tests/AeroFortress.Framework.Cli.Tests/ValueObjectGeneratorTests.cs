@@ -19,10 +19,10 @@ public class ValueObjectGeneratorTests
         Assert.Contains("private Email(string value)", vo);
         Assert.Contains("public static Result<Email> From(string value)", vo);
 
-        // The shape LZ0013 requires: immutable (no setter at all) and built only through From.
+        // The shape AF0013 requires: immutable (no setter at all) and built only through From.
         Assert.DoesNotContain("set;", vo);
 
-        // The error code is a registry constant (LZ0018) — the value object ships its own *ErrorCodes registry.
+        // The error code is a registry constant (AF0018) — the value object ships its own *ErrorCodes registry.
         Assert.Contains("public static class EmailErrorCodes", vo);
         Assert.Contains("public const string Required = \"email.required\";", vo);
         Assert.Contains("EmailErrorCodes.Required", vo);

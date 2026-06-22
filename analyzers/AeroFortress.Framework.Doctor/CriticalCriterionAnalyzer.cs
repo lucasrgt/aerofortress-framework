@@ -8,15 +8,15 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0031 — a slice that is <c>[Critical]</c> under the active policy must declare at least one proven
+/// AF0031 — a slice that is <c>[Critical]</c> under the active policy must declare at least one proven
 /// acceptance criterion: a <c>[Verify("id")]</c> on the slice or a method within it. It is the reverse of
-/// <c>LZ0030</c> on the other axis — LZ0030 forces a declared criterion to have an <c>[AVP]</c> proof
+/// <c>AF0030</c> on the other axis — AF0030 forces a declared criterion to have an <c>[AVP]</c> proof
 /// (criterion ⟹ proof); this forces a high-stakes behaviour to declare a criterion in the first place
 /// (critical behaviour ⟹ criterion). Together they close the spec-driven bridge in both directions, so a
 /// <c>[Critical]</c> slice can never ship proving nothing at the AVP layer.
 ///
-/// "Critical" is read through <see cref="CriticalityPolicy"/>, so LZ0008, LZ0010, LZ0029 and this rule agree
-/// on what critical means under opt-in / explicit / strict. It is one rung finer than <c>LZ0008</c>'s
+/// "Critical" is read through <see cref="CriticalityPolicy"/>, so AF0008, AF0010, AF0029 and this rule agree
+/// on what critical means under opt-in / explicit / strict. It is one rung finer than <c>AF0008</c>'s
 /// end-to-end journeys — a journey proves the path runs; the AVP criterion proves a named property holds.
 /// Detection is syntactic by attribute name, so the framework takes no dependency on the AVP package (the
 /// relation stays one-way: framework knows AVP, never the reverse).
@@ -25,7 +25,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class CriticalCriterionAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a critical slice that declares no <c>[Verify]</c> criterion.</summary>
-    public const string DiagnosticId = "LZ0031";
+    public const string DiagnosticId = "AF0031";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -35,8 +35,8 @@ public sealed class CriticalCriterionAnalyzer : DiagnosticAnalyzer
         category: "AeroFortress.Framework.Convention",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A [Critical] slice is high-stakes; beyond its end-to-end journeys (LZ0008) it must name at "
-                   + "least one AVP acceptance criterion via [Verify(\"id\")] — the reverse of LZ0030 — so a "
+        description: "A [Critical] slice is high-stakes; beyond its end-to-end journeys (AF0008) it must name at "
+                   + "least one AVP acceptance criterion via [Verify(\"id\")] — the reverse of AF0030 — so a "
                    + "high-stakes slice can never ship proving nothing at the criterion layer.");
 
     /// <inheritdoc />
@@ -52,7 +52,7 @@ public sealed class CriticalCriterionAnalyzer : DiagnosticAnalyzer
 
     private static void OnStart(CompilationStartAnalysisContext context)
     {
-        // Read the dial once: the same policy LZ0008/LZ0010/LZ0029 obey, so all four agree on "critical".
+        // Read the dial once: the same policy AF0008/AF0010/AF0029 obey, so all four agree on "critical".
         var level = CriticalityPolicy.Read(context.Options.AnalyzerConfigOptionsProvider);
 
         context.RegisterSyntaxNodeAction(node =>

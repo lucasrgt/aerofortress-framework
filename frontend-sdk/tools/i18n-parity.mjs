@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// LZFE011 (cross-package) — locale parity for *.i18n.ts catalogs, as a TOOL. The eslint rule
+// AFFE011 (cross-package) — locale parity for *.i18n.ts catalogs, as a TOOL. The eslint rule
 // (`aerofortress/i18n-completeness`) is the in-scope mechanism: when the catalogs sit inside the linted source, it pins
 // parity per file at lint time. But in a core-split layout the catalogs live in a SEPARATE package, outside the
 // app's eslint scope, so the rule can never see them — this tool does, by reading the files directly. Same
@@ -72,10 +72,10 @@ for (const file of files) {
     const missing = [...union].filter((k) => !c.keys.has(k));
     if (missing.length) {
       failed = true;
-      console.error(`LZFE011 ${rel}: locale \`${c.name}\` missing ${missing.length} key(s): ${missing.sort().join(", ")}`);
+      console.error(`AFFE011 ${rel}: locale \`${c.name}\` missing ${missing.length} key(s): ${missing.sort().join(", ")}`);
     }
   }
 }
 
-console.log(`LZFE011 i18n-parity: ${checked} multi-locale catalog(s) checked.`);
+console.log(`AFFE011 i18n-parity: ${checked} multi-locale catalog(s) checked.`);
 process.exit(failed ? 1 : 0);

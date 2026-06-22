@@ -6,10 +6,10 @@ import { useDepositModel } from "./Deposit.viewModel";
 import { DepositView } from "./Deposit.view";
 
 // CANONICAL FORM TESTS — the recipe's behavior contract:
-//  - LZFE005 (unit): renderHook the data door against the real client stand-in (wired, not mocked).
-//  - LZFE006 (integration) + behavior: validation blocks inside the Field anatomy, the command failure surfaces
+//  - AFFE005 (unit): renderHook the data door against the real client stand-in (wired, not mocked).
+//  - AFFE006 (integration) + behavior: validation blocks inside the Field anatomy, the command failure surfaces
 //    as a role=alert block, the submit announces while pending, and success replaces the form (a routed app
-//    would <Redirect> — LZFE015).
+//    would <Redirect> — AFFE015).
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -29,7 +29,7 @@ function fill(wallet: string, amount: string) {
 }
 
 describe("Deposit", () => {
-  it("mounts the data door against the real client (LZFE005)", () => {
+  it("mounts the data door against the real client (AFFE005)", () => {
     const { result } = renderHook(() => useDepositModel(), { wrapper });
     expect(result.current.submitting).toBe(false);
     expect(result.current.completed).toBeNull();
@@ -53,8 +53,8 @@ describe("Deposit", () => {
   });
 
   /**
-   * @avp no-phantom-success — the AVP proof of DepositView's `@verify no-phantom-success` obligation (LZFE033,
-   * the front-side of the backend's LZ0030 bridge): a failing deposit surfaces the command error (role=alert)
+   * @avp no-phantom-success — the AVP proof of DepositView's `@verify no-phantom-success` obligation (AFFE033,
+   * the front-side of the backend's AF0030 bridge): a failing deposit surfaces the command error (role=alert)
    * while the entered input persists — never a phantom success. (Graduates to the @aerofortress/assay
    * actionEffect React verifier once that package is wired into the example — the JS twin of the backend's
    * vendored Assay.Net Runner.)

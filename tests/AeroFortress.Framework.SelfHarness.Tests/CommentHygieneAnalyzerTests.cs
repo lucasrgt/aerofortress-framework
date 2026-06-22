@@ -20,12 +20,12 @@ public class CommentHygieneAnalyzerTests
         """;
 
     private const string Todo = """
-        {|LZSELF002:// TODO clean this up later|}
+        {|AFSELF002:// TODO clean this up later|}
         public class C { }
         """;
 
     private const string TrackingCode = """
-        {|LZSELF002:// see JIRA-123 for the rationale|}
+        {|AFSELF002:// see JIRA-123 for the rationale|}
         public class C { }
         """;
 }

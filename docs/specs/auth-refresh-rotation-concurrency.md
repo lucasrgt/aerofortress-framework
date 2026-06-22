@@ -20,7 +20,7 @@ race are last-write-wins:
   present the same live token at the same instant. Today both can pass the `UsedAt == null` check and
   succeed, forking the family; the theft-detection (`UsedAt != null` ⇒ burn) is not atomic with the write.
 
-The doctor already flags this: `LZ0026` (warn) fires on `Login`/`Register`/`Refresh` because
+The doctor already flags this: `AF0026` (warn) fires on `Login`/`Register`/`Refresh` because
 `UserSession`/`User` carry no concurrency token.
 
 ## Agreed design

@@ -55,7 +55,7 @@ the harness.
 5. **The harness is a separate, optional, doctor-removable package** — an `eslint-plugin-aerofortress`
    for in-file rules plus a thin `ts-morph` pass for cross-file shape, invoked alongside `lazuli
    doctor`. It never enters `AeroFortress.Framework.Abstractions` or `AeroFortress.Framework.Doctor` — the `af`/`aerofortress-dev`
-   split, applied again. Initial rule catalog: `LZFE001`–`LZFE007` (see the convention).
+   split, applied again. Initial rule catalog: `AFFE001`–`AFFE007` (see the convention).
 
 6. **One backend micro-convention** makes the slice→hook name 1:1: the `Map` names its endpoint
    (`.WithName("Deposit")`) so the `operationId` — and thus `useDeposit` — is the slice name.

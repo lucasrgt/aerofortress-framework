@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Operations;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// <c>LZ0018</c> — an error code is a registry constant, not an inline literal. Every <c>code</c> passed to an
+/// <c>AF0018</c> — an error code is a registry constant, not an inline literal. Every <c>code</c> passed to an
 /// <c>Error</c> factory, to <c>Validation.Check</c> / <c>Validation.Add</c>, or to a <c>FieldError</c>
 /// must reference a <c>const</c> on a class whose name ends with <c>ErrorCodes</c> (e.g.
 /// <c>WalletsErrorCodes.NotFound</c>) — never a bare string.
@@ -21,7 +21,7 @@ namespace AeroFortress.Framework.Doctor;
 /// it covers every shape uniformly and leaves codeless calls (<c>Collect</c>, the aggregate
 /// <c>Error.Validation(fields)</c>) alone.
 ///
-/// <c>LZ0019</c> is the reverse direction — every constant on an <c>*ErrorCodes</c> registry must be referenced
+/// <c>AF0019</c> is the reverse direction — every constant on an <c>*ErrorCodes</c> registry must be referenced
 /// somewhere in the compilation. A code left unused (a flow was dropped but its constant lingers) is silent
 /// drift: it still ships in the OpenAPI <c>ErrorBody</c> enum and the frontend i18n catalog. Together the two
 /// rules make the registry the exact, live set of codes — no orphans, no inline literals.
@@ -30,10 +30,10 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class ErrorCodeAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for an error code that is not a registry constant.</summary>
-    public const string DiagnosticId = "LZ0018";
+    public const string DiagnosticId = "AF0018";
 
     /// <summary>The identifier reported for an <c>*ErrorCodes</c> constant that is declared but never used.</summary>
-    public const string DeadCodeDiagnosticId = "LZ0019";
+    public const string DeadCodeDiagnosticId = "AF0019";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -75,7 +75,7 @@ public sealed class ErrorCodeAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(AnalyzeDeadCodes);
     }
 
-    // LZ0019 — every *ErrorCodes constant must be referenced somewhere in the compilation. Collect the declared
+    // AF0019 — every *ErrorCodes constant must be referenced somewhere in the compilation. Collect the declared
     // constants and the referenced ones, then at compilation end flag any declared-but-never-referenced (a code
     // whose path was removed but whose constant — and so its OpenAPI enum entry + i18n key — still lingers).
     private static void AnalyzeDeadCodes(CompilationStartAnalysisContext context)

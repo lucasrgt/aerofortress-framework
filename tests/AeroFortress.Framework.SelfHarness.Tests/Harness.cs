@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace AeroFortress.Framework.SelfHarness.Tests;
 
-// Runs a self-harness analyzer against a markup source: `{|LZSELFxxx:text|}` marks an expected
+// Runs a self-harness analyzer against a markup source: `{|AFSELFxxx:text|}` marks an expected
 // diagnostic at that span; unmarked source must produce none.
 internal static class Harness<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()

@@ -46,7 +46,7 @@ public class EntityAnalyzerTests
         [Entity]
         public class Wallet
         {
-            public decimal {|LZ0014:Balance|} { get; set; }
+            public decimal {|AF0014:Balance|} { get; set; }
             private Wallet() { }
             private Result<Wallet> EnsureValid() => new Result<Wallet>();
         }
@@ -62,7 +62,7 @@ public class EntityAnalyzerTests
         public class Wallet
         {
             public Guid Id { get; private set; }
-            public {|LZ0014:Wallet|}() { }
+            public {|AF0014:Wallet|}() { }
             private Result<Wallet> EnsureValid() => new Result<Wallet>();
         }
 
@@ -75,7 +75,7 @@ public class EntityAnalyzerTests
         using System;
 
         [Entity]
-        public class {|LZ0014:Wallet|}
+        public class {|AF0014:Wallet|}
         {
             public Guid Id { get; private set; }
             private Result<Wallet> EnsureValid() => new Result<Wallet>();
@@ -89,7 +89,7 @@ public class EntityAnalyzerTests
         using System;
 
         [Entity]
-        public class {|LZ0014:Wallet|}
+        public class {|AF0014:Wallet|}
         {
             public Guid Id { get; private set; }
             private Wallet() { }

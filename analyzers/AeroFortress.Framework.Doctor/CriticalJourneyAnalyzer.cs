@@ -11,7 +11,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0008 — a slice marked <c>[Critical]</c> must be proven end-to-end on both paths: it needs a
+/// AF0008 — a slice marked <c>[Critical]</c> must be proven end-to-end on both paths: it needs a
 /// happy journey and at least one sad journey covering it. High-stakes operations (money, trust) are
 /// where a mishandled failure does the real damage — a partial commit, a wrong status — so the
 /// framework demands the failure path be exercised through the booted app, not just the success path.
@@ -19,13 +19,13 @@ namespace AeroFortress.Framework.Doctor;
 /// Journeys live in test files excluded from the app's compilation, so the analyzer reads them as
 /// <c>AdditionalFiles</c> and matches each critical slice against the <c>[Journey(typeof(Slice),
 /// JourneyPath.Happy|Sad)]</c> declarations it finds. The match is textual — the same trade-off as
-/// <c>LZ0003</c> — which is enough to enforce that both journeys exist.
+/// <c>AF0003</c> — which is enough to enforce that both journeys exist.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class CriticalJourneyAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a critical slice missing a journey.</summary>
-    public const string DiagnosticId = "LZ0008";
+    public const string DiagnosticId = "AF0008";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

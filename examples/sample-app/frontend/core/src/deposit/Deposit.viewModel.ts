@@ -6,7 +6,7 @@ import { useDeposit, type DepositOutput } from "@/client.gen/sample";
 import i18n from "@/i18n";
 
 // CANONICAL FORM UNIT — the form recipe's data door. The `useForm` lives HERE (form logic, not rendering —
-// FRONTEND-CONVENTIONS.md §Forms), so the ViewModel stays platform-agnostic (LZFE009) and the same form backs the
+// FRONTEND-CONVENTIONS.md §Forms), so the ViewModel stays platform-agnostic (AFFE009) and the same form backs the
 // RN mirror. The zod schema is contract-grounded: it restates ONLY the Deposit slice's validation surface
 // (walletId required+uuid, amount > 0 — Money's rule) and never invents rules the backend doesn't hold.
 
@@ -20,7 +20,7 @@ export interface DepositModel {
   control: Control<DepositForm>;
   submit: () => void;
   submitting: boolean;
-  /** The command's failure surface (the LZFE013 discipline): the mutation's error state, localized. */
+  /** The command's failure surface (the AFFE013 discipline): the mutation's error state, localized. */
   submitError: string | null;
   /** The command's success surface — a routed app redirects on it (declarative); the sample renders done. */
   completed: DepositOutput | null;
@@ -39,8 +39,8 @@ export function useDepositModel(): DepositModel {
     defaultValues: { walletId: "", amount: "" },
   });
 
-  // The submit always carries its invalid path (LZFE031): submitOrReveal forces the surface and resolves the
-  // first invalid field. On this single-screen form the reveal is a focus — the inline field errors (LZFE032's
+  // The submit always carries its invalid path (AFFE031): submitOrReveal forces the surface and resolves the
+  // first invalid field. On this single-screen form the reveal is a focus — the inline field errors (AFFE032's
   // fieldState surface in the View) do the showing; a multi-tab shell would map the field to its tab instead.
   const submit = submitOrReveal(
     form.handleSubmit,

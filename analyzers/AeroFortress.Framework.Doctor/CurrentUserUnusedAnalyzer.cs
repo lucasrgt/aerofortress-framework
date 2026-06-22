@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0023 — <b>an injected <c>ICurrentUser</c> must be consulted</b>. A <c>[Slice]</c>'s <c>Handle</c> that takes
+/// AF0023 — <b>an injected <c>ICurrentUser</c> must be consulted</b>. A <c>[Slice]</c>'s <c>Handle</c> that takes
 /// an <c>ICurrentUser</c> parameter and never reads it is almost certainly missing its authorization check: the
 /// caller was wired in (someone meant to scope the operation to them) and then the scoping never happened — the
 /// slice operates on whatever id the request carries. Either consult the caller (ownership / role / org check,
@@ -19,7 +19,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class CurrentUserUnusedAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when a slice injects the caller and never consults them.</summary>
-    public const string DiagnosticId = "LZ0023";
+    public const string DiagnosticId = "AF0023";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

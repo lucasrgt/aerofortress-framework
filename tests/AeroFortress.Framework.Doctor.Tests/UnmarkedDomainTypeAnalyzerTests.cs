@@ -57,7 +57,7 @@ public class UnmarkedDomainTypeAnalyzerTests
         public class DbSet<T> { }
         public class DbContext { }
 
-        public class {|LZ0021:User|}
+        public class {|AF0021:User|}
         {
             public Guid Id { get; set; }
         }
@@ -78,7 +78,7 @@ public class UnmarkedDomainTypeAnalyzerTests
         public class Agency
         {
             public Guid Id { get; private set; }
-            public Address {|LZ0021:Address|} { get; private set; }
+            public Address {|AF0021:Address|} { get; private set; }
         }
 
         public sealed record Address(string Street);
@@ -94,7 +94,7 @@ public class UnmarkedDomainTypeAnalyzerTests
         public class Agency
         {
             public Guid Id { get; private set; }
-            public Address? {|LZ0021:BillingAddress|} { get; private set; }
+            public Address? {|AF0021:BillingAddress|} { get; private set; }
         }
 
         public sealed record Address(string Street);
@@ -104,7 +104,7 @@ public class UnmarkedDomainTypeAnalyzerTests
         """;
 
     // Every legitimate kind of entity state: primitive, string, id, enum, a marked VO (incl. nullable), and a
-    // collection navigation of another entity (referenced by the framework's own rules, not LZ0021's concern).
+    // collection navigation of another entity (referenced by the framework's own rules, not AF0021's concern).
     private const string AllowedState = """
         using System;
         using System.Collections.Generic;

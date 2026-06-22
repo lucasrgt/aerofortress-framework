@@ -8,15 +8,15 @@ public class CompositionRootAnalyzerTests
 
     [Fact]
     public Task Service_registration_in_the_index_is_flagged() =>
-        Harness<CompositionRootAnalyzer>.VerifyProgram(Program("services.{|LZ0017:AddDbContext|}();"));
+        Harness<CompositionRootAnalyzer>.VerifyProgram(Program("services.{|AF0017:AddDbContext|}();"));
 
     [Fact]
     public Task Pipeline_step_in_the_index_is_flagged() =>
-        Harness<CompositionRootAnalyzer>.VerifyProgram(Program("app.{|LZ0017:UseCors|}();"));
+        Harness<CompositionRootAnalyzer>.VerifyProgram(Program("app.{|AF0017:UseCors|}();"));
 
     [Fact]
     public Task Endpoint_mapping_in_the_index_is_flagged() =>
-        Harness<CompositionRootAnalyzer>.VerifyProgram(Program("app.{|LZ0017:MapControllers|}();"));
+        Harness<CompositionRootAnalyzer>.VerifyProgram(Program("app.{|AF0017:MapControllers|}();"));
 
     // A composition root: the three blessed Add* layers, an optional extra statement, the matching Use*/Map*,
     // and Run(). app.Run() proves a non-Use/Map call on the app is left alone; the stubs below mirror the real

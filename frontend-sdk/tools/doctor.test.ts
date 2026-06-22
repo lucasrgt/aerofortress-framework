@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { aggregateReport, bucket } from "./doctor.mjs";
 
 // The doctor aggregates the whole lint surface + the fullstack loops into one report. Pin the bucketing, the
-// error/warn tallies, the per-rule file counts, and the clean-LZFE roster (the promotion-candidate view).
+// error/warn tallies, the per-rule file counts, and the clean-AFFE roster (the promotion-candidate view).
 describe("bucket", () => {
-  it("routes LZFE, community, and platform rules", () => {
+  it("routes AFFE, community, and platform rules", () => {
     expect(bucket("aerofortress/view-purity")).toBe("lzfe");
     expect(bucket("@tanstack/query/exhaustive-deps")).toBe("community");
     expect(bucket("sonarjs/cognitive-complexity")).toBe("community");
@@ -37,8 +37,8 @@ describe("aggregateReport", () => {
   it("tallies errors/warnings and per-rule file counts", () => {
     const r = aggregateReport({ eslintResults });
     expect(r.summary).toEqual({ errors: 1, warnings: 3, rules: 3 });
-    expect(r.rules["aerofortress/no-hardcoded-copy"]).toMatchObject({ warn: 2, files: 2, bucket: "lzfe", code: "LZFE014" });
-    expect(r.rules["aerofortress/view-purity"]).toMatchObject({ error: 1, code: "LZFE001" });
+    expect(r.rules["aerofortress/no-hardcoded-copy"]).toMatchObject({ warn: 2, files: 2, bucket: "lzfe", code: "AFFE014" });
+    expect(r.rules["aerofortress/view-purity"]).toMatchObject({ error: 1, code: "AFFE001" });
     expect(r.ok).toBe(false); // a gated error is present
   });
 
@@ -51,19 +51,19 @@ describe("aggregateReport", () => {
     expect(r.rules["aerofortress/no-hardcoded-copy"].level).toBe("warn");
   });
 
-  it("lists clean LZFE rules (0 hits) as promotion candidates", () => {
+  it("lists clean AFFE rules (0 hits) as promotion candidates", () => {
     const r = aggregateReport({
       eslintResults,
       ruleLevels: { "aerofortress/data-door": "error", "aerofortress/state-completeness": "warn" },
     });
     const clean = Object.fromEntries(r.cleanLzfe.map((c) => [c.code, c.level]));
     // view-purity / no-hardcoded-copy / mutation-error-handled fired -> NOT clean
-    expect(clean.LZFE001).toBeUndefined();
-    expect(clean.LZFE013).toBeUndefined();
-    expect(clean.LZFE014).toBeUndefined();
+    expect(clean.AFFE001).toBeUndefined();
+    expect(clean.AFFE013).toBeUndefined();
+    expect(clean.AFFE014).toBeUndefined();
     // data-door clean + gated; state-completeness clean + warn (promotion candidate)
-    expect(clean.LZFE002).toBe("error");
-    expect(clean.LZFE010).toBe("warn");
+    expect(clean.AFFE002).toBe("error");
+    expect(clean.AFFE010).toBe("warn");
   });
 
   it("is ok when there are no gated errors (warnings are the revealed backlog)", () => {

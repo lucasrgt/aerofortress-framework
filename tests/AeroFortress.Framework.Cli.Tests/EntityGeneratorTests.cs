@@ -21,10 +21,10 @@ public class EntityGeneratorTests
         Assert.Contains("public static Result<Order> Open(Guid id)", entity);
         Assert.Contains("private Result<Order> EnsureValid()", entity);
 
-        // The shape LZ0014 requires: nothing is publicly settable, construction is encapsulated.
+        // The shape AF0014 requires: nothing is publicly settable, construction is encapsulated.
         Assert.DoesNotContain("{ get; set; }", entity);
 
-        // The scaffolded invariant uses a registry constant (LZ0018), and the module's registry is created with it.
+        // The scaffolded invariant uses a registry constant (AF0018), and the module's registry is created with it.
         Assert.Contains("OrdersErrorCodes.IdRequired", entity);
         var registry = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "OrdersErrorCodes.cs"));
         Assert.Contains("public const string IdRequired = \"id.required\";", registry);

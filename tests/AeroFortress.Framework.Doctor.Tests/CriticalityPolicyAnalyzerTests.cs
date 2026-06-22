@@ -37,13 +37,13 @@ public class CriticalityPolicyAnalyzerTests
 
     [Fact]
     public Task Strict_policy_does_not_force_a_marker() =>
-        // Under strict an undecided slice is simply treated as critical (LZ0008/LZ0010 realize that); it is
-        // not an LZ0029 error — strict needs no marker, it needs the journeys.
+        // Under strict an undecided slice is simply treated as critical (AF0008/AF0010 realize that); it is
+        // not an AF0029 error — strict needs no marker, it needs the journeys.
         Make(UndecidedSlice, criticality: "strict").RunAsync();
 
     [Fact]
     public Task A_non_slice_class_is_never_flagged() =>
-        // The decision is required of slices only; a plain helper class is none of LZ0029's business.
+        // The decision is required of slices only; a plain helper class is none of AF0029's business.
         Make(PlainClass, criticality: "explicit").RunAsync();
 
     private const string UndecidedSlice = """

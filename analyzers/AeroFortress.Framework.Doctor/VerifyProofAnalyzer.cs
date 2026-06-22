@@ -11,21 +11,21 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0030 — a <c>[Verify("id")]</c> obligation must have a matching AVP proof: somewhere in the
+/// AF0030 — a <c>[Verify("id")]</c> obligation must have a matching AVP proof: somewhere in the
 /// compilation or its test files there is an <c>[AVP("id")]</c> verification for the same criterion id.
 /// This couples the static doctor to the runtime verifier (AVP / Assay.Net): the framework refuses to
 /// build a slice that declares it must be proven against a criterion it never proves.
 ///
 /// AVP proofs live in test files excluded from the app's compilation, so the analyzer reads them as
 /// <c>AdditionalFiles</c> (and also scans the compilation), matching ids textually — the same trade-off
-/// as <c>LZ0008</c>. Detection is by attribute name, so the framework takes no dependency on the AVP
+/// as <c>AF0008</c>. Detection is by attribute name, so the framework takes no dependency on the AVP
 /// package and the relation stays one-way (framework knows AVP, never the reverse).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a <c>[Verify]</c> obligation with no matching <c>[AVP]</c> proof.</summary>
-    public const string DiagnosticId = "LZ0030";
+    public const string DiagnosticId = "AF0030";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

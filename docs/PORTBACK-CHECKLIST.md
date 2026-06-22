@@ -8,7 +8,7 @@ checklist is the audit of every generic mechanism the pilot accumulated that the
 but doesn't — plus the framework claims that aren't actually shipped. App-specific material (per the
 80/20 scope discipline) is listed under "Correctly app-owned" and is deliberately NOT ported.
 
-Headline: the backend **core** is real and complete (17 `LZ00xx` analyzers + base runtime lib). What
+Headline: the backend **core** is real and complete (17 `AF00xx` analyzers + base runtime lib). What
 never came back is the **workspace/monorepo layer**, the **frontend harness foundation** (the "wired
 guarantee"), and a few **claimed-but-absent** rules. The pilot is carrying the framework.
 
@@ -18,9 +18,9 @@ Legend: `[ ]` todo · `[~]` partial · `[x]` done · scope = FRAMEWORK-GAP / AMB
 
 **Shipped + tested this session (9 gaps closed; full solution green — Doctor 67, Cli 22, SelfHarness 5,
 Abstractions 4, Sample 21, SDK tools 28, eslint plugin all):**
-LZFE015 (no-router-replace-in-effect, ported) · LZFE008 (endpoint-coverage tool, was claimed-but-absent) ·
-LZFE-JOURNEY-002 (e2e terminal-depth) · tenancy scaffold hardening (encapsulated OrgId + metadata stamp) ·
-LZ0006 (no-repository) · LZ0007 (file ≤500) · LZ0020 (journey asserts its post-condition) ·
+AFFE015 (no-router-replace-in-effect, ported) · AFFE008 (endpoint-coverage tool, was claimed-but-absent) ·
+AFFE-JOURNEY-002 (e2e terminal-depth) · tenancy scaffold hardening (encapsulated OrgId + metadata stamp) ·
+AF0006 (no-repository) · AF0007 (file ≤500) · AF0020 (journey asserts its post-condition) ·
 `OrderedLifecycle<TState>` helper · `AeroFortress.toml` scaffolded by `af new` + read/validated by the doctor.
 
 **Deferred follow-up (each blocked on a real dependency, not skipped):**
@@ -42,17 +42,17 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   - hostpoint: `AeroFortress.toml`, root `package.json`, `turbo.json`, `lefthook.yml`
 - [ ] **`af gen client` (the "wired guarantee").** The frontend harness rests on a generated
   typed client so an invented endpoint is a `tsc` error — but **orval is not even a dependency**, there
-  is no `orval.config.ts`, no `af gen client`. The LZFE rules police a client nothing generates.
+  is no `orval.config.ts`, no `af gen client`. The AFFE rules police a client nothing generates.
   _FRAMEWORK-GAP._ (`docs/decisions/lazuli-net-frontend-harness.md` §3 vs `frontend-sdk/tools/generate.mjs:47`)
-- [x] **`LZFE008` endpoint-coverage — claimed "shipped", absent.** _Done:_ implemented as
+- [x] **`AFFE008` endpoint-coverage — claimed "shipped", absent.** _Done:_ implemented as
   `frontend-sdk/tools/endpoint-coverage.mjs` (pure `extractHooks` + `checkEndpointCoverage` core + CLI
   tail) with a vitest twin; the doc claim now points at the real tool. _was FRAMEWORK-GAP (truthfulness)._
-- [x] **`LZFE015` no-router-replace-in-effect — real rule, not ported + ID collision.** _Done:_ ported
-  to `frontend-sdk/packages/eslint-plugin/index.cjs` (+ self-test), claimed LZFE015 for the navigation
-  rule, moved the planned "no orphan placeholder" to LZFE016 (`docs/FRONTEND-CONVENTIONS.md`). A
+- [x] **`AFFE015` no-router-replace-in-effect — real rule, not ported + ID collision.** _Done:_ ported
+  to `frontend-sdk/packages/eslint-plugin/index.cjs` (+ self-test), claimed AFFE015 for the navigation
+  rule, moved the planned "no orphan placeholder" to AFFE016 (`docs/FRONTEND-CONVENTIONS.md`). A
   battle-tested rule in the pilot (`hostpoint/clients/eslint-plugin-aerofortress/index.cjs:438`, born from a
   shipped infinite-navigation bug) is absent from the framework plugin, and its ID collides with a
-  *planned, different* LZFE015 ("no orphan placeholder") at `docs/FRONTEND-CONVENTIONS.md:275`.
+  *planned, different* AFFE015 ("no orphan placeholder") at `docs/FRONTEND-CONVENTIONS.md:275`.
   _FRAMEWORK-GAP._
 - [ ] **e2e harness has no framework home.** `requireBackend`/`requireSeed`/`global-setup`/
   `playwright.config` are generic, yet absent from the framework — even though `e2e-doctor.mjs:67`
@@ -80,22 +80,22 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   `Reached` (cursor ≥ step) + `Advance` (no-skip/no-regress), generic over `TState : struct, Enum`, with a
   new `tests/AeroFortress.Framework.Abstractions.Tests` project (4 green, wired into `AeroFortress.Framework.slnx`). Replaces the
   byte-for-byte Host/Traveler duplication.
-- [x] **`LZ0006` no-repository + `LZ0007` file ≤500 (user apps).** _Done:_ both shipped as Roslyn
+- [x] **`AF0006` no-repository + `AF0007` file ≤500 (user apps).** _Done:_ both shipped as Roslyn
   analyzers (`analyzers/AeroFortress.Framework.Doctor/NoRepositoryAnalyzer.cs`, `FileSizeAnalyzer.cs`) with twin tests
   (7 green); `docs/CONVENTIONS.md` flipped planned→shipped. _was FRAMEWORK-GAP (documented commitment)._
 
 ## Journey-depth (decision `lazuli-net-journey-depth-enforcement.md`)
 
-- [x] **Tier A1 `LZFE-JOURNEY-002`** — terminal-depth in `e2e-doctor.mjs` (+ tests). _done this session._
-- [ ] **Decision-doc fixes** — `LZ0011` collides with `TestInfraPurityAnalyzer` → renumber to `LZ0020`;
+- [x] **Tier A1 `AFFE-JOURNEY-002`** — terminal-depth in `e2e-doctor.mjs` (+ tests). _done this session._
+- [ ] **Decision-doc fixes** — `AF0011` collides with `TestInfraPurityAnalyzer` → renumber to `AF0020`;
   refresh the stale "today" baseline (A1 is now implemented).
-- [x] **Tier B3 `LZ0020`** (was LZ0011) — _Done:_ `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`
+- [x] **Tier B3 `AF0020`** (was AF0011) — _Done:_ `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`
   flags a `[Journey]` whose body asserts nothing (warning-tier, textual over the journey AdditionalFiles,
   lenient on custom asserters); 4 tests; `CONVENTIONS.md` lists it shipped.
-- [ ] **Tier A2 `LZFE-E2E-SKIP-IN-GATE-001`** — a skipped gate-class flow must fail in gate mode.
+- [ ] **Tier A2 `AFFE-E2E-SKIP-IN-GATE-001`** — a skipped gate-class flow must fail in gate mode.
   _Deferred:_ couples to the e2e-support harness home (requireBackend/requireSeed), which is frontend-
   scaffold territory (the frontend generator is deferred). Cheap once that home exists.
-- [ ] **Tier B4 `LZFE-JOURNEY-SEAM-001`** — lifecycle-advancing `[Critical]` slice needs a frontend
+- [ ] **Tier B4 `AFFE-JOURNEY-SEAM-001`** — lifecycle-advancing `[Critical]` slice needs a frontend
   flow proving the post-transition navigation. _Deferred:_ the grade itself flagged this needs a
   cross-artifact feasibility spike (does a frontend guard read a backend lifecycle?) before committing.
 - [ ] **Tier C** — Stryker mutation-score lane (doctor consumes the artifact). _Deferred — needs a
@@ -103,7 +103,7 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 
 ## Re-sweep 2026-06-09 — new findings (not previously tracked)
 
-A second audit pass over the pilot, after the LZ0022–26 / LZFE021–22 wave. Claims verified against the
+A second audit pass over the pilot, after the AF0022–26 / AFFE021–22 wave. Claims verified against the
 framework source (several apparent gaps turned out already owned: `ClaimsCurrentUser` ships in
 `AeroFortress.Framework.Auth`; refresh rotation + theft detection and `TenantDbContext` ship as `af g auth`
 scaffold templates — the AeroFortress way, app-owned by construction).
@@ -114,7 +114,7 @@ dogfooded on the sample's `Money`. Postgres harness → `AeroFortress.Framework.
 Rate-limit bridge → `RejectAsAeroFortressError()` + the framework's `PlatformErrorCodes`. Session seam →
 `createSessionSeam` + `useSession` in `@aerofortress/react` (cache reset paired by construction). Error-copy
 bridge → `apiErrorCode`/`apiErrorCopy` in the spine (structural i18n). Mutator → `tools/client-scaffold.mjs`
-(mutator + orval config, LZFE020-conformant). Pilot mirror rebased to plugin 0.4.0 with LZFE021/022 adopted —
+(mutator + orval config, AFFE020-conformant). Pilot mirror rebased to plugin 0.4.0 with AFFE021/022 adopted —
 zero new errors, full lint chain + typecheck + 125 tests green. Still open from the reverse-drift item: the
 app adopting the spine unions themselves (blocked on `@aerofortress/react` publish, tracked in P2).
 
@@ -138,7 +138,7 @@ app adopting the spine unions themselves (blocked on `@aerofortress/react` publi
   the envelope but ships no limiter↔envelope bridge; each app re-derives the `OnRejected` glue. Port the
   bridge (policies stay app-owned). _FRAMEWORK-GAP (the glue), policies APP-SPECIFIC._
 - [x] _(convention, doc-only)_ **`PlatformErrorCodes` registry** — platform-tier codes (rate limit, etc.)
-  live in one `*ErrorCodes` class so LZ0018/19 + the OpenAPI enum pick them up like module codes.
+  live in one `*ErrorCodes` class so AF0018/19 + the OpenAPI enum pick them up like module codes.
   Document in CONVENTIONS (platform layer section); no code needed.
 - [ ] _(hold, 1-pilot)_ JSON-list `ValueConverter`+`ValueComparer` helper; sandbox env-gated vendor
   tests (`Sandbox.cs`); reflection seed-helper for encapsulated entities (`TestUser.cs`); presigned-URL
@@ -148,7 +148,7 @@ app adopting the spine unions themselves (blocked on `@aerofortress/react` publi
 
 - [x] **The session seam has no framework home.** `onAuthenticated` / `bootstrapSession` /
   `clearSession` + the `useSession` boot hook + the `refresh-token.ts`/`.web.ts` platform-seam pair
-  (`hostpoint/clients/app-core/src/lib/session/*`) are the generic mechanics LZFE016/017 *steer
+  (`hostpoint/clients/app-core/src/lib/session/*`) are the generic mechanics AFFE016/017 *steer
   toward*, yet the spine ships only the read-side (`SessionState`). The write-side trio (token write
   paired with `me`-cache reset by construction) belongs in `@aerofortress/react` (storage injected as a
   port). _FRAMEWORK-GAP — the harness polices a seam the framework doesn't ship._
@@ -163,15 +163,15 @@ app adopting the spine unions themselves (blocked on `@aerofortress/react` publi
   tracked **`af gen client`** item — listed here so the mutator template isn't forgotten when that
   lands.
 - [~] **Reverse drift (pilot behind framework).** The hostpoint `eslint-plugin-aerofortress` mirror is
-  v0.3.0 — missing LZFE021/022 and the hardened LZFE002/011/013/016/018 — and the app forks
+  v0.3.0 — missing AFFE021/022 and the hardened AFFE002/011/013/016/018 — and the app forks
   `AsyncState` locally while not using the spine's `SessionState`/`requiredParam`/`combineAsyncStates`
-  at all (guards still branch on a raw `session.ready` boolean — exactly what LZFE017 exists to
+  at all (guards still branch on a raw `session.ready` boolean — exactly what AFFE017 exists to
   prevent). Both are symptoms of the tracked "@aerofortress/react publish" gap; flagged so the next pilot
   sync rebases the mirror + adopts the spine unions.
 
 ## Design dogfood 2026-06-09 — pauta (the Design SDK wave, `.specs/` 0007)
 
-The design layer (tokens + closed kit + LZFE024–026) wired into `pauta-web/frontend` (Next 15 +
+The design layer (tokens + closed kit + AFFE024–026) wired into `pauta-web/frontend` (Next 15 +
 Tailwind, aerocoding-generated, zero prior AeroFortress wiring). Mirror at 0.6.0, band warn-first globally,
 error on `src/ui/**` + the relifted exemplar (`billing-type-edit`, the form recipe instantiated on a
 real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 errors, 456 tests green
@@ -179,14 +179,14 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
 
 - [ ] **The band is blind to Tailwind utility classes.** _portback, HIGH._ Baseline: **0 findings over
   533 files** — yet the visual rot is everywhere, living in `className` utilities (`bg-red-100`,
-  `text-blue-600`, `border-red-400`). LZFE026 checks style-object keys + string literals; LZFE025's
+  `text-blue-600`, `border-red-400`). AFFE026 checks style-object keys + string literals; AFFE025's
   only className leg is the arbitrary-value `[Npx]` regex (never fired — aerocoding used stock classes).
   A Tailwind-classes web app — the most common web stack — escapes the band almost entirely. Needed:
-  a className leg for LZFE026 (flag `(bg|text|border|ring|fill|stroke)-(red|blue|…)-N` palette-family
+  a className leg for AFFE026 (flag `(bg|text|border|ring|fill|stroke)-(red|blue|…)-N` palette-family
   utilities outside `ui/` once tokens exist) and a decision on whether stock-scale spacing utilities are
   conformant (they are A scale — arguably fine) vs palette utilities (never fine).
 - [x] **`scrim` color role.** _portback — shipped inline (inner loop)._ The Dialog's backdrop had no
-  semantic role; raw `rgba()` in `ui/` would trip LZFE026. Added to the taxonomy + default themes
+  semantic role; raw `rgba()` in `ui/` would trip AFFE026. Added to the taxonomy + default themes
   (lazuli-net commit `37785aa`), re-scaffolded into both token instances.
 - [ ] **`'use client'` banners on the hooky kit primitives.** _portback, MEDIUM._ Next App Router needs
   them on Button/Input/Field (useState); added app-side in pauta. Harmless on non-Next — candidate for
@@ -197,7 +197,7 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
 - [ ] **Dialog — kit-v2 candidate evidence, pilot #1.** Built app-side per the constitution (scrim +
   overlay tokens, focus in/return, Esc/backdrop, sentinel trap; 4 tests). A second pilot needing it =
   graduate into the scaffold.
-- **LZFE024 inertia outside the blessed naming.** _observation, wave-order._ ui-door anchors on
+- **AFFE024 inertia outside the blessed naming.** _observation, wave-order._ ui-door anchors on
   `*.view.tsx`; pauta's screens are `page.tsx` + `components/*Form.tsx`, so the rule only bites surfaces
   as they adopt the blessed shape (the relift exemplar does). Adoption order: naming first, then the
   rule has teeth — the full-harness wave's concern, not the band's.
@@ -232,9 +232,9 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
 
 ## Working order
 
-1. Decision-doc fixes (LZ0011→LZ0020, baseline) — cheap correctness.
-2. Truthfulness: LZFE008 tool + LZFE015 port — stop the framework lying about what it ships.
-3. Contained analyzers: LZ0006, LZ0007, the journey-body LZ0020.
+1. Decision-doc fixes (AF0011→AF0020, baseline) — cheap correctness.
+2. Truthfulness: AFFE008 tool + AFFE015 port — stop the framework lying about what it ships.
+3. Contained analyzers: AF0006, AF0007, the journey-body AF0020.
 4. Tenancy scaffold hardening + OrderedLifecycle helper.
 5. e2e harness templates + skip-in-gate.
 6. Foundation: `AeroFortress.toml` scaffold + manifest reader; `af gen client`.

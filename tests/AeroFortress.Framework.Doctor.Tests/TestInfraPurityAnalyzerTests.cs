@@ -39,7 +39,7 @@ public class TestInfraPurityAnalyzerTests
                 Sources =
                 {
                     ("tests/App.Tests/StrayTests.cs",
-                        "class StrayTests { [Fact] public void {|LZ0011:Deposits_money|}() { } }" + FactStub),
+                        "class StrayTests { [Fact] public void {|AF0011:Deposits_money|}() { } }" + FactStub),
                 },
             },
         };

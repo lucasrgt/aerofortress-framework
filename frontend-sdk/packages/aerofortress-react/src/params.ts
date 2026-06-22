@@ -1,4 +1,4 @@
-// RequiredParam — the param-presence union the routing harness (LZFE018) steers toward. A route hit without its
+// RequiredParam — the param-presence union the routing harness (AFFE018) steers toward. A route hit without its
 // id (a bookmark, a stale link) otherwise renders a "ghost" screen bound to an empty value; projecting the raw
 // param through this closed union makes the missing case a branch the route must write, not a state it forgets.
 // Router-agnostic like the rest of the spine: it takes the raw value, not a router.
@@ -12,7 +12,7 @@ export type RequiredParam =
  * `string | string[] | undefined` on expo-router (a repeated query key arrives as an array) — and this
  * normalizes all of it: absent, empty, or an empty array is `missing`; an array yields its first entry.
  *
- * The route branches declaratively on the result, the same shape LZFE018 enforces:
+ * The route branches declaratively on the result, the same shape AFFE018 enforces:
  *
  * ```tsx
  * const id = requiredParam(params.chatId);

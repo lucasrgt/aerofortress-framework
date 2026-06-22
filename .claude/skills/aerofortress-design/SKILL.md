@@ -23,7 +23,7 @@ recipes) and holds you to the exit ritual. If anything here disagrees with
 - Instantiate the recipe: copy its structure, rename, bind your slice. Do not compose a screen
   from a blank file.
 - The vocabulary is closed: kit primitives + token props only. A missing primitive is extended
-  in YOUR `ui/` following the constitution — never inlined paint (LZFE024–026 will catch it;
+  in YOUR `ui/` following the constitution — never inlined paint (AFFE024–026 will catch it;
   don't make them).
 - Token values are the app's; token names and the kit API are not yours to fork.
 

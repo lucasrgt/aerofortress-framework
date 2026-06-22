@@ -12,23 +12,23 @@ using Microsoft.CodeAnalysis.Text;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0010 — a <c>[Journey]</c> proves a <c>[Critical]</c> slice, and nothing else. A
+/// AF0010 — a <c>[Journey]</c> proves a <c>[Critical]</c> slice, and nothing else. A
 /// <c>[Journey(typeof(X), …)]</c> whose <c>X</c> is not a <c>[Critical]</c> slice is rejected: its only
-/// consumer is <c>LZ0008</c>, which tracks critical slices, so a journey on a non-critical slice is inert
+/// consumer is <c>AF0008</c>, which tracks critical slices, so a journey on a non-critical slice is inert
 /// metadata — it reads as coverage but enforces nothing, and nothing would warn you. Either the slice is
 /// genuinely high-stakes — mark it <c>[Critical]</c> and the journey becomes its required proof — or it is
 /// not, and a plain <c>[E2E]</c> flow test (no <c>[Journey]</c>) is the right tool.
 ///
-/// Together with <c>LZ0008</c> (every critical slice has its happy + sad journeys) this makes the relation
+/// Together with <c>AF0008</c> (every critical slice has its happy + sad journeys) this makes the relation
 /// bidirectional: a slice is <c>[Critical]</c> exactly when it carries journeys, and a journey exists
 /// exactly for a critical slice. Journeys live in test files excluded from the app build, so — like
-/// <c>LZ0008</c> — they are read from <c>AdditionalFiles</c> and matched textually.
+/// <c>AF0008</c> — they are read from <c>AdditionalFiles</c> and matched textually.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class JourneyCoversCriticalAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a journey that covers a non-critical slice.</summary>
-    public const string DiagnosticId = "LZ0010";
+    public const string DiagnosticId = "AF0010";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -38,11 +38,11 @@ public sealed class JourneyCoversCriticalAnalyzer : DiagnosticAnalyzer
         category: "AeroFortress.Framework.Convention",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A [Journey] is the LZ0008-tracked proof of a [Critical] slice; one pointing at a "
+        description: "A [Journey] is the AF0008-tracked proof of a [Critical] slice; one pointing at a "
                    + "non-critical slice is inert. Mark the slice [Critical] or use a plain [E2E] test.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
 
-    // Mirrors LZ0008's journey grammar: [Journey(typeof(Slice), JourneyPath.Happy|Sad)] — the covers: prefix
+    // Mirrors AF0008's journey grammar: [Journey(typeof(Slice), JourneyPath.Happy|Sad)] — the covers: prefix
     // and the enum qualifier are optional, and the slice may be written qualified (last segment is the name).
     private static readonly Regex JourneyPattern = new(
         @"Journey\s*\(\s*(?:covers\s*:\s*)?typeof\s*\(\s*(?<slice>[\w.]+)\s*\)\s*,\s*(?:\w+\s*\.\s*)?(?:Happy|Sad)\b",

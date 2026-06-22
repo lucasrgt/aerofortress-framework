@@ -1,7 +1,7 @@
 // Journey parity — the fullstack-loop doctor. The backend declares its critical journeys as Journeys/*.Tests.cs;
 // the frontend declares its e2e journeys in e2e/flows.json. This proves the two SETS agree, so no critical journey
 // is half-built (tested on the back but never end-to-end on the front, or vice-versa). It closes the loop at the
-// JOURNEY grain — the endpoint grain is already closed elsewhere (tsc for front->back, LZFE008 for back->front).
+// JOURNEY grain — the endpoint grain is already closed elsewhere (tsc for front->back, AFFE008 for back->front).
 //
 // Matching is EXPLICIT, never fuzzy: a frontend flow links to a backend journey via a `backendJourney` field
 // holding the journey's key (its Journeys filename minus `.Tests.cs`, e.g. "HostOnboardingFlow"). A flow with no

@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0006 — no repository / unit-of-work abstraction. A AeroFortress slice queries the <c>DbContext</c>
+/// AF0006 — no repository / unit-of-work abstraction. A AeroFortress slice queries the <c>DbContext</c>
 /// directly in its <c>Handle</c>; the repository / UoW / mapper-profile layer of clean architecture is
 /// bloat the framework deliberately cuts. A type whose name ends in <c>Repository</c> or
 /// <c>UnitOfWork</c> reintroduces that layer, so it is flagged at its declaration — delete it and read
@@ -22,7 +22,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class NoRepositoryAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a repository/unit-of-work type declaration.</summary>
-    public const string DiagnosticId = "LZ0006";
+    public const string DiagnosticId = "AF0006";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

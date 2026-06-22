@@ -1,7 +1,7 @@
 // Collapse concurrent calls of an async operation into ONE in-flight execution — the spine primitive behind
 // single-flight refresh. The session-rotation credential (httpOnly cookie on web, stored refresh on native) is
 // BURNED by parallel rotation: the backend's theft detection sees a spent token replayed and revokes the whole
-// session family (the LZFE029 hazard). Two things race it in practice: two 401s landing together (each wanting a
+// session family (the AFFE029 hazard). Two things race it in practice: two 401s landing together (each wanting a
 // refresh) and a cold-start firing the boot bootstrap twice (React StrictMode double-invokes effects in dev). A
 // single-flight gate makes the second caller AWAIT the first's result instead of starting a second rotation.
 // Pure, platform- and router-agnostic like the rest of the spine.

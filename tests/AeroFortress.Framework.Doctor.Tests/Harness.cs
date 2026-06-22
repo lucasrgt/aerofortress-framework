@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace AeroFortress.Framework.Doctor.Tests;
 
-// Runs an analyzer against a markup source: `{|LZxxxx:text|}` marks an expected diagnostic at that
+// Runs an analyzer against a markup source: `{|AFxxxx:text|}` marks an expected diagnostic at that
 // span; unmarked source must produce none. Pinned to the .NET 8 reference set so the sample sources
 // compile (the analyzers are mostly syntactic, so the references only need to make the stubs build).
 internal static class Harness<TAnalyzer>

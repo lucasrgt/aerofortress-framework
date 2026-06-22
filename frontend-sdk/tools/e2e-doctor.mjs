@@ -1,12 +1,12 @@
 // The e2e tier of the frontend doctor (canonical, runner-agnostic + target-aware). E2E is flow-level and
-// expensive, so it is NOT enforced per component (that is the integration tier's job, LZFE006). It is enforced at
+// expensive, so it is NOT enforced per component (that is the integration tier's job, AFFE006). It is enforced at
 // the PROJECT level via a CURATED checklist: a project declares its journeys in `e2e/flows.json`, and the doctor
 // proves every listed journey has an implementation file AND a runner for its target. Humans own WHICH journeys
 // to curate; the doctor only proves the list is covered — "completeness via checklist".
 //
 // SINGLE TIER, by design: being in `flows.json` IS the bar — there are no priority sub-tiers (no `critical` flag).
 // The hard teeth live on the BACKEND, where a slice marked `[Critical]` MUST have happy + sad journeys or the build
-// fails (LZ0008), and journeys exist ONLY for critical slices (LZ0012). Criticality is decided ONCE, on the slice;
+// fails (AF0008), and journeys exist ONLY for critical slices (AF0012). Criticality is decided ONCE, on the slice;
 // the frontend list mirrors those journeys. So this doctor is the curated-coverage REVEAL: a listed journey with no
 // spec yet is a gap (the e2e roadmap — declare now, implement over time), surfaced, not a second class of flow.
 //
@@ -14,7 +14,7 @@
 // NATIVE. A flow declares its `target` (web|native) and a `spec` path to its implementation (a `.spec.ts` / `.yaml`).
 // `checkE2e(root)` is pure (no process.exit) so a CLI, a test, or `af doctor` decides what to do with it.
 //
-// DEPTH, not just existence (LZFE-JOURNEY-002). A spec existing does NOT mean the journey is covered — a spec can
+// DEPTH, not just existence (AFFE-JOURNEY-002). A spec existing does NOT mean the journey is covered — a spec can
 // stop at the door (assert the entry screen and return), punting the rest to the backend twin. That is the exact
 // shape that let a pilot's onboarding ship a "complete -> back to step 0" bug under a green doctor. So a LINKED flow
 // (one with a `backendJourney`) must also declare `terminal`: the marker — a testID or route — its spec asserts
@@ -44,7 +44,7 @@ export function detectRunners(root) {
  * Inspect a project's e2e tier. Returns `{ bootstrap, runners, flows, gaps, depthGaps, messages }`:
  *   - bootstrap: true when e2e/flows.json doesn't exist yet (nothing to enforce — the pillar isn't set up)
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
- *   - depthGaps: warn-tier journey-depth findings (LZFE-JOURNEY-002) — a linked flow with no `terminal`, or a spec
+ *   - depthGaps: warn-tier journey-depth findings (AFFE-JOURNEY-002) — a linked flow with no `terminal`, or a spec
  *     that never asserts its declared `terminal`. Separate from `gaps` so consumers can warn now, gate later.
  * Each flow: `{ name, area?, target?: "web"|"native", spec, backendJourney?, terminal? }` where spec is a path from
  * root to its impl file and `terminal` is the testID/route the spec must assert to prove the journey reached its end.
@@ -92,7 +92,7 @@ export function checkE2e(root) {
       gaps++;
     }
 
-    // Depth (LZFE-JOURNEY-002): a linked flow must declare its `terminal`, and any flow that declares one must
+    // Depth (AFFE-JOURNEY-002): a linked flow must declare its `terminal`, and any flow that declares one must
     // actually assert it in the spec — otherwise "covered" only proves the journey STARTS. Warn-tier (depthGaps),
     // so existence stays the hard gate while terminals are adopted. The assert-check is a string-presence heuristic:
     // it catches the door-stopper (a spec that never names its end marker) without parsing the runner's AST.

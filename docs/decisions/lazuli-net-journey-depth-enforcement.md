@@ -1,14 +1,14 @@
 # Decision: journey enforcement must grade *depth*, not just *existence*
 
-**Status:** accepted; Tier A1 (`LZFE-JOURNEY-002`, `frontend-sdk/tools/e2e-doctor.mjs`) and Tier B3
-(`LZ0020`, `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`) implemented (+ tests). Tier A2
-(`LZFE-E2E-SKIP-IN-GATE-001`) is pending behind the e2e-support harness home; Tier B4
-(`LZFE-JOURNEY-SEAM-001`) pending its feasibility spike; Tier C (mutation) deferred until a critical
+**Status:** accepted; Tier A1 (`AFFE-JOURNEY-002`, `frontend-sdk/tools/e2e-doctor.mjs`) and Tier B3
+(`AF0020`, `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`) implemented (+ tests). Tier A2
+(`AFFE-E2E-SKIP-IN-GATE-001`) is pending behind the e2e-support harness home; Tier B4
+(`AFFE-JOURNEY-SEAM-001`) pending its feasibility spike; Tier C (mutation) deferred until a critical
 journey set exists. Self-graded **8.6 — PASS with notes** (see §Grading). Tracked in
 [`docs/PORTBACK-CHECKLIST.md`](../PORTBACK-CHECKLIST.md).
 **Date:** 2026-06-08.
-**Supersedes/extends:** `CriticalJourneyAnalyzer` (LZ0008) + `JourneyCoversCriticalAnalyzer`
-(LZ0010) + the frontend `journey-parity.mjs` (LZFE-JOURNEY). It does not replace them — it adds
+**Supersedes/extends:** `CriticalJourneyAnalyzer` (AF0008) + `JourneyCoversCriticalAnalyzer`
+(AF0010) + the frontend `journey-parity.mjs` (AFFE-JOURNEY). It does not replace them — it adds
 the depth rung above the existence rung they already enforce.
 **Lineage:** the anti-theater hardening that gave the language rubric Criteria 12 (`spec_polarity`)
 and 13 (`HANDLER-SIGNATURE-MISMATCH-001`, `TEST-FAILURE-ONLY-COVERAGE-001`). Same intent — "a
@@ -21,11 +21,11 @@ green doctor is not shipping safety" — applied to the **journey** grain instea
 The doctor enforces journeys at two grains today, both **existence-only**:
 
 - **Backend.** A `[Slice]` marked `[Critical]` must carry a happy *and* a sad `[Journey]`
-  (`analyzers/AeroFortress.Framework.Doctor/CriticalJourneyAnalyzer.cs:29` — LZ0008), and every `[Journey]` must
-  cover a critical slice (`JourneyCoversCriticalAnalyzer.cs:32` — LZ0010). The match is **textual**
+  (`analyzers/AeroFortress.Framework.Doctor/CriticalJourneyAnalyzer.cs:29` — AF0008), and every `[Journey]` must
+  cover a critical slice (`JourneyCoversCriticalAnalyzer.cs:32` — AF0010). The match is **textual**
   — a regex over `AdditionalFiles` that confirms the `[Journey(typeof(Slice), JourneyPath.Happy|Sad)]`
   attribute *exists* (`CriticalJourneyAnalyzer.cs:86-106`). It never reads the test body.
-- **Frontend.** `frontend-sdk/tools/journey-parity.mjs` (LZFE-JOURNEY) name-matches each
+- **Frontend.** `frontend-sdk/tools/journey-parity.mjs` (AFFE-JOURNEY) name-matches each
   `e2e/flows.json` entry's `backendJourney` against a `*.Tests.cs` filename and back
   (`journey-parity.mjs:45-53`). It reads **zero lines** of the spec.
 
@@ -42,7 +42,7 @@ Two structural facts make this a framework gap, not just a pilot mistake:
 
 1. **The framework already documents the depth contract it does not enforce.** `JourneyAttribute`
    states: *"A sad journey must assert both the failure status **and** that no state changed"*
-   (`src/AeroFortress.Framework.Testing/JourneyAttribute.cs:22-26`). LZ0008 checks the attribute is present; nothing
+   (`src/AeroFortress.Framework.Testing/JourneyAttribute.cs:22-26`). AF0008 checks the attribute is present; nothing
    checks the assertion exists. The prose promises depth; the analyzer delivers existence.
 2. **The `backendJourney` link actively *invited* the shallow spec.** Because parity is satisfied by
    a name match, the cheapest way to go green is an entry-only spec that punts depth to the backend
@@ -53,8 +53,8 @@ There is a hard ceiling worth stating up front, because it bounds what any analy
 
 | Rung | Claim | Statically enforceable? |
 |---|---|---|
-| 1. Existence | "a journey exists" | ✅ — LZ0008 / LZFE-JOURNEY today |
-| 2. Breadth parity | "every critical journey is linked both ways" | ✅ — LZ0010 / LZFE-JOURNEY today |
+| 1. Existence | "a journey exists" | ✅ — AF0008 / AFFE-JOURNEY today |
+| 2. Breadth parity | "every critical journey is linked both ways" | ✅ — AF0010 / AFFE-JOURNEY today |
 | 3. Structural depth | "the journey traverses its declared arc to the terminal post-condition" | ✅ — **if the arc is declared as data** (this proposal) |
 | 4. Terminal assertion | "the spec asserts a post-state, not just entry" | ✅ — heuristic AST/textual (this proposal) |
 | 5. Semantic adequacy | "the assertion is *meaningful* and would *fail* if the behaviour broke" | ❌ — **undecidable** (Rice); only mutation testing approximates, at runtime |
@@ -72,35 +72,35 @@ ceiling. Tier A ships first; B and C are sequenced behind it.
 
 1. **A linked flow declares its terminal, and the doctor verifies the spec asserts it.** Extend the
    `flows.json` schema: a flow with a `backendJourney` must also carry `terminal` — the testID (or
-   route) the spec must assert **after** entry. `journey-parity.mjs` (→ LZFE-JOURNEY v2) parses the
+   route) the spec must assert **after** entry. `journey-parity.mjs` (→ AFFE-JOURNEY v2) parses the
    spec and fails when (a) the spec asserts only the entry marker, or (b) the declared `terminal`
    marker never appears in an assertion. Warn-only first, then hard-exit once parity holds — the
    promotion path already sketched at `journey-parity.mjs:63`. **New diagnostic:
-   `LZFE-JOURNEY-002`.** This alone would have failed the hostpoint entry-only spec.
+   `AFFE-JOURNEY-002`.** This alone would have failed the hostpoint entry-only spec.
 
 2. **A skip is not a pass in the gate.** `frontend-sdk/tools/e2e-doctor.mjs`, in CI-gate mode (the
    no-seed critical set), fails when a gate-class flow *skips* — today `requireBackend()` /
    `requireSeed()` skip silently and the run reads green (`clients/hostpoint-app/e2e/support/backend.ts:11-29`).
    The spec's own comment already insists "a skipped spec is NOT a passed spec"; this makes the gate
-   honour it. **New diagnostic: `LZFE-E2E-SKIP-IN-GATE-001`.**
+   honour it. **New diagnostic: `AFFE-E2E-SKIP-IN-GATE-001`.**
 
 ### Tier B — structural depth (sequenced behind A)
 
 3. **Enforce the journey's already-documented assertion contract (backend).** A new analyzer reads
    the `[Journey]` test body: a `JourneyPath.Sad` test must assert a failure (a non-2xx / `IsFailure`)
    **and** a re-read showing no state changed; a `JourneyPath.Happy` test must assert the observable
-   effect (a re-read of the mutation or the terminal status). This is LZ0008's prose promise
+   effect (a re-read of the mutation or the terminal status). This is AF0008's prose promise
    (`JourneyAttribute.cs:22-26`) finally checked — the journey-grain mirror of the language rubric's
-   C13 Probe R-D (`_test.go` polarity). Heuristic; warning-default. **New diagnostic: `LZ0020`** (the
-   first draft said `LZ0011`, which already belongs to `TestInfraPurityAnalyzer` — renumbered to the
-   next free id; LZ0001–LZ0019 are taken).
+   C13 Probe R-D (`_test.go` polarity). Heuristic; warning-default. **New diagnostic: `AF0020`** (the
+   first draft said `AF0011`, which already belongs to `TestInfraPurityAnalyzer` — renumbered to the
+   next free id; AF0001–AF0019 are taken).
 
 4. **The seam rule — the one that catches *this* bug class precisely.** When a `[Critical]` slice's
    effect is a **state transition** (it advances a lifecycle the framework already models) and a
    **frontend route guards on that lifecycle**, the journey's terminal must be the *post-transition
    navigation*, proven by one real-UI traversal — not the backend twin alone. Declared via the
    `flows.json` `terminal` route + the backend journey's terminal state; the doctor cross-checks that
-   a flow asserts the post-transition destination. **New diagnostic: `LZFE-JOURNEY-SEAM-001`.**
+   a flow asserts the post-transition destination. **New diagnostic: `AFFE-JOURNEY-SEAM-001`.**
    *Risk, stated plainly:* this requires the doctor to know a frontend guard reads a backend lifecycle
    — cross-language, cross-artifact reasoning. If that proves infeasible to detect cheaply, the rule
    degrades to "any `[Critical]` lifecycle-advancing slice must have a frontend flow whose `terminal`
@@ -129,15 +129,15 @@ fork — if a flow has a `backendJourney`, `terminal` is required; if it has non
 
 Net-new, none exist today (honest per the rubric's Criterion 8.5):
 
-- `LZFE-JOURNEY-002` — linked flow's spec does not assert its declared `terminal` (Tier A1).
-- `LZFE-E2E-SKIP-IN-GATE-001` — a gate-class flow skipped in CI-gate mode (Tier A2).
-- `LZ0020` — a `[Journey]` test body does not assert its path's post-condition (Tier B3). (Renumbered
-  from the draft's `LZ0011`, which collides with the shipped `TestInfraPurityAnalyzer`.)
-- `LZFE-JOURNEY-SEAM-001` — a lifecycle-advancing `[Critical]` slice has no frontend flow proving the
+- `AFFE-JOURNEY-002` — linked flow's spec does not assert its declared `terminal` (Tier A1).
+- `AFFE-E2E-SKIP-IN-GATE-001` — a gate-class flow skipped in CI-gate mode (Tier A2).
+- `AF0020` — a `[Journey]` test body does not assert its path's post-condition (Tier B3). (Renumbered
+  from the draft's `AF0011`, which collides with the shipped `TestInfraPurityAnalyzer`.)
+- `AFFE-JOURNEY-SEAM-001` — a lifecycle-advancing `[Critical]` slice has no frontend flow proving the
   post-transition navigation (Tier B4).
 
-Existing, cited as-is: `LZ0008` (`CriticalJourneyAnalyzer.cs:29`), `LZ0010`
-(`JourneyCoversCriticalAnalyzer.cs:32`), LZFE-JOURNEY (`journey-parity.mjs`).
+Existing, cited as-is: `AF0008` (`CriticalJourneyAnalyzer.cs:29`), `AF0010`
+(`JourneyCoversCriticalAnalyzer.cs:32`), AFFE-JOURNEY (`journey-parity.mjs`).
 
 ## Scope / boundary
 
@@ -192,6 +192,6 @@ share a root and rise together.
 
 ## Rollout
 
-Tier A behind the existing warn-only LZFE-JOURNEY posture → promote to hard-exit once the pilot's
+Tier A behind the existing warn-only AFFE-JOURNEY posture → promote to hard-exit once the pilot's
 flows declare `terminal`. Tier B after the B4 feasibility spike. Tier C as a separate critical-path
 CI lane, deferred until a `[Critical]` journey set exists to make the mutation score meaningful.

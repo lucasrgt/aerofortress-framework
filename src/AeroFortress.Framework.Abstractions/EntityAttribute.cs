@@ -3,7 +3,7 @@ namespace AeroFortress.Framework.Abstractions;
 /// <summary>
 /// Marks a class as a domain entity — a thing with identity and a lifecycle that owns and
 /// guards its own invariants (a <c>Wallet</c>, an <c>Order</c>). The marker pins the entity to
-/// the always-valid discipline the doctor (<c>LZ0014</c>) enforces: it exposes no public
+/// the always-valid discipline the doctor (<c>AF0014</c>) enforces: it exposes no public
 /// constructor (it is born through a static factory like <c>Open</c> and rehydrated by EF
 /// through a private one), no public property setter (state changes only through
 /// intention-revealing methods), and a single private invariant funnel —

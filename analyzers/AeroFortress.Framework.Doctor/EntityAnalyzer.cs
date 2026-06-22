@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0014 — a class marked <c>[Entity]</c> must encapsulate its state and guard its invariants. It exposes
+/// AF0014 — a class marked <c>[Entity]</c> must encapsulate its state and guard its invariants. It exposes
 /// no public constructor (it is born through a static factory like <c>Open</c> and rehydrated by EF through a
 /// private parameterless one), no public property setter (state changes through intention-revealing methods),
 /// and a single private invariant funnel — <c>EnsureValid()</c> (or <c>Validate()</c>) returning a
@@ -23,7 +23,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class EntityAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for an entity that does not encapsulate its state or its invariants.</summary>
-    public const string DiagnosticId = "LZ0014";
+    public const string DiagnosticId = "AF0014";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

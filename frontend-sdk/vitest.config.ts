@@ -13,7 +13,7 @@ export default defineConfig({
   test: {
     root: r(".."),
     environment: "jsdom",
-    // __fixtures__ holds eslint RuleTester fixtures named `*.test.tsx` (the LZFE033 rule looks up
+    // __fixtures__ holds eslint RuleTester fixtures named `*.test.tsx` (the AFFE033 rule looks up
     // `<base>.test.tsx`), not vitest suites — keep them out of the run (+ vitest's own defaults).
     exclude: [...configDefaults.exclude, "**/__fixtures__/**"],
     include: [

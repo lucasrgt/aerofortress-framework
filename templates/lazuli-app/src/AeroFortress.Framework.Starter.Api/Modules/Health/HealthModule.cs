@@ -2,7 +2,7 @@ namespace AeroFortress.Framework.Starter.Api.Modules.Health;
 
 /// <summary>The Health module's wiring root — it owns both halves of its composition: <see cref="AddServices"/>
 /// (its own DI) and <see cref="Map"/> (its routes, under /health, one line per slice). The module registry calls
-/// both; the doctor (LZ0015/LZ0016) checks the shape and that it is registered.</summary>
+/// both; the doctor (AF0015/AF0016) checks the shape and that it is registered.</summary>
 [Module]
 public static class HealthModule
 {
@@ -13,7 +13,7 @@ public static class HealthModule
 
     public static void Map(IEndpointRouteBuilder app)
     {
-        // Health probes are public by design — the doctor (LZ0022) wants that decision written down, not
+        // Health probes are public by design — the doctor (AF0022) wants that decision written down, not
         // implied. A module exposing user data says .RequireAuthorization() here instead.
         var health = app.MapGroup("/health").AllowAnonymous();
         Ping.Map(health);

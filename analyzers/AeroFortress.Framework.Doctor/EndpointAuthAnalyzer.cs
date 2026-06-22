@@ -10,19 +10,19 @@ using Microsoft.CodeAnalysis.Operations;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0022 — <b>an endpoint's authorization is a decision, never an omission</b>. Every <c>[Slice]</c> must carry
+/// AF0022 — <b>an endpoint's authorization is a decision, never an omission</b>. Every <c>[Slice]</c> must carry
 /// an explicit authorization posture: either its own <c>Map</c> chain calls <c>.RequireAuthorization(…)</c> /
 /// <c>.AllowAnonymous()</c>, or the route group its <c>Map</c> is mounted on does (the
 /// <c>app.MapGroup("/x").RequireAuthorization()</c> shape in the module's <c>Map</c>). A slice with neither is
 /// flagged — the classic silent failure is a new endpoint that ships open because nobody decided anything.
 /// <c>.AllowAnonymous()</c> is not a loophole: it is the same decision, made visible and reviewable.
-/// (A slice missing its <c>Map</c> entirely is LZ0001's concern, not this rule's.)
+/// (A slice missing its <c>Map</c> entirely is AF0001's concern, not this rule's.)
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class EndpointAuthAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when a slice's endpoint carries no explicit authorization decision.</summary>
-    public const string DiagnosticId = "LZ0022";
+    public const string DiagnosticId = "AF0022";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -63,7 +63,7 @@ public sealed class EndpointAuthAnalyzer : DiagnosticAnalyzer
                 return;
             var map = type.GetMembers("Map").OfType<IMethodSymbol>().FirstOrDefault();
             if (map is null)
-                return; // a missing Map is LZ0001's concern
+                return; // a missing Map is AF0001's concern
             var decidedInOwnChain = map.DeclaringSyntaxReferences
                 .Select(r => r.GetSyntax(symbolContext.CancellationToken))
                 .Any(ContainsAuthDecision);

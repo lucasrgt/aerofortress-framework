@@ -44,7 +44,7 @@ public class ValueObjectAnalyzerTests
         [ValueObject]
         public sealed class Email
         {
-            public string {|LZ0013:Value|} { get; set; }
+            public string {|AF0013:Value|} { get; set; }
             private Email(string value) => Value = value;
             public static Result<Email> From(string value) => new Result<Email>();
         }
@@ -60,7 +60,7 @@ public class ValueObjectAnalyzerTests
         public sealed class Email
         {
             public string Value { get; }
-            public {|LZ0013:Email|}(string value) => Value = value;
+            public {|AF0013:Email|}(string value) => Value = value;
             public static Result<Email> From(string value) => new Result<Email>();
         }
 
@@ -72,7 +72,7 @@ public class ValueObjectAnalyzerTests
         using System;
 
         [ValueObject]
-        public readonly struct {|LZ0013:Money|}
+        public readonly struct {|AF0013:Money|}
         {
             public decimal Amount { get; }
             private Money(decimal amount) => Amount = amount;
@@ -86,7 +86,7 @@ public class ValueObjectAnalyzerTests
         using System;
 
         [ValueObject]
-        public readonly record struct {|LZ0013:Money|}(decimal Amount)
+        public readonly record struct {|AF0013:Money|}(decimal Amount)
         {
             public static Result<Money> From(decimal amount) => new Result<Money>();
         }

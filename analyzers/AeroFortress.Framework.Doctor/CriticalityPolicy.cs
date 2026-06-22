@@ -6,7 +6,7 @@ namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
 /// The shared reading of the workspace's <b>criticality policy</b> — the one place that answers "is this
-/// slice critical right now?" so <c>LZ0008</c>, <c>LZ0010</c>, and <c>LZ0029</c> agree by construction.
+/// slice critical right now?" so <c>AF0008</c>, <c>AF0010</c>, and <c>AF0029</c> agree by construction.
 ///
 /// The policy is a single dial (<c>[testing] criticality</c> in <c>AeroFortress.toml</c>) projected to the
 /// analyzers as the MSBuild property <c>AeroFortressCriticality</c> — the doctor's <c>buildTransitive</c> targets
@@ -16,7 +16,7 @@ namespace AeroFortress.Framework.Doctor;
 /// <item><description><see cref="Level.OptIn"/> (default, and the meaning of an absent dial): only a
 /// <c>[Critical]</c> slice is critical — today's behavior, unchanged.</description></item>
 /// <item><description><see cref="Level.Explicit"/>: criticality is still opt-in for the test bar, but every
-/// slice must <i>decide</i> — carry <c>[Critical]</c> or <c>[NonCritical]</c> — or <c>LZ0029</c> errors.</description></item>
+/// slice must <i>decide</i> — carry <c>[Critical]</c> or <c>[NonCritical]</c> — or <c>AF0029</c> errors.</description></item>
 /// <item><description><see cref="Level.Strict"/>: an undecided slice is <i>treated as</i> <c>[Critical]</c>;
 /// the only opt-out is the explicit <c>[NonCritical]</c> marker.</description></item>
 /// </list>
@@ -33,7 +33,7 @@ internal static class CriticalityPolicy
         /// <summary>Default: only a <c>[Critical]</c> slice is critical (today's behavior).</summary>
         OptIn,
 
-        /// <summary>Every slice must carry <c>[Critical]</c> or <c>[NonCritical]</c> (else <c>LZ0029</c>).</summary>
+        /// <summary>Every slice must carry <c>[Critical]</c> or <c>[NonCritical]</c> (else <c>AF0029</c>).</summary>
         Explicit,
 
         /// <summary>An undecided slice is treated as <c>[Critical]</c>; <c>[NonCritical]</c> is the opt-out.</summary>

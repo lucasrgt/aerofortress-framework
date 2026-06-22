@@ -51,7 +51,7 @@ description: Use when creating or modifying any UI — screens (*.view.tsx), ui/
   compose a screen from a blank file.
 - Vocabulary is closed: kit primitives + token props only. A missing primitive is
   extended in YOUR ui/ following the constitution — never inlined paint
-  (LZFE024–026 will catch it; don't make them).
+  (AFFE024–026 will catch it; don't make them).
 
 ## 3. Verify (the exit ritual — all three, in order)
 1. Lint/check green (the app's check command — sample: npm run check).

@@ -5,18 +5,18 @@
 name = "AeroFortress.Framework.Starter"
 
 [products.app]
-backend = "src/AeroFortress.Framework.Starter.Api"   # .NET vertical slices — the LZ* analyzers gate this build
+backend = "src/AeroFortress.Framework.Starter.Api"   # .NET vertical slices — the AF* analyzers gate this build
 # A AeroFortress frontend client is added under clients/ when you scaffold one:
 # core = "clients/core"              # agnostic ViewModel (the data door) + design-system View + i18n + client
 # apps = ["mobile", "web"]           # platform shells over the shared core
 
 [harness]
-backend = "AeroFortress.Framework.Starter.slnx"      # the framework's LZ* Roslyn analyzers run via the solution build
+backend = "AeroFortress.Framework.Starter.slnx"      # the framework's AF* Roslyn analyzers run via the solution build
 
 [testing]
 # Criticality policy — how the doctor treats a [Slice] that declares no criticality. The dial:
 #   "opt-in"   = default; only a [Critical] slice needs happy+sad journeys. Today's behavior.
-#   "explicit" = every slice must carry [Critical] or [NonCritical], else LZ0029 errors. Mirrors LZ0022.
+#   "explicit" = every slice must carry [Critical] or [NonCritical], else AF0029 errors. Mirrors AF0022.
 #   "strict"   = an undecided slice is treated as [Critical] and must prove journeys; opt out with [NonCritical].
 criticality = "opt-in"
 

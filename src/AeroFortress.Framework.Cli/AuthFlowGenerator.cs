@@ -23,7 +23,7 @@ public enum AuthFlow
 /// csproj to wire them in. Every edit is idempotent — re-running a flow never duplicates a field, DbSet,
 /// map line, DI registration, or package reference — and a missing anchor prints a precise manual-step
 /// note rather than failing the whole generator. The provider DI lands in <c>AccountSetup.AddAccount</c>
-/// (the module's composition), never in <c>Program.cs</c> — the composition root stays a thin index (LZ0017).
+/// (the module's composition), never in <c>Program.cs</c> — the composition root stays a thin index (AF0017).
 /// </summary>
 /// <remarks>
 /// Targets the default multi-tenant scaffold only. An app generated with <c>--skip-tenancy</c> is rejected
@@ -101,7 +101,7 @@ public static class AuthFlowGenerator
     }
 
     // Append the flow's error codes to the Account module's registry (AccountErrorCodes), idempotently — the
-    // flow's slice templates reference these constants (LZ0018), and the base codes were placed by `g auth`.
+    // flow's slice templates reference these constants (AF0018), and the base codes were placed by `g auth`.
     private static void AugmentErrorCodes(string root, string appNamespace, FlowSpec spec)
     {
         var accountDir = Path.Combine(root, "Modules", "Account");
@@ -110,7 +110,7 @@ public static class AuthFlowGenerator
     }
 
     // Add the flow's user fields and mutators, idempotently. The User entity is a reshaped [Entity]
-    // (LZ0014/LZ0021): its state is private, so a flow grows it through intention-revealing members, never
+    // (AF0014/AF0021): its state is private, so a flow grows it through intention-revealing members, never
     // public setters a slice could reach. Fields sit with the other columns (after CreatedAt); mutators and
     // factories sit with the other methods (before the EnsureValid funnel). Each member is detected by a
     // stable token so re-running a flow — or applying a second flow that shares a member (email + oauth both
@@ -254,7 +254,7 @@ public static class AuthFlowGenerator
     }
 
     // Register the flow's provider DI in the Account module's composition (AccountSetup.AddAccount),
-    // idempotently — NOT in Program.cs, which must stay a thin index (LZ0017 flags a registration that
+    // idempotently — NOT in Program.cs, which must stay a thin index (AF0017 flags a registration that
     // leaks into the composition root). Adds the provider package's using too. Anchored on the
     // AddAuthorization() call that closes AddAccount's registrations.
     private static void AugmentAccountSetup(string accountSetup, FlowSpec spec)

@@ -1,4 +1,4 @@
-// The session's WRITE side — the one seam LZFE016 polices toward, graduated from the hostpoint pilot's
+// The session's WRITE side — the one seam AFFE016 polices toward, graduated from the hostpoint pilot's
 // lib/session. The read side (SessionState/toSessionState) projects "who is signed in"; this owns "the token
 // changed": persist it, and reset the session cache IN THE SAME MOVE, so the scattered-write bug (a sign-in
 // that forgets to reset the `me` query and bounces the fresh user back to login) is unrepresentable, not
@@ -111,7 +111,7 @@ export function createSessionSeam(ports: SessionSeamPorts): SessionSeam {
 
   // Single-flighted: a cold start that double-invokes the boot effect (React StrictMode in dev) or a bootstrap
   // racing the client's 401-interceptor would otherwise fire TWO refresh rotations — and the backend's
-  // theft-detection burns the whole session family when it sees the spent token replayed (the LZFE029 hazard at
+  // theft-detection burns the whole session family when it sees the spent token replayed (the AFFE029 hazard at
   // boot). Concurrent callers share the one rotation; the gate reopens once it settles, so a later, genuine
   // re-bootstrap still runs.
   const bootstrapSession = singleFlight(async (): Promise<boolean> => {

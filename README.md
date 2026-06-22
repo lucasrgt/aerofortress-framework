@@ -5,8 +5,8 @@ stranger-maintainable code, and a "doctor" of Roslyn analyzers that enforce the 
 
 - **Slices** — one operation = one `[Slice]` (`Input` / `Output` / `Handle` / `Map`), thin endpoints.
 - **Modular monolith** — modules are logical bounded contexts sharing one `AppDb`; a module writes only
-  its own entities (LZ0009) and references others by id, so a context stays carvable into its own service.
-- **The doctor** — the `LZ####` analyzers catch structural drift (slice shape, co-located tests, `ctx.md`
+  its own entities (AF0009) and references others by id, so a context stays carvable into its own service.
+- **The doctor** — the `AF####` analyzers catch structural drift (slice shape, co-located tests, `ctx.md`
   freshness, write-ownership, `[Critical]` journeys, registry error codes…) at build time. Full catalog in
   [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
 - **Generators** — `af new`, `af g module / slice / entity / vo / crud / auth` scaffold exactly the convention.
@@ -50,7 +50,7 @@ af doctor                           # run the conventions over back + front
 | `AeroFortress.Framework.Abstractions` | the spine: `Result<T>`, `Error`, `[Slice]`, `[ValueObject]`, `[Entity]`, `[Module]` |
 | `AeroFortress.Framework.AspNetCore` | the ASP.NET wiring: `AddAeroFortress`/`UseAeroFortress`, slice-aware OpenAPI, `Result`→HTTP |
 | `AeroFortress.Framework.Auth` / `AeroFortress.Framework.Identity` / `AeroFortress.Framework.Mail` / `AeroFortress.Framework.Sms` / `AeroFortress.Framework.Storage` | the standard ports (no vendor SDK in core — the adapter is the app's choice) |
-| `AeroFortress.Framework.Doctor` | the `LZ####` Roslyn analyzers (ships with the meta; reference directly for analyzer-only) |
+| `AeroFortress.Framework.Doctor` | the `AF####` Roslyn analyzers (ships with the meta; reference directly for analyzer-only) |
 | `AeroFortress.Framework.Testing` / `AeroFortress.Framework.Testing.InMemory` | test helpers — add to a **test** project |
 | `aerofortress-framework-cli` | the `af` CLI, as a `dotnet tool` |
 
@@ -59,6 +59,6 @@ The focused packages are à la carte; the `AeroFortress.Framework` meta is the f
 
 ## Docs
 
-- [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) — the constitution: the slice shape + the full `LZ####` rule catalog.
-- [`docs/FRONTEND-CONVENTIONS.md`](docs/FRONTEND-CONVENTIONS.md) — the React Native + web harness (`LZFE*`).
+- [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) — the constitution: the slice shape + the full `AF####` rule catalog.
+- [`docs/FRONTEND-CONVENTIONS.md`](docs/FRONTEND-CONVENTIONS.md) — the React Native + web harness (`AFFE*`).
 - [`docs/MONOREPO-ARCHITECTURE.md`](docs/MONOREPO-ARCHITECTURE.md) — how the pieces fit.

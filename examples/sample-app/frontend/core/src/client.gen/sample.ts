@@ -3,7 +3,7 @@ import type { Item } from "../items/Items.viewModel";
 
 // Harness stand-in for the orval-generated typed hook (`@/client.gen/sample`). It is a REAL wired react-query hook
 // over a stub fetch — so the sample's test mounts the data door against this exactly as it would a real client
-// (LZFE003: wired, not mocked). A generated client would have the same surface: a typed query hook per slice.
+// (AFFE003: wired, not mocked). A generated client would have the same surface: a typed query hook per slice.
 export function useListItems() {
   return useQuery({
     queryKey: ["sample", "list_items"],
@@ -12,7 +12,7 @@ export function useListItems() {
 }
 
 // Stand-in for the orval hook of the backend's REAL `Deposit` slice (`MapPost("/deposit").WithName(nameof(Deposit))`
-// → operationId `Deposit` → `useDeposit`, the LZ0012 1:1). A sentinel wallet id mirrors the slice's NotFound sad
+// → operationId `Deposit` → `useDeposit`, the AF0012 1:1). A sentinel wallet id mirrors the slice's NotFound sad
 // path so the form recipe proves its error surface against a real failure; the small delay keeps the pending
 // state observable, as a network would.
 export interface DepositInput {

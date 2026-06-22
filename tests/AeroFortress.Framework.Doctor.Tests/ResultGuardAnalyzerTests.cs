@@ -107,7 +107,7 @@ public class ResultGuardAnalyzerTests
 
     [Fact]
     public Task A_test_file_may_unwrap_unguarded_the_throw_is_the_signal() =>
-        // Same carve-out as LZ0009: in a test the exception fails the test with a stack trace — exactly
+        // Same carve-out as AF0009: in a test the exception fails the test with a stack trace — exactly
         // what the test wants; forcing an IsSuccess assert before every read is ceremony.
         NewTest("""
             class C

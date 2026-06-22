@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0002 — an endpoint stays thin. A Minimal API route (<c>MapGet</c>, <c>MapPost</c>, …)
+/// AF0002 — an endpoint stays thin. A Minimal API route (<c>MapGet</c>, <c>MapPost</c>, …)
 /// delegates to a slice's handler and maps the result; it carries no business logic inline.
 /// The checkable form of "thin" is syntactic, the same expression-versus-block trigger the
 /// convention uses everywhere: the route handler is an expression-bodied lambda or a method
@@ -19,7 +19,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class EndpointThinnessAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a route handler that carries an inline block.</summary>
-    public const string DiagnosticId = "LZ0002";
+    public const string DiagnosticId = "AF0002";
 
     private static readonly ImmutableHashSet<string> MapMethods = ImmutableHashSet.Create(
         "MapGet", "MapPost", "MapPut", "MapDelete", "MapPatch", "MapMethods");

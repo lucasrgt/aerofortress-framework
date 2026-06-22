@@ -11,7 +11,7 @@ namespace AeroFortress.Framework.Abstractions;
 /// Like <see cref="SliceAttribute"/> it is a <strong>pure marker</strong>: no base class, no
 /// behaviour, nothing to inherit. Delete the <c>AeroFortress.Framework.Doctor</c> analyzer and this attribute
 /// becomes inert decoration — the type still compiles and runs (Law 2). Its only job is to give
-/// the doctor (<c>LZ0013</c>) a reliable anchor for the always-valid contract above.
+/// the doctor (<c>AF0013</c>) a reliable anchor for the always-valid contract above.
 /// </summary>
 [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class ValueObjectAttribute : Attribute;

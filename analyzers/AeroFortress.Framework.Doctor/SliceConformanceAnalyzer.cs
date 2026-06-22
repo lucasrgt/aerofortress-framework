@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0001 — a class marked <c>[Slice]</c> must follow the canonical shape: a <c>static</c>
+/// AF0001 — a class marked <c>[Slice]</c> must follow the canonical shape: a <c>static</c>
 /// class with a nested <c>Input</c> and <c>Output</c>, a public <c>Handle</c> returning
 /// <c>Task&lt;Result&lt;T&gt;&gt;</c>, and a <c>Map</c> — declared in that order
 /// (Input → Output → Handle → Map: contract, then behaviour, then transport). Drift here is the
@@ -22,7 +22,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class SliceConformanceAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a non-conformant slice.</summary>
-    public const string DiagnosticId = "LZ0001";
+    public const string DiagnosticId = "AF0001";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

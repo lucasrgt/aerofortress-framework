@@ -5,7 +5,7 @@ namespace AeroFortress.Framework.Cli;
 /// <summary>
 /// Generates a rich domain entity — encapsulated state, no public constructor (born through an <c>Open</c>
 /// factory, rehydrated by EF through a private parameterless one), no public setter, and a private
-/// <c>EnsureValid</c> invariant funnel — so it passes <c>LZ0014</c> by construction. It is the entity
+/// <c>EnsureValid</c> invariant funnel — so it passes <c>AF0014</c> by construction. It is the entity
 /// counterpart of <c>g slice</c>: the conventional shape born right, ready for the author to add
 /// intention-revealing methods. (For a plain data-bag entity that just needs CRUD, write a simple class
 /// and use <c>g crud</c>; reach for a rich <c>[Entity]</c> when there are invariants worth guarding.)
@@ -38,7 +38,7 @@ public static class EntityGenerator
         File.WriteAllText(path, Entity(appNamespace, module, name));
         Console.WriteLine($"created {path}");
 
-        // The scaffolded invariant references a registry constant (LZ0018) — ensure the module's registry has it.
+        // The scaffolded invariant references a registry constant (AF0018) — ensure the module's registry has it.
         ErrorCodeScaffold.EnsureModuleCode(moduleDir, appNamespace, module,
             "IdRequired", "id.required", "The id is required (entity invariant).");
         Console.WriteLine($"note: register it in AppDb.cs — add `public DbSet<{name}> {name}s => Set<{name}>();` — "

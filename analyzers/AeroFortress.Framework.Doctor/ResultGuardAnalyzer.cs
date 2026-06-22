@@ -9,13 +9,13 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0025 — <b>a held <c>Result&lt;T&gt;</c> is checked before it is unwrapped</b>. Reading <c>.Value</c> on a
+/// AF0025 — <b>a held <c>Result&lt;T&gt;</c> is checked before it is unwrapped</b>. Reading <c>.Value</c> on a
 /// failure (or <c>.Error</c> on a success) throws — so unwrapping a result that was stored in a local or
 /// parameter without any earlier outcome check in the same member (<c>IsSuccess</c> / <c>IsFailure</c>, or
 /// folding it through <c>Validation.Collect</c>) is the type's number-one misuse, flagged here. Unwrapping
 /// <em>inline</em> on a fresh construction (<c>Money.From(10m).Value</c> in a seed or test, where the input is
 /// known valid) stays legal: holding a result and never looking at its outcome is the bug; asserting a known
-/// literal is an idiom. <c>.Tests.cs</c> files are exempt entirely (the same carve-out as LZ0009): in a test an
+/// literal is an idiom. <c>.Tests.cs</c> files are exempt entirely (the same carve-out as AF0009): in a test an
 /// unguarded unwrap failing IS the signal — the exception fails the test with a stack trace, which is exactly
 /// the behaviour a test wants, and forcing an <c>IsSuccess</c> assert before every read is ceremony.
 /// </summary>
@@ -23,7 +23,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class ResultGuardAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when a stored result is unwrapped with no preceding outcome check.</summary>
-    public const string DiagnosticId = "LZ0025";
+    public const string DiagnosticId = "AF0025";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -56,7 +56,7 @@ public sealed class ResultGuardAnalyzer : DiagnosticAnalyzer
             return;
 
         // A test wants the throw: an unguarded unwrap failing fails the test with a stack trace — the signal,
-        // not the bug. Same carve-out as LZ0009.
+        // not the bug. Same carve-out as AF0009.
         if (access.SyntaxTree.FilePath.EndsWith(".Tests.cs", StringComparison.Ordinal))
             return;
 

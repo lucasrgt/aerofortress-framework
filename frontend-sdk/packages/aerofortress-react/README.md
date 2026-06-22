@@ -2,7 +2,7 @@
 
 The frontend **spine** of the [AeroFortress Framework](https://github.com/lucasrgt/aerofortress-framework) —
 platform- and design-system-agnostic React primitives the app composes into MVVM screens. It ships the shapes
-the framework's frontend conventions (`LZFE*`) steer toward, so the rules have something to steer *to*:
+the framework's frontend conventions (`AFFE*`) steer toward, so the rules have something to steer *to*:
 
 - **`AsyncState` / `<Resource>`** — the one async-state shape (loading / error / data), never raw `isPending`/`isError`.
 - **Session** — `SessionState` / `toSessionState` (the tri-state `loading | authenticated | anonymous`) + the

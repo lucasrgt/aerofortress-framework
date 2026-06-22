@@ -84,7 +84,7 @@ public static class ModuleGenerator
 
         /// <summary>The {{name}} module's wiring root — it owns both halves of its composition: AddServices (its
         /// own DI) and Map (its routes, under /{{name.ToLowerInvariant()}}). The module registry calls both; the
-        /// doctor (LZ0015/LZ0016) checks the shape and that it is registered.</summary>
+        /// doctor (AF0015/AF0016) checks the shape and that it is registered.</summary>
         [Module]
         public static class {{name}}Module
         {
@@ -95,7 +95,7 @@ public static class ModuleGenerator
             public static void Map(IEndpointRouteBuilder app)
             {
                 // Register this module's slices here as you generate them. The group carries the module's
-                // authorization decision — LZ0022 wants it explicit either way:
+                // authorization decision — AF0022 wants it explicit either way:
                 //   var {{name.ToLowerInvariant()}} = app.MapGroup("/{{name.ToLowerInvariant()}}").RequireAuthorization(); // or .AllowAnonymous()
                 //   <Slice>.Map({{name.ToLowerInvariant()}});
             }

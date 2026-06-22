@@ -91,7 +91,7 @@ public static class OpenApiExtensions
 
             // Enumerate the error codes (every *ErrorCodes registry constant, gathered by reflection) into the
             // ErrorBody.Code schema, so the generated client is typed on the closed set and the frontend can be
-            // checked for an exhaustive translation of each. LZ0018 guarantees every code is such a constant, so
+            // checked for an exhaustive translation of each. AF0018 guarantees every code is such a constant, so
             // this set is the whole contract.
             options.AddSchemaTransformer((schema, context, _) =>
             {
@@ -188,7 +188,7 @@ public static class OpenApiExtensions
         };
 
     // Every error code in the app: the public string constants on classes named *ErrorCodes, across the loaded
-    // assemblies. LZ0018 enforces that this registry set is the complete set of codes the app can emit.
+    // assemblies. AF0018 enforces that this registry set is the complete set of codes the app can emit.
     private static IReadOnlyList<string> ErrorCodes() =>
         AppDomain.CurrentDomain.GetAssemblies()
             .Where(assembly => !assembly.IsDynamic)

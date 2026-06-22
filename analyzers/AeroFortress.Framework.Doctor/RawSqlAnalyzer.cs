@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0024 — <b>raw SQL never absorbs runtime values as text</b>. A <c>*Raw</c> EF Core call
+/// AF0024 — <b>raw SQL never absorbs runtime values as text</b>. A <c>*Raw</c> EF Core call
 /// (<c>FromSqlRaw</c>, <c>ExecuteSqlRaw</c>/<c>Async</c>, <c>SqlQueryRaw</c>) whose SQL argument is an
 /// interpolated string with holes, or a concatenation involving a non-literal, splices runtime values into the
 /// SQL text — the SQL-injection shape. The fix is one token away: <c>FromSql</c> / <c>ExecuteSql</c> /
@@ -19,7 +19,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class RawSqlAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported when raw SQL splices runtime values into the query text.</summary>
-    public const string DiagnosticId = "LZ0024";
+    public const string DiagnosticId = "AF0024";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

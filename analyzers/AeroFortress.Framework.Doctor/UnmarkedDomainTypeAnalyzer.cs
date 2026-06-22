@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// LZ0021 — a domain type that is <em>persisted</em> or <em>owned by an entity</em> must carry its mark, so it
-/// cannot escape the encapsulation checks the marks gate. LZ0013 (<c>[ValueObject]</c>) and LZ0014
+/// AF0021 — a domain type that is <em>persisted</em> or <em>owned by an entity</em> must carry its mark, so it
+/// cannot escape the encapsulation checks the marks gate. AF0013 (<c>[ValueObject]</c>) and AF0014
 /// (<c>[Entity]</c>) only fire on a type that is <b>already</b> marked; a type that is simply never marked is
 /// invisible to them. That hole lets an anemic, public-setter "entity" — or a complex type used as entity state
 /// that should be an always-valid value object — ship past the doctor untouched. This rule closes the hole from
@@ -16,12 +16,12 @@ namespace AeroFortress.Framework.Doctor;
 /// <list type="number">
 /// <item><description>A type that appears as a <c>DbSet&lt;T&gt;</c> on a <c>DbContext</c> is a persisted
 ///   aggregate root — a table — i.e. an entity by definition. If <c>T</c> is not <c>[Entity]</c>, it escapes
-///   LZ0014.</description></item>
+///   AF0014.</description></item>
 /// <item><description>A property on an <c>[Entity]</c> whose type is a project-defined class/record that is
 ///   neither <c>[Entity]</c>, <c>[ValueObject]</c>, nor an <c>enum</c> is entity state with no mark. In this
 ///   architecture entity state is value objects + primitives + enums + ids (a cross-module reference is an id,
 ///   never an EF navigation), so a bare complex member is a value object that forgot <c>[ValueObject]</c> and
-///   escapes LZ0013.</description></item>
+///   escapes AF0013.</description></item>
 /// </list>
 /// Both signals are exact in this convention, so the rule is an error, not a heuristic. It deliberately does
 /// <b>not</b> flag a type that is merely <em>declared</em> and unused — dead scaffolding is a different problem
@@ -33,7 +33,7 @@ namespace AeroFortress.Framework.Doctor;
 public sealed class UnmarkedDomainTypeAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a persisted or entity-owned type that does not declare its mark.</summary>
-    public const string DiagnosticId = "LZ0021";
+    public const string DiagnosticId = "AF0021";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
@@ -43,7 +43,7 @@ public sealed class UnmarkedDomainTypeAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "A type persisted as a DbSet must be [Entity]; a complex type held as [Entity] state must "
-                   + "be [ValueObject]. The marks gate LZ0013/LZ0014, which only fire on already-marked types — "
+                   + "be [ValueObject]. The marks gate AF0013/AF0014, which only fire on already-marked types — "
                    + "so an unmarked domain type would otherwise escape every encapsulation check.");
 
     private static readonly string[] CollectionNames =
@@ -90,7 +90,7 @@ public sealed class UnmarkedDomainTypeAnalyzer : DiagnosticAnalyzer
 
             Report(context, entity,
                 $"'{entity.Name}' is persisted as a DbSet (a table) but is not marked [Entity] — an unmarked "
-                + "persisted type escapes LZ0014's encapsulation + invariant-funnel checks. Mark it [Entity] "
+                + "persisted type escapes AF0014's encapsulation + invariant-funnel checks. Mark it [Entity] "
                 + "(private setters, a static factory, an EnsureValid funnel), or remove it from the DbContext.");
         }
     }
@@ -114,12 +114,12 @@ public sealed class UnmarkedDomainTypeAnalyzer : DiagnosticAnalyzer
             if (named.TypeKind == TypeKind.Enum)
                 continue;                                   // enums are legitimate entity state
             if (HasMark(named, "ValueObject") || HasMark(named, "Entity"))
-                continue;                                   // a VO, or a navigation handled by LZ0009
+                continue;                                   // a VO, or a navigation handled by AF0009
 
             Report(context, prop,
                 $"property '{prop.Name}' on entity '{entity.Name}' is typed '{named.Name}', a domain type that "
                 + "is neither [Entity], [ValueObject], nor an enum — entity state must be a value object (or a "
-                + $"primitive / enum / id). An unmarked complex member escapes LZ0013. Mark '{named.Name}' "
+                + $"primitive / enum / id). An unmarked complex member escapes AF0013. Mark '{named.Name}' "
                 + "[ValueObject] (build it through a static From returning Result), or reference the other entity "
                 + "by its id.");
         }
@@ -151,7 +151,7 @@ public sealed class UnmarkedDomainTypeAnalyzer : DiagnosticAnalyzer
     }
 
     // Matches the attribute by simple name (with or without the Attribute suffix), so a project need not
-    // reference AeroFortress.Framework.Abstractions for the doctor to read the mark — the same posture as LZ0013/LZ0014.
+    // reference AeroFortress.Framework.Abstractions for the doctor to read the mark — the same posture as AF0013/AF0014.
     private static bool HasMark(ISymbol symbol, string mark) =>
         symbol.GetAttributes().Any(a => a.AttributeClass is { } c
             && (c.Name == mark || c.Name == mark + "Attribute"));

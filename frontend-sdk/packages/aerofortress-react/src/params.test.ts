@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { requiredParam } from "./params";
 
-// requiredParam — the param-presence union (LZFE018's blessed shape). The missing case must be a branch the
+// requiredParam — the param-presence union (AFFE018's blessed shape). The missing case must be a branch the
 // route writes, and every loose router shape must normalize into one of the two arms.
 describe("requiredParam", () => {
   it("is missing when the param is absent", () => {

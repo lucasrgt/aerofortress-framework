@@ -7,12 +7,12 @@ import { renderFeedback, renderMutator, renderOrvalConfig, renderQueryClient } f
 import aerofortress from "../packages/eslint-plugin/index.cjs";
 
 // The mutator/config pair every pilot re-derived by hand — rendered conformant by construction. What is
-// pinned: the seams the harness depends on, and the LZFE020-blessed base-URL shape.
+// pinned: the seams the harness depends on, and the AFFE020-blessed base-URL shape.
 describe("client-scaffold", () => {
   it("the mutator injects the base URL at boot, never baking a host into the construction", () => {
     const mutator = renderMutator();
 
-    // LZFE020's blessed shape: an injectable default on instance.defaults, no baseURL: in axios.create.
+    // AFFE020's blessed shape: an injectable default on instance.defaults, no baseURL: in axios.create.
     expect(mutator).toContain("instance.defaults.baseURL =");
     expect(mutator).not.toMatch(/axios\.create\(\{[^}]*baseURL/s);
     expect(mutator).toContain("export function configureClient");
@@ -77,7 +77,7 @@ describe("client-scaffold", () => {
     expect(feedback).toContain("console.error");
   });
 
-  it("the rendered lib/query.ts passes LZFE027 — conformant by construction, proved with the real rule", () => {
+  it("the rendered lib/query.ts passes AFFE027 — conformant by construction, proved with the real rule", () => {
     const linter = new Linter();
     const lint = (code: string, filename: string) =>
       linter.verify(

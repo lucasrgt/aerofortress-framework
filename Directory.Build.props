@@ -3,7 +3,7 @@
   <PropertyGroup>
     <!-- The .NET analyzers (IDE####, CA####) are the lint engine. EnforceCodeStyleInBuild
          makes them run at build time, not just in the IDE — so the native lint is part of
-         the doctor's gate alongside the LZ rules. Configuration lives in .editorconfig. -->
+         the doctor's gate alongside the AF rules. Configuration lives in .editorconfig. -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 

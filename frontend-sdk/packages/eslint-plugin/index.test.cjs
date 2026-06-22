@@ -1,6 +1,6 @@
 "use strict";
 
-// Self-test for the AeroFortress Framework frontend harness — the parallel of the backend's self-doctor / SelfHarness. Every LZFE
+// Self-test for the AeroFortress Framework frontend harness — the parallel of the backend's self-doctor / SelfHarness. Every AFFE
 // rule is proven here with RuleTester: it must FIRE on the violation it polices and PASS on the shapes it allows. A
 // rule the linter merely "accepts" is not done until a test pins both edges (the same discipline the framework
 // applies to its own backend rules). Run: `node index.test.cjs` (exits non-zero on any failing case). eslint + the
@@ -20,7 +20,7 @@ const ruleTester = new RuleTester({
   },
 });
 
-// LZFE001 — a View (*.view.tsx) imports no data layer (generated client / axios / react-query); it consumes its
+// AFFE001 — a View (*.view.tsx) imports no data layer (generated client / axios / react-query); it consumes its
 // ViewModel.
 ruleTester.run("view-purity", plugin.rules["view-purity"], {
   valid: [
@@ -37,7 +37,7 @@ ruleTester.run("view-purity", plugin.rules["view-purity"], {
   ],
 });
 
-// LZFE002 — the generated client has two data doors: a screen's *.viewModel.ts, and the framework auth/routing
+// AFFE002 — the generated client has two data doors: a screen's *.viewModel.ts, and the framework auth/routing
 // infra (lib/session, lib/guards). Everything else is forbidden; type-only imports are always fine.
 ruleTester.run("data-door", plugin.rules["data-door"], {
   valid: [
@@ -55,7 +55,7 @@ ruleTester.run("data-door", plugin.rules["data-door"], {
   ],
 });
 
-// LZFE009 — a *.viewModel.ts is platform-agnostic: no react-native / expo import (value OR type).
+// AFFE009 — a *.viewModel.ts is platform-agnostic: no react-native / expo import (value OR type).
 ruleTester.run("viewmodel-platform-agnostic", plugin.rules["viewmodel-platform-agnostic"], {
   valid: [
     { filename: "Foo.viewModel.ts", code: `import { useState } from "react";` },
@@ -70,7 +70,7 @@ ruleTester.run("viewmodel-platform-agnostic", plugin.rules["viewmodel-platform-a
   ],
 });
 
-// LZFE003 — no mock / fixture / MSW import in production code (only under *.test.*).
+// AFFE003 — no mock / fixture / MSW import in production code (only under *.test.*).
 ruleTester.run("no-mock", plugin.rules["no-mock"], {
   valid: [
     { filename: "Foo.test.tsx", code: `import { server } from "msw";` },
@@ -82,7 +82,7 @@ ruleTester.run("no-mock", plugin.rules["no-mock"], {
   ],
 });
 
-// LZFE010 — a View routes async state through <Resource>, never raw react-query booleans (member access OR
+// AFFE010 — a View routes async state through <Resource>, never raw react-query booleans (member access OR
 // destructuring). The booleans are the ViewModel's; the View consumes the AsyncState union.
 ruleTester.run("state-completeness", plugin.rules["state-completeness"], {
   valid: [
@@ -96,7 +96,7 @@ ruleTester.run("state-completeness", plugin.rules["state-completeness"], {
   ],
 });
 
-// LZFE011 — every locale catalog in a *.i18n.ts declares the same keys; a key in one but not its siblings is a
+// AFFE011 — every locale catalog in a *.i18n.ts declares the same keys; a key in one but not its siblings is a
 // silent untranslated string. Scope is the *.i18n.ts file only.
 ruleTester.run("i18n-completeness", plugin.rules["i18n-completeness"], {
   valid: [
@@ -118,7 +118,7 @@ ruleTester.run("i18n-completeness", plugin.rules["i18n-completeness"], {
   ],
 });
 
-// LZFE012 — no inline hex color outside the token/theme definition files.
+// AFFE012 — no inline hex color outside the token/theme definition files.
 ruleTester.run("design-tokens", plugin.rules["design-tokens"], {
   valid: [
     { filename: "Foo.view.tsx", code: `const c = theme.colors.primary;` },
@@ -131,7 +131,7 @@ ruleTester.run("design-tokens", plugin.rules["design-tokens"], {
   ],
 });
 
-// LZFE013 — a ViewModel's mutation must surface its failure (no silent failure). Scoped to *.viewModel.ts. Four
+// AFFE013 — a ViewModel's mutation must surface its failure (no silent failure). Scoped to *.viewModel.ts. Four
 // legitimate surfaces are accepted: (A) inline onError, (B) a read `.isError` state, (C) mutateAsync in try/catch
 // or .catch(), (D) a returned/propagated mutateAsync. Each is a real surface; demanding a redundant onError on top
 // would be the very test-theater the rule exists to prevent.
@@ -165,7 +165,7 @@ ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"],
   ],
 });
 
-// LZFE014 — no hardcoded user-facing copy in a View (JSX text children must go through t()).
+// AFFE014 — no hardcoded user-facing copy in a View (JSX text children must go through t()).
 ruleTester.run("no-hardcoded-copy", plugin.rules["no-hardcoded-copy"], {
   valid: [
     // t() result is an expression, not text — never flagged.
@@ -192,7 +192,7 @@ ruleTester.run("no-hardcoded-copy", plugin.rules["no-hardcoded-copy"], {
   ],
 });
 
-// LZFE006 — a screen View (one that imports a ViewModel) needs a co-located render test. Detection is by IMPORT,
+// AFFE006 — a screen View (one that imports a ViewModel) needs a co-located render test. Detection is by IMPORT,
 // not a sibling file, so it survives the monorepo split (ViewModel in `core`, View in the platform shell). In
 // RuleTester the co-located test file doesn't exist on disk, so a VM-consuming View reports `missing` (proving the
 // gate fires) while a presentational fragment passes (proving the gate skips). A unique base avoids a cwd collision.
@@ -213,7 +213,7 @@ ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
   ],
 });
 
-// LZFE015 — no imperative redirect inside useEffect (a guard redirect must be declarative <Redirect>/<Navigate>, not
+// AFFE015 — no imperative redirect inside useEffect (a guard redirect must be declarative <Redirect>/<Navigate>, not
 // an effect that loops on web). Recognizes both router idioms; user-action push/back and onPress redirect stay allowed.
 ruleTester.run("no-router-replace-in-effect", plugin.rules["no-router-replace-in-effect"], {
   valid: [
@@ -238,7 +238,7 @@ ruleTester.run("no-router-replace-in-effect", plugin.rules["no-router-replace-in
   ],
 });
 
-// LZFE016 — the session token is written through one seam (lib/session); a viewModel/view importing the token setter
+// AFFE016 — the session token is written through one seam (lib/session); a viewModel/view importing the token setter
 // directly is the scattered-write bug that forgets the cache reset.
 ruleTester.run("session-one-door", plugin.rules["session-one-door"], {
   valid: [
@@ -256,12 +256,12 @@ ruleTester.run("session-one-door", plugin.rules["session-one-door"], {
   ],
 });
 
-// LZFE017 — a guard redirects on a tri-state SessionState, not a raw isAuthenticated boolean.
+// AFFE017 — a guard redirects on a tri-state SessionState, not a raw isAuthenticated boolean.
 ruleTester.run("guard-tristate", plugin.rules["guard-tristate"], {
   valid: [
     // Branch on the union — loading is a distinct, handled case.
     { filename: "src/app/routes/index.tsx", code: `function H() { if (session.status === "anonymous") return <Navigate to="/login" />; return null; }` },
-    // A non-auth presence guard (a param) is LZFE018's domain, not this rule's.
+    // A non-auth presence guard (a param) is AFFE018's domain, not this rule's.
     { filename: "src/app/routes/index.tsx", code: `function H() { if (!chatId) return <Redirect href="/m" />; return null; }` },
     // out of scope: a plain feature view is not a route/guard.
     { filename: "Foo.view.tsx", code: `function H() { if (!isAuthenticated) return <Navigate to="/login" />; return null; }` },
@@ -272,7 +272,7 @@ ruleTester.run("guard-tristate", plugin.rules["guard-tristate"], {
   ],
 });
 
-// LZFE018 — a route reading a required id param must guard its absence with a declarative redirect.
+// AFFE018 — a route reading a required id param must guard its absence with a declarative redirect.
 ruleTester.run("route-param-guard", plugin.rules["route-param-guard"], {
   valid: [
     // The param is guarded before the View renders.
@@ -296,7 +296,7 @@ ruleTester.run("route-param-guard", plugin.rules["route-param-guard"], {
   ],
 });
 
-// LZFE019 — no bare router.back() / history.back(); route Back through a guarded helper.
+// AFFE019 — no bare router.back() / history.back(); route Back through a guarded helper.
 ruleTester.run("safe-back", plugin.rules["safe-back"], {
   valid: [
     // The guarded helper — the correct shape.
@@ -314,7 +314,7 @@ ruleTester.run("safe-back", plugin.rules["safe-back"], {
   ],
 });
 
-// LZFE020 — the API base URL comes from configuration, not a hardcoded host baked into the client's construction.
+// AFFE020 — the API base URL comes from configuration, not a hardcoded host baked into the client's construction.
 ruleTester.run("no-hardcoded-base-url", plugin.rules["no-hardcoded-base-url"], {
   valid: [
     // env-driven with a relative fallback (web) — the blessed shape.
@@ -334,7 +334,7 @@ ruleTester.run("no-hardcoded-base-url", plugin.rules["no-hardcoded-base-url"], {
   ],
 });
 
-// LZFE021 — no dangerouslySetInnerHTML outside the lib/html seam (the one audited, sanitizing door).
+// AFFE021 — no dangerouslySetInnerHTML outside the lib/html seam (the one audited, sanitizing door).
 ruleTester.run("no-raw-html", plugin.rules["no-raw-html"], {
   valid: [
     // The seam owns rich-HTML rendering — the sanitizer is wired there.
@@ -350,7 +350,7 @@ ruleTester.run("no-raw-html", plugin.rules["no-raw-html"], {
   ],
 });
 
-// LZFE022 — never navigate to a value that arrived in the URL (open redirect); map it through an allowlist first.
+// AFFE022 — never navigate to a value that arrived in the URL (open redirect); map it through an allowlist first.
 ruleTester.run("no-open-redirect", plugin.rules["no-open-redirect"], {
   valid: [
     // Navigating to a literal route is fine.
@@ -368,7 +368,7 @@ ruleTester.run("no-open-redirect", plugin.rules["no-open-redirect"], {
   ],
 });
 
-// LZFE016 (storage half) — a token-ish storage write outside the seam is the same scattered session write as
+// AFFE016 (storage half) — a token-ish storage write outside the seam is the same scattered session write as
 // importing the setter; only lib/session touches token storage.
 ruleTester.run("session-one-door", plugin.rules["session-one-door"], {
   valid: [
@@ -386,7 +386,7 @@ ruleTester.run("session-one-door", plugin.rules["session-one-door"], {
   ],
 });
 
-// LZFE002 (re-export half) — `export … from "client.gen"` outside the doors launders the client to every importer.
+// AFFE002 (re-export half) — `export … from "client.gen"` outside the doors launders the client to every importer.
 ruleTester.run("data-door", plugin.rules["data-door"], {
   valid: [
     // Type re-exports are the shared contract vocabulary, not data access.
@@ -400,7 +400,7 @@ ruleTester.run("data-door", plugin.rules["data-door"], {
   ],
 });
 
-// LZFE013 (empty-handler half) — `onError: () => {}` is the silent failure with paperwork; the structure must
+// AFFE013 (empty-handler half) — `onError: () => {}` is the silent failure with paperwork; the structure must
 // route the error somewhere, not merely exist.
 ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"], {
   valid: [
@@ -412,7 +412,7 @@ ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"],
   ],
 });
 
-// LZFE011 (nested half) — keys are compared as flattened paths, so a key missing inside a nested group is caught.
+// AFFE011 (nested half) — keys are compared as flattened paths, so a key missing inside a nested group is caught.
 ruleTester.run("i18n-completeness", plugin.rules["i18n-completeness"], {
   valid: [
     {
@@ -429,8 +429,8 @@ ruleTester.run("i18n-completeness", plugin.rules["i18n-completeness"], {
   ],
 });
 
-// LZFE024 — the ui-door: a View renders no host element and carries no style/className; paint reaches a screen
-// through @/ui only (the LZFE002 one-door pattern applied to paint).
+// AFFE024 — the ui-door: a View renders no host element and carries no style/className; paint reaches a screen
+// through @/ui only (the AFFE002 one-door pattern applied to paint).
 ruleTester.run("ui-door", plugin.rules["ui-door"], {
   valid: [
     {
@@ -461,7 +461,7 @@ ruleTester.run("ui-door", plugin.rules["ui-door"], {
   ],
 });
 
-// LZFE025 — spacing/typography only from the scale: off-scale literals in style contexts and Tailwind arbitrary
+// AFFE025 — spacing/typography only from the scale: off-scale literals in style contexts and Tailwind arbitrary
 // values are the rhythm leak; ui/, the token files, and tests legitimately speak pixels.
 ruleTester.run("scale-only", plugin.rules["scale-only"], {
   valid: [
@@ -491,8 +491,8 @@ ruleTester.run("scale-only", plugin.rules["scale-only"], {
   ],
 });
 
-// LZFE026 — color is a semantic role: no rgb()/hsl()/oklch() literals, no named colors in color-ish keys, no
-// value-import of the raw palette outside ui/. Hex is LZFE012's half of the same pair.
+// AFFE026 — color is a semantic role: no rgb()/hsl()/oklch() literals, no named colors in color-ish keys, no
+// value-import of the raw palette outside ui/. Hex is AFFE012's half of the same pair.
 ruleTester.run("semantic-colors", plugin.rules["semantic-colors"], {
   valid: [
     { filename: "core/src/design/tokens.ts", code: `export const shadow = { raised: "0 1px 3px rgba(0,0,0,0.12)" };` },
@@ -503,7 +503,7 @@ ruleTester.run("semantic-colors", plugin.rules["semantic-colors"], {
     { filename: "Foo.test.tsx", code: `const c = "rgb(1,2,3)";` },
     // Semantic, theme-mapped utilities carry a role, not a palette family + shade — the conformant shape.
     { filename: "Foo.tsx", code: `export const X = () => <div className="bg-primary text-danger border-muted" />;` },
-    // Stock spacing/layout utilities are the scale (LZFE025's concern), not a color leak.
+    // Stock spacing/layout utilities are the scale (AFFE025's concern), not a color leak.
     { filename: "Foo.tsx", code: `export const X = () => <div className="p-4 gap-2 flex rounded-lg" />;` },
     // ui/ composes the primitives from the raw palette — it reaches deeper, like the palette import.
     { filename: "web/src/ui/Button.tsx", code: `export const B = () => <button className="bg-red-500 text-white" />;` },
@@ -532,7 +532,7 @@ ruleTester.run("semantic-colors", plugin.rules["semantic-colors"], {
   ],
 });
 
-// LZFE027 — a QueryClient carries the mutation defaults (mutationCache: new MutationCache({ onSuccess, onError })).
+// AFFE027 — a QueryClient carries the mutation defaults (mutationCache: new MutationCache({ onSuccess, onError })).
 // Tests and the shared test harness construct bare clients freely; an inline or same-file-declared cache is checked,
 // anything built further away is trusted as visible-in-review.
 ruleTester.run("query-client-defaults", plugin.rules["query-client-defaults"], {
@@ -583,7 +583,7 @@ ruleTester.run("query-client-defaults", plugin.rules["query-client-defaults"], {
   ],
 });
 
-// LZFE028 — an onSuccess whose entire body is refetch/invalidate calls duplicates the LZFE027 defaults (the pilot's
+// AFFE028 — an onSuccess whose entire body is refetch/invalidate calls duplicates the AFFE027 defaults (the pilot's
 // hand-rolled ritual, 30 of 43 ViewModels). A handler that does MORE than refetch is real behavior — never flagged.
 ruleTester.run("no-manual-refetch-ritual", plugin.rules["no-manual-refetch-ritual"], {
   valid: [
@@ -622,7 +622,7 @@ ruleTester.run("no-manual-refetch-ritual", plugin.rules["no-manual-refetch-ritua
   ],
 });
 
-// LZFE013 ({ globalSurface: true } half) — with the LZFE027 defaults wired, the global MutationCache.onError IS the
+// AFFE013 ({ globalSurface: true } half) — with the AFFE027 defaults wired, the global MutationCache.onError IS the
 // surface (react-query fires it regardless of per-call handlers), so a bare .mutate() passes; the empty onError stays
 // flagged — it is dead paperwork either way.
 ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"], {
@@ -641,7 +641,7 @@ ruleTester.run("mutation-error-handled", plugin.rules["mutation-error-handled"],
   ],
 });
 
-// LZFE029 — refresh-one-door: the session rotation has exactly one consumer surface (the client seam's
+// AFFE029 — refresh-one-door: the session rotation has exactly one consumer surface (the client seam's
 // single-flight interceptor / the session seam's gated bootstrap). A second consumer — the refresh hook/op
 // imported into a screen, or a hand-rolled POST to a refresh route — eventually rotates in parallel and the
 // backend's theft detection burns the session family.
@@ -672,7 +672,7 @@ ruleTester.run("refresh-one-door", plugin.rules["refresh-one-door"], {
   ],
 });
 
-// LZFE030 — no `as never`/`as any`/`as unknown` on a navigation target: the cast silences typed routes, and a
+// AFFE030 — no `as never`/`as any`/`as unknown` on a navigation target: the cast silences typed routes, and a
 // silenced router lets a drifted route literal compile clean and 404 in prod (the pilot's server-minted routes).
 ruleTester.run("no-cast-navigation", plugin.rules["no-cast-navigation"], {
   valid: [
@@ -706,8 +706,8 @@ ruleTester.run("no-cast-navigation", plugin.rules["no-cast-navigation"], {
   ],
 });
 
-// LZFE031 — handleSubmit(onValid) without the invalid path is a silent validation failure (the mute Save button:
-// the failure happens BEFORE the mutation, so LZFE013/027 never see it). submitOrReveal or a second arg passes.
+// AFFE031 — handleSubmit(onValid) without the invalid path is a silent validation failure (the mute Save button:
+// the failure happens BEFORE the mutation, so AFFE013/027 never see it). submitOrReveal or a second arg passes.
 ruleTester.run("submit-handles-invalid", plugin.rules["submit-handles-invalid"], {
   valid: [
     // Both paths passed by hand.
@@ -727,7 +727,7 @@ ruleTester.run("submit-handles-invalid", plugin.rules["submit-handles-invalid"],
   ],
 });
 
-// LZFE032 — a <Controller> render that never reads fieldState leaves a validated error with no surface on its
+// AFFE032 — a <Controller> render that never reads fieldState leaves a validated error with no surface on its
 // field (the pilot's Description input). Destructured or accessed both count; only inline functions are analyzed.
 ruleTester.run("controller-field-state", plugin.rules["controller-field-state"], {
   valid: [
@@ -764,10 +764,10 @@ ruleTester.run("controller-field-state", plugin.rules["controller-field-state"],
   ],
 });
 
-// LZFE033 — a `@verify` obligation has its `@avp` proof in the co-located test (the front-side of LZ0030).
-// fs-based like LZFE005/006: it reads the co-located *.test.tsx. The __fixtures__/lzfe033 files provide the proof
+// AFFE033 — a `@verify` obligation has its `@avp` proof in the co-located test (the front-side of AF0030).
+// fs-based like AFFE005/006: it reads the co-located *.test.tsx. The __fixtures__/lzfe033 files provide the proof
 // side; a non-existent co-located test (the common RuleTester case) proves the `missing` edge.
-const LZFE033_FIX = path.join(__dirname, "__fixtures__", "lzfe033");
+const AFFE033_FIX = path.join(__dirname, "__fixtures__", "lzfe033");
 ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
   valid: [
     // No obligation declared -> nothing to prove.
@@ -775,7 +775,7 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
     // Out of scope: not a View/ViewModel (the marker in a plain file is ignored).
     { filename: "Foo.tsx", code: `/** @verify fires-primary-effect */\nexport const X = () => null;` },
     // The obligation IS proven: the co-located fixture test carries `@avp proven-x`.
-    { filename: path.join(LZFE033_FIX, "Proven.view.tsx"), code: `/** @verify proven-x */\nexport const X = () => null;` },
+    { filename: path.join(AFFE033_FIX, "Proven.view.tsx"), code: `/** @verify proven-x */\nexport const X = () => null;` },
   ],
   invalid: [
     // No co-located test on disk -> the obligation has no proof (missing). Unique base avoids a cwd collision.
@@ -792,7 +792,7 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
     },
     // The co-located test EXISTS but proves a different criterion -> unproven.
     {
-      filename: path.join(LZFE033_FIX, "Unproven.view.tsx"),
+      filename: path.join(AFFE033_FIX, "Unproven.view.tsx"),
       code: `/** @verify needs-y */\nexport const X = () => null;`,
       errors: [{ messageId: "unproven" }],
     },
@@ -800,4 +800,4 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
 });
 
 // eslint-disable-next-line no-console
-console.log("eslint-plugin-aerofortress: all LZFE rule tests passed");
+console.log("eslint-plugin-aerofortress: all AFFE rule tests passed");

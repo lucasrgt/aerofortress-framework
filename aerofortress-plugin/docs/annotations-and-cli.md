@@ -29,5 +29,5 @@
 - `lazuli g hub <Module> <Name>` — SignalR hub at `Modules/<Module>/Realtime/<Name>Hub.cs` (hub is wire: calls the slice, fans out).
 - `lazuli g view <Slice>` — frontend triple typed from the contract.
 - `lazuli gen client` — orval (react-query) → `client.gen/` hooks + mutator. Hook name = slice name via `.WithName(...)`.
-- `lazuli doctor` — Roslyn LZ* + Lazuli.toml validation + frontend LZFE*.
+- `lazuli doctor` — Roslyn AF* + Lazuli.toml validation + frontend AFFE*.
 - `lazuli build` / `lazuli test` — dotnet + turbo per `[tasks]` in Lazuli.toml.

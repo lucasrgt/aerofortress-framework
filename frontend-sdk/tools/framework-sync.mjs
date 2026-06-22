@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// LZFE — framework sync (the frontend half of the package-first law). A pilot carries a MIRROR of
-// eslint-plugin-aerofortress (the LZFE rules) because the package isn't published yet; a mirror that drifts from the
+// AFFE — framework sync (the frontend half of the package-first law). A pilot carries a MIRROR of
+// eslint-plugin-aerofortress (the AFFE rules) because the package isn't published yet; a mirror that drifts from the
 // canonical either missed a rule wave or grew a local rule that never went upstream — exactly how framework
 // code gets "lost in time" inside a pilot. This compares the mirror against the canonical byte-for-byte
 // (line-ending-insensitive) and fails on drift. The backend half (package versions) lives in `af doctor`
