@@ -24,7 +24,7 @@ public class DepositTests
         db.Wallets.Add(wallet);
         await db.SaveChangesAsync();
 
-        var result = await Deposit.Handle(new Deposit.Input(id, 5m), db, default);
+        var result = await Deposit.Handle(new Deposit.Input(id, 5m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(15m, result.Value.Balance);
@@ -36,7 +36,7 @@ public class DepositTests
     {
         await using var db = NewDb();
 
-        var result = await Deposit.Handle(new Deposit.Input(Guid.NewGuid(), -1m), db, default);
+        var result = await Deposit.Handle(new Deposit.Input(Guid.NewGuid(), -1m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorKind.Validation, result.Error.Kind);
@@ -50,7 +50,7 @@ public class DepositTests
     {
         await using var db = NewDb();
 
-        var result = await Deposit.Handle(new Deposit.Input(Guid.Empty, -1m), db, default);
+        var result = await Deposit.Handle(new Deposit.Input(Guid.Empty, -1m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorKind.Validation, result.Error.Kind);
@@ -63,7 +63,7 @@ public class DepositTests
     {
         await using var db = NewDb();
 
-        var result = await Deposit.Handle(new Deposit.Input(Guid.NewGuid(), 5m), db, default);
+        var result = await Deposit.Handle(new Deposit.Input(Guid.NewGuid(), 5m), db, new InMemoryIdempotencyStore(), null, default);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorKind.NotFound, result.Error.Kind);
