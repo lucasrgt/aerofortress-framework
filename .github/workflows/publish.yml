@@ -75,6 +75,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN not set — skipping npm publish (the nuget leg is independent and still ran)."
+            exit 0
+          fi
           for dir in packages/*/; do
             name=$(node -p "try{require('./$dir/package.json').name||''}catch(e){''}")
             [ -z "$name" ] && continue
