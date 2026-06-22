@@ -1,16 +1,19 @@
 name: publish
 
-# Publishes the AeroFortress framework packages to nuget.org. Triggered by pushing a version tag (e.g. `v0.1.0`) — bump
-# <Version> in build/AeroFortress.Framework.Library.props first, then tag. Needs the NUGET_API_KEY secret (a nuget.org API key).
-# The set below is the public framework surface: SelfHarness (framework-dev only), the CLI (a tool — separate
-# packaging), Geocoding (not yet on the library standard), and the sample/tests are deliberately excluded.
+# Publishes the AeroFortress framework — both engines off ONE version tag (e.g. `v1.0.0`): the .NET backend to
+# nuget.org and the React frontend to npm. Bump the version first (back: <Version> in
+# build/AeroFortress.Framework.Library.props; front: each publishable packages/* package.json), then tag.
+# Secrets: NUGET_API_KEY (a nuget.org key whose package-id glob covers AeroFortress.Framework.*) and NPM_TOKEN
+# (an npm automation token for the @aerofortress scope). The two jobs are independent — one ecosystem failing
+# does not block the other. The nuget set below is the public framework surface: SelfHarness (framework-dev
+# only), Geocoding (not yet on the library standard), and the sample/tests are deliberately excluded.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
 jobs:
-  publish:
+  nuget:
     name: pack + push to nuget.org
     runs-on: ubuntu-latest
     steps:
@@ -37,3 +40,39 @@ jobs:
           done
       - name: push
         run: dotnet nuget push "nupkgs/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+  npm:
+    name: publish frontend packages to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+          cache-dependency-path: frontend-sdk/package-lock.json
+      - name: install
+        working-directory: frontend-sdk
+        run: npm ci
+      # Auto-discover the publishable workspace packages: skip the private root members and any version already
+      # on npm (the npm equivalent of nuget's --skip-duplicate). Flipping a package's `private` off enrolls it
+      # here automatically — one tag stays the single release lever as the surface grows (eslint-plugin, assay…).
+      - name: publish public packages (skip versions already on npm)
+        working-directory: frontend-sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for dir in packages/*/; do
+            name=$(node -p "try{require('./$dir/package.json').name||''}catch(e){''}")
+            [ -z "$name" ] && continue
+            private=$(node -p "try{!!require('./$dir/package.json').private}catch(e){true}")
+            [ "$private" = "true" ] && { echo "skip $name (private)"; continue; }
+            ver=$(node -p "require('./$dir/package.json').version")
+            if npm view "$name@$ver" version >/dev/null 2>&1; then
+              echo "$name@$ver already on npm — skip"
+            else
+              echo "publishing $name@$ver"
+              ( cd "$dir" && npm publish )
+            fi
+          done
