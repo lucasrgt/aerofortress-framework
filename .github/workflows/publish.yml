@@ -3,10 +3,11 @@ name: publish
 # Publishes the AeroFortress framework — both engines off ONE version tag (e.g. `v1.0.0`): the .NET backend to
 # nuget.org and the React frontend to npm. Bump the version first (back: <Version> in
 # build/AeroFortress.Framework.Library.props; front: each publishable packages/* package.json), then tag.
-# Secrets: NUGET_API_KEY (a nuget.org key whose package-id glob covers AeroFortress.Framework.*) and NPM_TOKEN
-# (an npm automation token for the @aerofortress scope). The two jobs are independent — one ecosystem failing
-# does not block the other. The nuget set below is the public framework surface: SelfHarness (framework-dev
-# only), Geocoding (not yet on the library standard), and the sample/tests are deliberately excluded.
+# Auth: nuget uses Trusted Publishing (OIDC — no stored key; a policy on nuget.org binds owner/repo/workflow and
+# issues a short-lived key per run); npm uses the NPM_TOKEN secret (an automation token for the @aerofortress
+# scope). The two jobs are independent — one ecosystem failing does not block the other. The nuget set below is
+# the public framework surface: SelfHarness (framework-dev only), Geocoding (not yet on the library standard),
+# and the sample/tests are deliberately excluded.
 on:
   push:
     tags: ["v*"]
@@ -16,6 +17,9 @@ jobs:
   nuget:
     name: pack + push to nuget.org
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC token for nuget.org Trusted Publishing
+      contents: read # checkout
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -38,8 +42,16 @@ jobs:
             analyzers/AeroFortress.Framework.Doctor/AeroFortress.Framework.Doctor.csproj ; do
             dotnet pack "$proj" -c Release -o nupkgs
           done
+      # Trusted Publishing: exchange the GitHub OIDC token for a short-lived (1h) nuget.org key — no stored secret.
+      # `user` is the public nuget.org profile name; the bound policy (owner lucasrgt, repo aerofortress-framework,
+      # workflow publish.yml) lives on nuget.org. Requested right before push so the 1h key stays fresh.
+      - name: nuget login (OIDC → temp key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: lucasrgt
       - name: push
-        run: dotnet nuget push "nupkgs/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push "nupkgs/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
   npm:
     name: publish frontend packages to npm
