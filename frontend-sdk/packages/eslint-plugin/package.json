@@ -2,12 +2,23 @@
   "name": "eslint-plugin-aerofortress",
   "version": "0.10.0",
   "description": "The AeroFortress Framework frontend harness — LZFE* rules that keep React Native + web screens wired, not mocked.",
-  "main": "index.cjs",
-  "private": true,
-  "scripts": {
-    "test": "node index.test.cjs"
+  "license": "MIT",
+  "author": "Lucas Tinoco",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lucasrgt/aerofortress-framework.git",
+    "directory": "frontend-sdk/packages/eslint-plugin"
   },
+  "homepage": "https://github.com/lucasrgt/aerofortress-framework#readme",
+  "bugs": "https://github.com/lucasrgt/aerofortress-framework/issues",
+  "keywords": ["eslint", "eslintplugin", "eslint-plugin", "aerofortress", "mvvm", "react", "react-native"],
+  "main": "index.cjs",
+  "files": ["index.cjs", "README.md"],
   "peerDependencies": {
     "eslint": ">=9"
+  },
+  "scripts": {
+    "test": "node index.test.cjs",
+    "prepublishOnly": "node index.test.cjs"
   }
 }

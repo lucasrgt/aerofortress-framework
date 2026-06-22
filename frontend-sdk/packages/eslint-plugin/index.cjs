@@ -6,7 +6,7 @@ const path = require("path");
 // eslint-plugin-aerofortress — the frontend harness (LZFE*). The front-side parallel of the backend's Roslyn analyzers
 // (AeroFortress.Framework.Doctor): it polices the MVVM seam so React Native + web screens stay wired, not mocked — the View
 // renders, the ViewModel is the only data door, and no fixture/mock leaks into production. Doctor-removable: delete
-// the plugin and the app still builds; you only lose enforcement. Canonical home: lazuli-net/frontend.
+// the plugin and the app still builds; you only lose enforcement. Canonical home: aerofortress-framework/frontend-sdk.
 
 const GENERATED_CLIENT = /(^|\/)client\.gen(\/|$)/;     // the orval-generated typed client
 const DATA_LIBS = /^(axios)$|^@tanstack\/react-query$/;  // raw transport / the Model layer

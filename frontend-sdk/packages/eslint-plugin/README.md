@@ -1,7 +1,7 @@
 # eslint-plugin-aerofortress
 
 The frontend harness — the front-side parallel of the backend's Roslyn analyzers (`AeroFortress.Framework.Doctor`). It polices the
-MVVM seam of a lazuli-net screen so React Native + web stays **wired, not mocked**. Doctor-removable: delete the
+MVVM seam of an AeroFortress screen so React Native + web stays **wired, not mocked**. Doctor-removable: delete the
 plugin and the app still builds; you only lose enforcement.
 
 ## Rules
