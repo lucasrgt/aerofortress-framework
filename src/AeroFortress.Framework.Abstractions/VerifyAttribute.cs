@@ -2,14 +2,16 @@ namespace AeroFortress.Framework.Abstractions;
 
 /// <summary>
 /// Declares that a <c>[Slice]</c> (or a method within one) must be PROVEN against a named AVP
-/// acceptance criterion: there must exist an <c>[AVP("&lt;id&gt;")]</c> verification for the same id.
-/// The doctor (<c>AF0030</c>) reads this marker and fails the build when the proof is missing — the
-/// obligation is enforced at compile time, not left to a checklist.
+/// acceptance criterion. This is the legacy, inline form of the acceptance obligation; it has been
+/// SUPERSEDED by the per-module Clockwork spec manifest (<c>&lt;Module&gt;.spec.toml</c>), where a slice's
+/// criteria are declared in a reviewable file beside the module rather than as a source attribute. The
+/// doctor (<c>AF0030</c>/<c>AF0031</c>) reads the manifest, not this marker — the attribute is retained only
+/// so existing code keeps compiling and is no longer enforced.
 ///
 /// AVP (the Acceptance Verification Protocol) is a separate, standalone verifier package; this marker
 /// only names the criterion by its stable id. The dependency is one-way: the framework knows the id,
 /// never the other way around. Like <see cref="CriticalAttribute"/> it is a pure marker — no runtime
-/// behavior; it raises the proof bar and anchors the knowledge graph.
+/// behavior.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
 public sealed class VerifyAttribute : Attribute

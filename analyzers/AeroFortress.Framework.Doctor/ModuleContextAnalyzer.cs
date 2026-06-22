@@ -67,7 +67,7 @@ public sealed class ModuleContextAnalyzer : DiagnosticAnalyzer
             var cls = (ClassDeclarationSyntax)syntax.Node;
             if (!IsSlice(cls))
                 return;
-            var module = ModuleOf(cls);
+            var module = ModuleNaming.ModuleOf(cls);
             if (module is not null)
                 modules.TryAdd(module, cls.Identifier.GetLocation());
         }, SyntaxKind.ClassDeclaration);
@@ -135,16 +135,6 @@ public sealed class ModuleContextAnalyzer : DiagnosticAnalyzer
         }
 
         return false;
-    }
-
-    // The module is the last segment of the enclosing namespace (the Slices/ subfolder is not in it).
-    private static string? ModuleOf(ClassDeclarationSyntax cls)
-    {
-        var name = cls.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault()?.Name.ToString();
-        if (string.IsNullOrEmpty(name))
-            return null;
-        var dot = name!.LastIndexOf('.');
-        return dot >= 0 ? name.Substring(dot + 1) : name;
     }
 
     // Matches [Slice] by simple name (no reference to AeroFortress.Framework.Abstractions needed), like AF0001/AF0003.

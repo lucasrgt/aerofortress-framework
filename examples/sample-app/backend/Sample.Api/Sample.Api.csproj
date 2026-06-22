@@ -20,11 +20,14 @@
   <ItemGroup>
     <!-- Tests live co-located with the slice they exercise. The production assembly never
          compiles them (no test deps ship); the test project pulls them via glob. The doctor
-         (LZ0003) reads them as AdditionalFiles to require every slice has one beside it. -->
+         (AF0003) reads them as AdditionalFiles to require every slice has one beside it. -->
     <Compile Remove="**\*.Tests.cs" />
     <AdditionalFiles Include="**\*.Tests.cs" />
-    <!-- The doctor reads the module context docs (LZ0004/LZ0005) as AdditionalFiles too. -->
+    <!-- The doctor reads the module context docs (AF0004/AF0005) as AdditionalFiles too. -->
     <AdditionalFiles Include="**\*.ctx.md" />
+    <!-- The Clockwork spec manifests: the doctor reads each module's <Module>.spec.toml (AF0030/AF0031) as
+         an AdditionalFile to close the slice↔manifest↔[AVP] bijection. Pilots add this include the same way. -->
+    <AdditionalFiles Include="**\*.spec.toml" />
   </ItemGroup>
 
   <PropertyGroup>
