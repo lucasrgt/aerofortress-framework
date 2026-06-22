@@ -34,8 +34,8 @@
     <Product>AeroFortress</Product>
     <Description>Part of AeroFortress — the opinionated .NET convention bundle: vertical-slice architecture, a build-time doctor, and an AI-context discipline. Plain, idiomatic C#; the harness is removable.</Description>
     <PackageTags>aerofortress;conventions;vertical-slice;architecture;analyzers;aspnetcore;result</PackageTags>
-    <PackageProjectUrl>https://github.com/lucasrgt/lazuli-net</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/lucasrgt/lazuli-net</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/lucasrgt/aerofortress-framework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/lucasrgt/aerofortress-framework</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright (c) Lucas Tinoco</Copyright>
