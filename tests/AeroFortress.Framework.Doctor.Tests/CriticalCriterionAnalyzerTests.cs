@@ -7,78 +7,59 @@ namespace AeroFortress.Framework.Doctor.Tests;
 public class CriticalCriterionAnalyzerTests
 {
     [Fact]
-    public Task Critical_slice_with_a_class_level_verify_reports_nothing() =>
-        Make(CriticalWithVerify).RunAsync();
+    public Task Critical_slice_declared_with_a_criterion_reports_nothing() =>
+        Make(CriticalSlice, Manifest).RunAsync();
 
     [Fact]
-    public Task Critical_slice_with_a_verify_on_a_method_reports_nothing() =>
-        Make(CriticalVerifyOnMethod).RunAsync();
-
-    [Fact]
-    public Task Critical_slice_without_any_verify_is_flagged()
+    public Task Critical_slice_with_no_manifest_is_flagged()
     {
-        var test = Make(CriticalNoVerify);
+        var test = Make(CriticalSlice, manifest: null);
         test.TestState.ExpectedDiagnostics.Add(
             new DiagnosticResult(CriticalCriterionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
-                .WithSpan("Deposit.cs", 5, 7, 5, 14)
-                .WithArguments("Deposit"));
+                .WithSpan("Deposit.cs", 7, 7, 7, 14)
+                .WithArguments("Deposit", "Wallets.spec.toml"));
+        return test.RunAsync();
+    }
+
+    [Fact]
+    public Task Critical_slice_declared_with_no_criteria_is_flagged()
+    {
+        // The manifest declares the slice's table but lists no criteria — still a gap on the criterion axis.
+        var test = Make(CriticalSlice, EmptyManifest);
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult(CriticalCriterionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+                .WithSpan("Deposit.cs", 7, 7, 7, 14)
+                .WithArguments("Deposit", "Wallets.spec.toml"));
         return test.RunAsync();
     }
 
     [Fact]
     public Task Non_critical_slice_needs_no_criterion() =>
-        Make(PlainSlice).RunAsync();
+        Make(PlainSlice, manifest: null).RunAsync();
 
     [Fact]
     public Task Strict_policy_requires_a_criterion_on_an_undecided_slice()
     {
         // No [Critical] marker, but the strict policy makes an undecided slice critical — so a slice with no
-        // [Verify] criterion is flagged exactly as if it carried [Critical].
-        var test = Make(PlainSlice, criticality: "strict");
+        // declared criterion is flagged exactly as if it carried [Critical].
+        var test = Make(PlainSlice, manifest: null, criticality: "strict");
         test.TestState.ExpectedDiagnostics.Add(
             new DiagnosticResult(CriticalCriterionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
-                .WithSpan("Deposit.cs", 4, 7, 4, 14)
-                .WithArguments("Deposit"));
+                .WithSpan("Deposit.cs", 6, 7, 6, 14)
+                .WithArguments("Deposit", "Wallets.spec.toml"));
         return test.RunAsync();
     }
 
     [Fact]
     public Task Strict_policy_lets_a_non_critical_slice_skip_the_criterion() =>
         // [NonCritical] is the explicit opt-out: even under strict it needs no criterion.
-        Make(NonCriticalSlice, criticality: "strict").RunAsync();
+        Make(NonCriticalSlice, manifest: null, criticality: "strict").RunAsync();
 
-    private const string CriticalWithVerify = """
+    // A critical [Slice] in a module — the obligation to declare a criterion lives in the module's manifest.
+    private const string CriticalSlice = """
         using System;
 
-        [Slice]
-        [Critical]
-        [Verify("own-resource-only")]
-        class Deposit { }
-
-        sealed class SliceAttribute : Attribute { }
-        sealed class CriticalAttribute : Attribute { }
-        sealed class VerifyAttribute : Attribute { public VerifyAttribute(string id) { } }
-        """;
-
-    private const string CriticalVerifyOnMethod = """
-        using System;
-        using System.Threading.Tasks;
-
-        [Slice]
-        [Critical]
-        class Deposit
-        {
-            [Verify("own-resource-only")]
-            public static Task Handle() => Task.CompletedTask;
-        }
-
-        sealed class SliceAttribute : Attribute { }
-        sealed class CriticalAttribute : Attribute { }
-        sealed class VerifyAttribute : Attribute { public VerifyAttribute(string id) { } }
-        """;
-
-    private const string CriticalNoVerify = """
-        using System;
+        namespace App.Modules.Wallets;
 
         [Slice]
         [Critical]
@@ -91,6 +72,8 @@ public class CriticalCriterionAnalyzerTests
     private const string PlainSlice = """
         using System;
 
+        namespace App.Modules.Wallets;
+
         [Slice]
         class Deposit { }
 
@@ -100,6 +83,8 @@ public class CriticalCriterionAnalyzerTests
     private const string NonCriticalSlice = """
         using System;
 
+        namespace App.Modules.Wallets;
+
         [Slice]
         [NonCritical]
         class Deposit { }
@@ -108,18 +93,35 @@ public class CriticalCriterionAnalyzerTests
         sealed class NonCriticalAttribute : Attribute { }
         """;
 
+    // Declares the slice with a criterion — closes the AF0031 obligation.
+    private const string Manifest = """
+        module = "Wallets"
+
+        [slices.Deposit]
+        criteria = ["own-resource-only"]
+        """;
+
+    // Declares the slice's table but with an empty criteria array — does not satisfy AF0031.
+    private const string EmptyManifest = """
+        module = "Wallets"
+
+        [slices.Deposit]
+        criteria = []
+        """;
+
+    // Builds the analyzer test: the slice source, an optional module manifest (AdditionalFile), and an
+    // optional criticality dial projected as the analyzer's global MSBuild property.
     private static CSharpAnalyzerTest<CriticalCriterionAnalyzer, DefaultVerifier> Make(
-        string source, string? criticality = null)
+        string source, string? manifest, string? criticality = null)
     {
         var test = new CSharpAnalyzerTest<CriticalCriterionAnalyzer, DefaultVerifier>
         {
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
             CompilerDiagnostics = CompilerDiagnostics.Errors,
-            TestState =
-            {
-                Sources = { ("Deposit.cs", source) },
-            },
+            TestState = { Sources = { ("Deposit.cs", source) } },
         };
+        if (manifest is not null)
+            test.TestState.AdditionalFiles.Add(("Wallets.spec.toml", manifest));
         if (criticality is not null)
             test.TestState.AnalyzerConfigFiles.Add(
                 ("/.globalconfig", $"is_global = true\nbuild_property.AeroFortressCriticality = {criticality}\n"));
