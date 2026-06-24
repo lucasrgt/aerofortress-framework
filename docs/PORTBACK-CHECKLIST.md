@@ -60,7 +60,7 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 
 ## P2 — generic mechanism carried by the pilot, should graduate
 
-- [ ] **The 5 `lzfe-*.mjs` doctor scripts are reimplementations, not SDK consumers.** They re-derive
+- [ ] **The 5 `affe-*.mjs` doctor scripts are reimplementations, not SDK consumers.** They re-derive
   `walk`/regex/`bucket`/`aggregateReport` inline; the framework already exposes the pure cores
   (`checkJourneyParity`, `checkE2e`, `aggregateReport`, `i18n-parity`, `error-code-coverage`).
   _FRAMEWORK-GAP (anti-drift)._ (blocked on `@aerofortress/*` being consumable)

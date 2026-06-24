@@ -5,7 +5,7 @@ import { aggregateReport, bucket } from "./doctor.mjs";
 // error/warn tallies, the per-rule file counts, and the clean-AFFE roster (the promotion-candidate view).
 describe("bucket", () => {
   it("routes AFFE, community, and platform rules", () => {
-    expect(bucket("aerofortress/view-purity")).toBe("lzfe");
+    expect(bucket("aerofortress/view-purity")).toBe("affe");
     expect(bucket("@tanstack/query/exhaustive-deps")).toBe("community");
     expect(bucket("sonarjs/cognitive-complexity")).toBe("community");
     expect(bucket("@typescript-eslint/no-floating-promises")).toBe("community");
@@ -37,7 +37,7 @@ describe("aggregateReport", () => {
   it("tallies errors/warnings and per-rule file counts", () => {
     const r = aggregateReport({ eslintResults });
     expect(r.summary).toEqual({ errors: 1, warnings: 3, rules: 3 });
-    expect(r.rules["aerofortress/no-hardcoded-copy"]).toMatchObject({ warn: 2, files: 2, bucket: "lzfe", code: "AFFE014" });
+    expect(r.rules["aerofortress/no-hardcoded-copy"]).toMatchObject({ warn: 2, files: 2, bucket: "affe", code: "AFFE014" });
     expect(r.rules["aerofortress/view-purity"]).toMatchObject({ error: 1, code: "AFFE001" });
     expect(r.ok).toBe(false); // a gated error is present
   });
@@ -56,7 +56,7 @@ describe("aggregateReport", () => {
       eslintResults,
       ruleLevels: { "aerofortress/data-door": "error", "aerofortress/state-completeness": "warn" },
     });
-    const clean = Object.fromEntries(r.cleanLzfe.map((c) => [c.code, c.level]));
+    const clean = Object.fromEntries(r.cleanAffe.map((c) => [c.code, c.level]));
     // view-purity / no-hardcoded-copy / mutation-error-handled fired -> NOT clean
     expect(clean.AFFE001).toBeUndefined();
     expect(clean.AFFE013).toBeUndefined();

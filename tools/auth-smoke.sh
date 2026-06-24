@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # auth-smoke — render the auth blueprint (+ email/otp variants) into a throwaway app, then compile it
-# and run its co-located tests. This is the regression guard the round-1 audit lacked: the LZ0022 break
+# and run its co-located tests. This is the regression guard the round-1 audit lacked: the AF0022 break
 # (a generated app that did not compile) slipped through because nothing rendered the templates and built.
 #
 # Two legs:
-#   1. DOCTOR leg  — build the rendered API with the LZ* analyzers ON and assert it is doctor-CLEAN:
-#                    the build succeeds and reports zero LZ diagnostics (errors or warnings). The generated
+#   1. DOCTOR leg  — build the rendered API with the AF* analyzers ON and assert it is doctor-CLEAN:
+#                    the build succeeds and reports zero AF diagnostics (errors or warnings). The generated
 #                    auth scaffold holds the full convention — slice shape, [Entity] encapsulation,
-#                    concurrency tokens, journeys — so any regression that reintroduces an LZ finding fails here.
+#                    concurrency tokens, journeys — so any regression that reintroduces an AF finding fails here.
 #   2. COMPILE+TEST leg — build + run the generated test suite with analyzers OFF, to prove the rendered
 #                    C# compiles and every shipped *.Tests.cs passes.
 #
@@ -85,20 +85,20 @@ EOF
 echo "==> rendering auth + auth:email + auth:otp"
 ( cd "$WORK/src/Smoke.Api" && dotnet "$CLI" g auth >/dev/null && dotnet "$CLI" g auth:email >/dev/null && dotnet "$CLI" g auth:otp >/dev/null )
 
-echo "==> DOCTOR leg: build with analyzers ON, assert a clean doctor (zero LZ diagnostics)"
+echo "==> DOCTOR leg: build with analyzers ON, assert a clean doctor (zero AF diagnostics)"
 if DOCTOR_OUT="$(dotnet build "$WORK/src/Smoke.Api/Smoke.Api.csproj" -c Debug 2>&1)"; then
   DOCTOR_BUILD_OK=1
 else
   DOCTOR_BUILD_OK=0
 fi
-LZ_FINDINGS="$(echo "$DOCTOR_OUT" | grep -oE "(error|warning) LZ[0-9]+" | sort | uniq -c | sort -rn || true)"
+LZ_FINDINGS="$(echo "$DOCTOR_OUT" | grep -oE "(error|warning) AF[0-9]+" | sort | uniq -c | sort -rn || true)"
 if [ "$DOCTOR_BUILD_OK" -ne 1 ] || [ -n "$LZ_FINDINGS" ]; then
-  echo "FAIL: the generated app must build doctor-clean (zero LZ diagnostics). Reported:"
-  echo "${LZ_FINDINGS:-<no LZ findings — the build failed for another reason, see below>}"
-  echo "$DOCTOR_OUT" | grep -E "error|warning|LZ[0-9]+" | head -40
+  echo "FAIL: the generated app must build doctor-clean (zero AF diagnostics). Reported:"
+  echo "${LZ_FINDINGS:-<no AF findings — the build failed for another reason, see below>}"
+  echo "$DOCTOR_OUT" | grep -E "error|warning|AF[0-9]+" | head -40
   exit 1
 fi
-echo "ok: doctor is clean — the generated app builds with zero LZ diagnostics."
+echo "ok: doctor is clean — the generated app builds with zero AF diagnostics."
 
 echo "==> COMPILE+TEST leg: build + run generated tests (analyzers off)"
 dotnet test "$WORK/tests/Smoke.Tests/Smoke.Tests.csproj" -p:RunAnalyzers=false

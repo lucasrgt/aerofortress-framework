@@ -15,7 +15,7 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 
 E2E is flow-level and expensive, so it is **not** enforced per component — `checkE2e(root)` enforces a *curated
 checklist*: humans declare the critical flows in `e2e/flows.json`, the doctor proves each has a spec. See the
-Hostpoint dogfood's `scripts/lzfe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
+Hostpoint dogfood's `scripts/affe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
 
 ## The fullstack loop (journey parity)
 
@@ -34,7 +34,7 @@ script-doctors above (endpoint coverage, e2e, journey parity). The core is pure 
 rule's configured level, and the loop summaries); a consumer CLI does the I/O. It surfaces the **AFFE roster
 including clean (0-hit) rules** so a `warn`→`error` promotion is an evidence-backed move — you see, in one place,
 which rules gate, which are a revealed backlog, and which are already clean. See the Hostpoint dogfood's
-`scripts/lzfe-doctor.mjs` (`npm run doctor` / `doctor:json`) — a thin CLI over this core.
+`scripts/affe-doctor.mjs` (`npm run doctor` / `doctor:json`) — a thin CLI over this core.
 
 ## Scaffold a feature unit
 

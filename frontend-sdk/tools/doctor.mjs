@@ -1,5 +1,5 @@
 // AFFE doctor — the aggregation core behind the single front-door that captures "the whole crew" in one pass.
-// A consumer (e.g. an app's `scripts/lzfe-doctor.mjs`) does the I/O — runs `eslint --format json`, resolves each
+// A consumer (e.g. an app's `scripts/affe-doctor.mjs`) does the I/O — runs `eslint --format json`, resolves each
 // rule's configured level via `eslint --print-config`, and runs the script-doctors (AFFE008 endpoint coverage,
 // AFFE-E2E, AFFE-JOURNEY) — then feeds the raw results here. `aggregateReport` is PURE (no I/O), so it is unit-
 // testable and the same core powers both the human dashboard and the `--json` machine output.
@@ -41,11 +41,11 @@ export const AFFE_CODES = {
 /**
  * Which dashboard bucket a fired rule belongs to.
  * @param {string} ruleId
- * @returns {"lzfe"|"community"|"platform"|"parse"}
+ * @returns {"affe"|"community"|"platform"|"parse"}
  */
 export function bucket(ruleId) {
   if (!ruleId) return "parse";
-  if (ruleId.startsWith("aerofortress/")) return "lzfe";
+  if (ruleId.startsWith("aerofortress/")) return "affe";
   if (
     ruleId.startsWith("@tanstack/") ||
     ruleId.startsWith("no-secrets/") ||
@@ -98,14 +98,14 @@ export function aggregateReport({ eslintResults, ruleLevels = {}, loops = {} }) 
 
   // AFFE rules with 0 hits — the clean roster. A `warn`-level clean rule is a promotion candidate; an `error`-level
   // one is already a gate proving its invariant holds.
-  const cleanLzfe = Object.keys(AFFE_CODES)
+  const cleanAffe = Object.keys(AFFE_CODES)
     .filter((id) => !byRule[id])
     .map((id) => ({ id, code: AFFE_CODES[id], level: ruleLevels[id] ?? "?" }));
 
   return {
     summary: { errors, warnings, rules: Object.keys(byRule).length },
     rules,
-    cleanLzfe,
+    cleanAffe,
     loops,
     ok: errors === 0,
   };

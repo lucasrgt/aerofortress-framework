@@ -4,7 +4,7 @@
     Make the AeroFortress doctor flow TRANSITIVELY. NuGet only auto-applies an analyzer to its DIRECT reference, so an
     app that gets the doctor through the `AeroFortress` meta-package would otherwise restore it but never run it. This
     target lives in buildTransitive/ — imported by every consumer, direct AND transitive — and adds the analyzer
-    to @(Analyzer) explicitly. So `dotnet add package AeroFortress` alone runs the LZ* rules; no separate AeroFortress.Framework.Doctor
+    to @(Analyzer) explicitly. So `dotnet add package AeroFortress` alone runs the AF* rules; no separate AeroFortress.Framework.Doctor
     reference is needed. The DLL sits next to this file (buildTransitive/AeroFortress.Framework.Doctor.dll), not under analyzers/,
     precisely so NuGet does NOT also auto-apply it — this target is the single, transitive-safe wiring.
   -->
@@ -14,7 +14,7 @@
 
   <!--
     The security floor for the built-in .NET analyzers (CA*): a curated globalconfig that raises the
-    defect classes the LZ* rules don't cover (dropped CancellationToken, insecure deserialization, broken
+    defect classes the AF* rules don't cover (dropped CancellationToken, insecure deserialization, broken
     crypto, disabled cert validation, deprecated TLS) to error tier. Same removability story as the doctor:
     opt out per-project with <AeroFortressSecurityAnalysis>false</AeroFortressSecurityAnalysis>, or tune a single rule
     in your own .globalconfig with a higher global_level — this one sits at 50.

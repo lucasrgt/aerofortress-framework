@@ -684,7 +684,7 @@ a framework mechanism; this is Hostpoint's.)
 **Error codes — translated in every language, enforced.** The backend ships every error as a stable code
 (`ErrorBody.code`, the registry constants behind `AF0018`/`AF0019`); the front owns the copy. Two gates guarantee no
 error reaches a user untranslated: **coverage** — every code in the generated `ErrorBody.code` union has an
-`api-errors` catalog entry (`lzfe-error-codes`; a notice until the client is regenerated against the enum-bearing
+`api-errors` catalog entry (`affe-error-codes`; a notice until the client is regenerated against the enum-bearing
 OpenAPI, a hard gate after) — and **parity** (`AFFE011`) — that entry exists in every locale. Composed: code → copy
 → in every language. This is the front end of the same full-stack discipline `AF0018`/`AF0019` enforce on the back.
 

@@ -21,7 +21,7 @@ maker approved the taxonomy and the pauta relift 2026-06-09.
 | 0001 | design-constitution   | `docs/DESIGN-CONVENTIONS.md` — taxonomy, closed kit API, band catalog, recipes. Superseded in-wave: `Text alert` (0005), `ColorRole scrim` (0007). |
 | 0002 | token-contract        | `renderDesign()` + `design-scaffold.mjs`; canonical `tokens.ts` in the sample, drift-pinned to the template. |
 | 0003 | ui-kit-primitives     | The closed-API web kit + RN mirror in the sample's `ui/`; `--kit web` scaffold (`tools/ui-kit-web.mjs`, embed generated from the exemplar). |
-| 0004 | lzfe-design-band      | AFFE024 `ui-door` · AFFE025 `scale-only` · AFFE026 `semantic-colors` — shipped, error-tier on the sample. Known blind spot: Tailwind utility classes (HIGH portback). |
+| 0004 | affe-design-band      | AFFE024 `ui-door` · AFFE025 `scale-only` · AFFE026 `semantic-colors` — shipped, error-tier on the sample. Known blind spot: Tailwind utility classes (HIGH portback). |
 | 0005 | canonical-screens     | The recipes: `deposit/` (form — mirrors the real Deposit slice) + `items/` (list). Band + web jsx-a11y promoted to error with them. |
 | 0006 | design-skill          | `aerofortress-design` — the pointer-only context loader (repo + template, byte-identical). |
 | 0007 | pauta-design-dogfood  | Pauta wired (mirror 0.6.0, tokens, kit, app-owned Dialog replacing `window.confirm`, `billing-type-edit` exemplar). Harvest in `docs/PORTBACK-CHECKLIST.md` §design-dogfood. |

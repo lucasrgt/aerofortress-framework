@@ -199,17 +199,17 @@ ruleTester.run("no-hardcoded-copy", plugin.rules["no-hardcoded-copy"], {
 ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
   valid: [
     // a presentational fragment: imports no ViewModel -> not a screen, skipped (covered via its shell).
-    { filename: "Lzfe006Frag.view.tsx", code: `import { View } from "react-native"; export const X = () => <View />;` },
+    { filename: "Affe006Frag.view.tsx", code: `import { View } from "react-native"; export const X = () => <View />;` },
     // out of scope: not a *.view.tsx (even though it names a model hook).
-    { filename: "Lzfe006Probe.tsx", code: `import { useLzfe006ProbeModel } from "@scope/app-core";` },
+    { filename: "Affe006Probe.tsx", code: `import { useAffe006ProbeModel } from "@scope/app-core";` },
     // props-in fragment: imports only a TYPE from a *.viewModel (a shared PanelProps), no data-door hook -> skipped.
-    { filename: "Lzfe006Panel.view.tsx", code: `import type { PanelProps } from "./HostEdit.viewModel"; export const X = (_p: PanelProps) => null;` },
+    { filename: "Affe006Panel.view.tsx", code: `import type { PanelProps } from "./HostEdit.viewModel"; export const X = (_p: PanelProps) => null;` },
   ],
   invalid: [
     // cross-package: imports a use<Name>Model data-door hook from a core package -> a screen, needs the render test.
-    { filename: "Lzfe006Probe.view.tsx", code: `import { useLzfe006ProbeModel } from "@scope/app-core";`, errors: [{ messageId: "missing" }] },
+    { filename: "Affe006Probe.view.tsx", code: `import { useAffe006ProbeModel } from "@scope/app-core";`, errors: [{ messageId: "missing" }] },
     // co-located (retrocompat): imports the ./X.viewModel module -> still a screen.
-    { filename: "Lzfe006Probe.view.tsx", code: `import { useLzfe006ProbeModel } from "./Lzfe006Probe.viewModel";`, errors: [{ messageId: "missing" }] },
+    { filename: "Affe006Probe.view.tsx", code: `import { useAffe006ProbeModel } from "./Affe006Probe.viewModel";`, errors: [{ messageId: "missing" }] },
   ],
 });
 
@@ -765,9 +765,9 @@ ruleTester.run("controller-field-state", plugin.rules["controller-field-state"],
 });
 
 // AFFE033 — a `@verify` obligation has its `@avp` proof in the co-located test (the front-side of AF0030).
-// fs-based like AFFE005/006: it reads the co-located *.test.tsx. The __fixtures__/lzfe033 files provide the proof
+// fs-based like AFFE005/006: it reads the co-located *.test.tsx. The __fixtures__/affe033 files provide the proof
 // side; a non-existent co-located test (the common RuleTester case) proves the `missing` edge.
-const AFFE033_FIX = path.join(__dirname, "__fixtures__", "lzfe033");
+const AFFE033_FIX = path.join(__dirname, "__fixtures__", "affe033");
 ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
   valid: [
     // No obligation declared -> nothing to prove.
@@ -780,13 +780,13 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
   invalid: [
     // No co-located test on disk -> the obligation has no proof (missing). Unique base avoids a cwd collision.
     {
-      filename: "Lzfe033Probe.view.tsx",
+      filename: "Affe033Probe.view.tsx",
       code: `/** @verify fires-primary-effect */\nexport const X = () => null;`,
       errors: [{ messageId: "missing" }],
     },
     // A ViewModel obligation with no co-located test -> missing too.
     {
-      filename: "Lzfe033Probe.viewModel.ts",
+      filename: "Affe033Probe.viewModel.ts",
       code: `/** @verify single-flight */\nexport const useX = () => null;`,
       errors: [{ messageId: "missing" }],
     },
