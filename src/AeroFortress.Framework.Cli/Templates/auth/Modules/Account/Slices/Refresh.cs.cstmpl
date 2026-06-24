@@ -8,7 +8,7 @@ namespace MyApp.Api.Modules.Account;
 /// row is not tenant-scoped, so it is looked up directly.</summary>
 /// <remarks>Critical: the sad path <em>is</em> the security feature — replaying a rotated token must
 /// burn the whole family (theft detection). If that fails silently a stolen token lives forever, so
-/// LZ0008 forces both the rotation (happy) and the theft-burn (sad) to be proven end-to-end (see
+/// AF0008 forces both the rotation (happy) and the theft-burn (sad) to be proven end-to-end (see
 /// Journeys/AuthJourney).</remarks>
 [Slice]
 [Critical]
@@ -109,7 +109,7 @@ public static class Refresh
         app.MapPost("/refresh", async (Input? body, HttpContext http, AppDb db, IAccessTokens tokens, RefreshCookie cookies, TimeProvider clock, CancellationToken ct) =>
             Respond(await Handle(new Input(cookies.RefreshFrom(http.Request, body?.RefreshToken)), db, tokens, clock, ct), http, cookies, clock))
             .WithName(nameof(Refresh))
-            .AllowAnonymous();   // public: the refresh token IS the credential, the access token is expired (LZ0022)
+            .AllowAnonymous();   // public: the refresh token IS the credential, the access token is expired (AF0022)
 
     private static IResult Respond(Result<Output> result, HttpContext http, RefreshCookie cookies, TimeProvider clock)
     {
@@ -127,6 +127,6 @@ public static class Refresh
         app.MapPost("/refresh", async (Input body, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct) =>
             (await Handle(body, db, tokens, clock, ct)).ToHttp())
             .WithName(nameof(Refresh))
-            .AllowAnonymous();   // public: the refresh token IS the credential, the access token is expired (LZ0022)
+            .AllowAnonymous();   // public: the refresh token IS the credential, the access token is expired (AF0022)
     //</lz:!cookies>
 }

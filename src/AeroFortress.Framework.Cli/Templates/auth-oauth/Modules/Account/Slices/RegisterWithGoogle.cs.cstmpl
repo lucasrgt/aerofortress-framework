@@ -8,7 +8,7 @@ namespace MyApp.Api.Modules.Account;
 /// user is email-verified from the start and a session is issued immediately; phone is still pending.
 /// Fails if the email is already taken.</summary>
 /// <remarks>Critical: the sad path is the bypass guard — an unverifiable token must create no account.
-/// If it passed silently, a forged token mints an account for any identity (spoofing). LZ0008 forces both
+/// If it passed silently, a forged token mints an account for any identity (spoofing). AF0008 forces both
 /// the happy sign-up and the forged-token rejection to be proven end-to-end (see Journeys/OAuthJourney).</remarks>
 [Slice]
 [Critical]
@@ -47,5 +47,5 @@ public static class RegisterWithGoogle
         app.MapPost("/register/google", async (Input input, AppDb db, IExternalIdentity oauth, IAccessTokens tokens, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, oauth, tokens, clock, ct)).ToHttp())
             .WithName(nameof(RegisterWithGoogle))
-            .AllowAnonymous();   // public: registering with Google is pre-identity (LZ0022 — the decision, made visible)
+            .AllowAnonymous();   // public: registering with Google is pre-identity (AF0022 — the decision, made visible)
 }

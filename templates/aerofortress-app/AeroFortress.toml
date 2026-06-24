@@ -20,8 +20,8 @@ backend = "AeroFortress.Framework.Starter.slnx"      # the framework's AF* Rosly
 #   "strict"   = an undecided slice is treated as [Critical] and must prove journeys; opt out with [NonCritical].
 criticality = "opt-in"
 
-# Optional: where the lazuli-net framework checkout lives, when you develop against it. With this set,
+# Optional: where the aerofortress-framework framework checkout lives, when you develop against it. With this set,
 # `af doctor` compares your AeroFortress* package versions and the eslint-plugin mirror against the checkout
 # and fails on drift (the package-first law). Machines without the checkout (CI) skip the check.
 # [framework]
-# repo = "../lazuli-net"
+# repo = "../aerofortress-framework"

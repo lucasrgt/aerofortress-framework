@@ -8,13 +8,13 @@ namespace AeroFortress.Framework.Cli;
 
 /// <summary>
 /// The anti-desync leg of <c>af doctor</c> — the enforcement half of the <b>package-first law</b>
-/// (framework-shaped code lands in lazuli-net first; a pilot consumes it as a versioned package and a
+/// (framework-shaped code lands in aerofortress-framework first; a pilot consumes it as a versioned package and a
 /// rebased plugin mirror, never as code written in the pilot and "ported back someday").
 ///
 /// A pilot opts in by declaring where the framework checkout lives in <c>AeroFortress.toml</c>:
 /// <code>
 /// [framework]
-/// repo = "../../lazuli-net"
+/// repo = "../../aerofortress-framework"
 /// </code>
 /// When that path resolves (a dev machine with the sibling checkout), the doctor compares two drift-prone
 /// surfaces and fails on a mismatch:

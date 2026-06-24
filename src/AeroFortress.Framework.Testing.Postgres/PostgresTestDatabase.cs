@@ -51,7 +51,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
     public PostgresTestDatabase(
         Func<string, Task> migrateTemplate,
         string image = "postgres:17-alpine",
-        string template = "lazuli_template")
+        string template = "aerofortress_template")
     {
         _migrateTemplate = migrateTemplate;
         _template = template;

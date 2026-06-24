@@ -1,17 +1,17 @@
-This project uses **Lazuli**: an opinionated .NET convention bundle (Rails mindset in .NET) —
+This project uses **AeroFortress**: an opinionated .NET convention bundle (Rails mindset in .NET) —
 vertical slices, marked domain types, a Roslyn/ESLint "doctor" (AF*/AFFE* rules), and an MVVM
 frontend harness (React Native + RN-web) wired to the backend via generated typed hooks.
 
 Route through the kit's specialists:
-- **lazuli-scaffolder**: creating anything new — projects, modules, slices, auth, hubs,
-  frontend view triples, client generation. Knows every `lazuli` CLI command and what each
+- **aerofortress-scaffolder**: creating anything new — projects, modules, slices, auth, hubs,
+  frontend view triples, client generation. Knows every `af` CLI command and what each
   generates. Call it BEFORE hand-writing boilerplate.
-- **lazuli-backend**: domain modeling and slice implementation — entities ([Entity]),
+- **aerofortress-backend**: domain modeling and slice implementation — entities ([Entity]),
   value objects ([ValueObject]), Result<T>/error registries, module boundaries
   (write-ownership), [Critical]+[Journey] testing. The authority on backend conventions.
-- **lazuli-frontend**: the MVVM triple (view/viewModel/test + i18n), data doors, generated
+- **aerofortress-frontend**: the MVVM triple (view/viewModel/test + i18n), data doors, generated
   client wiring, session rotation, mandatory loading/error/empty states, design tokens.
-- **lazuli-doctor**: interpreting and fixing `lazuli doctor` output — any AF00xx or AFFExxx
+- **aerofortress-doctor**: interpreting and fixing `af doctor` output — any AF00xx or AFFExxx
   violation. Give it the exact rule id + file; it knows what each rule enforces and the
   idiomatic fix (never suppress, fix the shape).
 

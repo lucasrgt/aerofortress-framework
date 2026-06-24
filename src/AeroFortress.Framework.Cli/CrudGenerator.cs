@@ -48,7 +48,7 @@ public static class CrudGenerator
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
         {
-            Console.Error.WriteLine("lazuli: no .csproj here — run this from the application project directory.");
+            Console.Error.WriteLine("af: no .csproj here — run this from the application project directory.");
             return 1;
         }
 
@@ -62,7 +62,7 @@ public static class CrudGenerator
         var moduleFile = Path.Combine(moduleDir, $"{module}Module.cs");
         if (!File.Exists(moduleFile))
         {
-            Console.Error.WriteLine($"lazuli: no {module} module here — run `af g module {module}` "
+            Console.Error.WriteLine($"af: no {module} module here — run `af g module {module}` "
                 + "(or `af g auth` for Account) first.");
             return 1;
         }
@@ -70,14 +70,14 @@ public static class CrudGenerator
         var entityFile = Path.Combine(moduleDir, $"{entity}.cs");
         if (!File.Exists(entityFile))
         {
-            Console.Error.WriteLine($"lazuli: no {entity} entity in {module} — create Modules/{module}/{entity}.cs first.");
+            Console.Error.WriteLine($"af: no {entity} entity in {module} — create Modules/{module}/{entity}.cs first.");
             return 1;
         }
 
         var entityText = File.ReadAllText(entityFile);
         if (!entityText.Contains("ITenantScoped"))
         {
-            Console.Error.WriteLine($"lazuli: {entity} is not ITenantScoped — `g crud` currently targets the "
+            Console.Error.WriteLine($"af: {entity} is not ITenantScoped — `g crud` currently targets the "
                 + "multi-tenant scaffold (CRUD is tenant-scoped via the module DbContext). Single-tenant CRUD is a later addition.");
             return 1;
         }

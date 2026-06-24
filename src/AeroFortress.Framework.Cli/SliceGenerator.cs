@@ -22,7 +22,7 @@ public static class SliceGenerator
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
         {
-            Console.Error.WriteLine("lazuli: no .csproj here — run this from the application project directory.");
+            Console.Error.WriteLine("af: no .csproj here — run this from the application project directory.");
             return 1;
         }
 
@@ -37,7 +37,7 @@ public static class SliceGenerator
 
         if (File.Exists(slicePath))
         {
-            Console.Error.WriteLine($"lazuli: {slicePath} already exists.");
+            Console.Error.WriteLine($"af: {slicePath} already exists.");
             return 1;
         }
 

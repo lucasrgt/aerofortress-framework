@@ -32,7 +32,7 @@ export function checkMirror({ mirror, canonical }) {
         "framework-sync: clients/eslint-plugin-aerofortress/index.cjs differs from the framework canonical — rebase the "
         + "mirror (copy index.cjs + index.test.cjs from frontend-sdk/packages/eslint-plugin, bump its package.json "
         + "version) and adopt any new rules in the app's eslint config. If the difference is a rule you wrote HERE, "
-        + "it belongs in lazuli-net first (the package-first law) — upstream it, then rebase.",
+        + "it belongs in aerofortress-framework first (the package-first law) — upstream it, then rebase.",
       ],
     };
   return { status: "ok", messages: ["framework-sync: the eslint-plugin mirror matches the canonical."] };

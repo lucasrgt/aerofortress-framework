@@ -67,7 +67,7 @@ public class FrameworkSyncTests
 
     private static string NewApp(string manifest)
     {
-        var root = Directory.CreateTempSubdirectory("lazuli-sync-test").FullName;
+        var root = Directory.CreateTempSubdirectory("aerofortress-sync-test").FullName;
         File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), manifest);
         return root;
     }
@@ -75,8 +75,8 @@ public class FrameworkSyncTests
     // An app + a framework checkout side by side, with the manifest pointing at the checkout.
     private static (string App, string Repo) NewPair(string frameworkVersion, string appPackageVersion)
     {
-        var parent = Directory.CreateTempSubdirectory("lazuli-sync-pair").FullName;
-        var repo = Path.Combine(parent, "lazuli-net");
+        var parent = Directory.CreateTempSubdirectory("aerofortress-sync-pair").FullName;
+        var repo = Path.Combine(parent, "aerofortress-framework");
         var app = Path.Combine(parent, "app");
         Directory.CreateDirectory(Path.Combine(repo, "build"));
         Directory.CreateDirectory(app);
@@ -84,7 +84,7 @@ public class FrameworkSyncTests
         File.WriteAllText(Path.Combine(repo, "build", "AeroFortress.Framework.Library.props"),
             $"<Project><PropertyGroup><Version>{frameworkVersion}</Version></PropertyGroup></Project>");
         File.WriteAllText(Path.Combine(app, "AeroFortress.toml"),
-            "[workspace]\nname = \"shop\"\n\n[framework]\nrepo = \"../lazuli-net\"\n");
+            "[workspace]\nname = \"shop\"\n\n[framework]\nrepo = \"../aerofortress-framework\"\n");
         File.WriteAllText(Path.Combine(app, "Shop.Api.csproj"),
             $"""<Project><ItemGroup><PackageReference Include="AeroFortress" Version="{appPackageVersion}" /></ItemGroup></Project>""");
         return (app, repo);

@@ -22,7 +22,7 @@ public static class HubGenerator
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
         {
-            Console.Error.WriteLine("lazuli: no .csproj here — run this from the application project directory.");
+            Console.Error.WriteLine("af: no .csproj here — run this from the application project directory.");
             return 1;
         }
 
@@ -32,7 +32,7 @@ public static class HubGenerator
 
         if (File.Exists(hubPath))
         {
-            Console.Error.WriteLine($"lazuli: {hubPath} already exists.");
+            Console.Error.WriteLine($"af: {hubPath} already exists.");
             return 1;
         }
 

@@ -43,5 +43,5 @@ public class ErrorCodeScaffoldTests
         Assert.Equal(1, occurrences);
     }
 
-    private static string NewModuleDir() => Directory.CreateTempSubdirectory("lazuli-errorcodes-test").FullName;
+    private static string NewModuleDir() => Directory.CreateTempSubdirectory("aerofortress-errorcodes-test").FullName;
 }

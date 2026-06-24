@@ -28,7 +28,7 @@ Topology is declared in `AeroFortress.toml` (the single source of truth; `af doc
 - **Backend** `src/AeroFortress.Framework.Starter.Api` — .NET vertical slices; the `AF*` Roslyn analyzers gate
   `AeroFortress.Framework.Starter.slnx`.
 - **Frontend** — add a React client under `clients/` (`af g`); the `AFFE*` ESLint plugin
-  (`clients/eslint-plugin-aerofortress`, the downstream mirror of the lazuli-net canonical) gates it.
+  (`clients/eslint-plugin-aerofortress`, the downstream mirror of the aerofortress-framework canonical) gates it.
 - **Doctor**: `af doctor` runs both legs.
 
 ---
@@ -157,7 +157,7 @@ adapters in core, no runtime you inherit from. When a need smells like *capabili
 This app consumes the framework **only as versioned `AeroFortress*` packages and a rebased `eslint-plugin-aerofortress`
 mirror** — never as source copies. If a need here is framework-shaped (a rule, a spine primitive, a harness
 mechanism, anything another AeroFortress app would also want), it does **not** get implemented in this repo:
-it lands in **lazuli-net first**, ships through the package feed, and arrives here as a version bump whose
+it lands in **aerofortress-framework first**, ships through the package feed, and arrives here as a version bump whose
 doctor fallout you then fix. Writing it here "for now" is how framework code gets lost in time.
 
 Enforcement: declare the framework checkout in `AeroFortress.toml` (`[framework] repo = "…"`) and `af doctor`
@@ -177,6 +177,6 @@ about *generic* mechanisms only.
 
 ## Canonical conventions (the full constitution)
 
-This file is the distilled operating manual. The complete catalog + rationale lives in the **lazuli-net**
+This file is the distilled operating manual. The complete catalog + rationale lives in the **aerofortress-framework**
 framework repo: `docs/CONVENTIONS.md` (backend) and `docs/FRONTEND-CONVENTIONS.md` (frontend). Ground every
 convention fact there, never memory.

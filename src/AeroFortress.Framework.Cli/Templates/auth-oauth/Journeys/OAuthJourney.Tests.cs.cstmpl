@@ -7,7 +7,7 @@ namespace MyApp.Tests.Journeys;
 // Journeys for the [Critical] OAuth slices. The dev IExternalIdentity (FakeExternalIdentity) treats the
 // token as the email and rejects an empty one — so a non-empty token is a "verified" identity and an empty
 // token is a forged/unverifiable one. That is the seam: no real provider, but the bypass guard (reject what
-// doesn't verify) is the same code path a real verifier would gate. LZ0008 requires a happy and a sad each.
+// doesn't verify) is the same code path a real verifier would gate. AF0008 requires a happy and a sad each.
 public class OAuthJourney
 {
     private const string Identity = "g-user@example.com";

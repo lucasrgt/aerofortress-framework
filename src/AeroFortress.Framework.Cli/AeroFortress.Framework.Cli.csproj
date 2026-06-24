@@ -20,8 +20,8 @@
     <Authors>Lucas Tinoco</Authors>
     <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
     <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>
-    <PackageProjectUrl>https://github.com/lucasrgt/lazuli-net</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/lucasrgt/lazuli-net</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/lucasrgt/aerofortress-framework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/lucasrgt/aerofortress-framework</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright (c) Lucas Tinoco</Copyright>

@@ -7,7 +7,7 @@ namespace MyApp.Tests.Journeys;
 // Journeys for the [Critical] auth slices. They prove, end-to-end, the failures that a unit test on
 // Handle cannot: that a bad credential is denied (no token leaks) and that a replayed refresh token
 // burns the whole family (theft detection). Both are security properties of the wired stack — the
-// middleware, the token, the rotation — not just of Handle. LZ0008 requires a happy and a sad per slice.
+// middleware, the token, the rotation — not just of Handle. AF0008 requires a happy and a sad per slice.
 //
 // No X-Client header → mobile delivery, so the refresh token rides in the body where these tests read it.
 public class AuthJourney

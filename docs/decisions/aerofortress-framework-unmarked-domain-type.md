@@ -8,7 +8,7 @@
 them — it adds the rung *below* them: they grade a type that is already marked; this rule catches the type
 that should be marked and isn't.
 **Lineage:** the same anti-theater intent as the journey-depth decision
-([`lazuli-net-journey-depth-enforcement.md`](lazuli-net-journey-depth-enforcement.md)) — "a green doctor is
+([`aerofortress-framework-journey-depth-enforcement.md`](aerofortress-framework-journey-depth-enforcement.md)) — "a green doctor is
 not shipping safety" — applied to the **domain-mark** grain. A green AF0013/AF0014 says nothing about the
 class that simply never opted in.
 

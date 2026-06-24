@@ -7,7 +7,7 @@ import sonarjs from "eslint-plugin-sonarjs";
 import vitest from "@vitest/eslint-plugin";
 
 // Lint config for the canonical example (examples/sample-app/frontend). The example now lives at the repo root
-// (a sibling of frontend/), so type-aware linting of it runs once lazuli-net adopts a root npm workspace (shared
+// (a sibling of frontend/), so type-aware linting of it runs once aerofortress-framework adopts a root npm workspace (shared
 // node_modules + a project that spans both) — the same monorepo shape the example itself demonstrates. The AFFE
 // rules below are the contract it follows; `npm run lint` verifies the rules via the plugin self-test today.
 //

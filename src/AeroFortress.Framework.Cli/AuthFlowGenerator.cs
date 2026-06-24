@@ -38,7 +38,7 @@ public static class AuthFlowGenerator
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
         {
-            Console.Error.WriteLine("lazuli: no .csproj here — run this from the application project directory.");
+            Console.Error.WriteLine("af: no .csproj here — run this from the application project directory.");
             return 1;
         }
 
@@ -51,14 +51,14 @@ public static class AuthFlowGenerator
         var accountModule = Path.Combine(root, "Modules", "Account", "AccountModule.cs");
         if (!File.Exists(accountModule))
         {
-            Console.Error.WriteLine("lazuli: no Account module here — run `af g auth` first.");
+            Console.Error.WriteLine("af: no Account module here — run `af g auth` first.");
             return 1;
         }
 
         var userFile = Path.Combine(root, "Modules", "Account", "User.cs");
         if (File.Exists(userFile) && !File.ReadAllText(userFile).Contains("ITenantScoped"))
         {
-            Console.Error.WriteLine($"lazuli: auth:{Token(flow)} currently supports the default (multi-tenant) "
+            Console.Error.WriteLine($"af: auth:{Token(flow)} currently supports the default (multi-tenant) "
                 + "scaffold; this app was generated with --skip-tenancy.");
             return 1;
         }

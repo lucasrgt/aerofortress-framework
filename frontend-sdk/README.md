@@ -1,6 +1,6 @@
 # AeroFortress Framework — frontend
 
-The frontend side of lazuli-net. Where the .NET packages under `src/` give the backend its spine (`[Slice]`,
+The frontend side of aerofortress-framework. Where the .NET packages under `src/` give the backend its spine (`[Slice]`,
 `Result<T>`, the Roslyn analyzers), this gives the React Native + web frontend an equally tight spine — **as
 idiomatic React/TS primitives the app composes, not a DSL** (the "poisoned frontend": real React, enriched by
 convention + tooling, never a second language). It is multi-target by construction: the same code serves web

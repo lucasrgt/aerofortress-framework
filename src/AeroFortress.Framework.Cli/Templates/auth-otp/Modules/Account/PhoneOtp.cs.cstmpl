@@ -36,7 +36,7 @@ public class PhoneOtp
     /// <summary>When the code was issued.</summary>
     public DateTime CreatedAt { get; private set; }
 
-    /// <summary>The optimistic-concurrency token (LZ0026): a concurrent verify against the same code fails
+    /// <summary>The optimistic-concurrency token (AF0026): a concurrent verify against the same code fails
     /// loudly instead of two requests both racing the attempt counter.</summary>
     [System.ComponentModel.DataAnnotations.Timestamp]
     public byte[]? RowVersion { get; private set; }

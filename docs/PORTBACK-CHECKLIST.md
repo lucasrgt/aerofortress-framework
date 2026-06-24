@@ -34,7 +34,7 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 ## P1 — broken promise / claimed-but-absent
 
 - [~] **Scaffold a real project + `AeroFortress.toml`.** _Done:_ `af new` now scaffolds `AeroFortress.toml`
-  (`templates/lazuli-app/AeroFortress.toml`, substituted from the project name), and the CLI finally READS it —
+  (`templates/aerofortress-app/AeroFortress.toml`, substituted from the project name), and the CLI finally READS it —
   `src/AeroFortress.Framework.Cli/AeroFortressManifest.cs` validates `[workspace]`/name + that declared backend/core paths exist,
   wired into `af doctor` (missing = notice, broken = failure) with 4 tests. _Still pending (tied to the
   deferred frontend generator):_ scaffolding the monorepo plumbing (`package.json` workspaces, `turbo.json`,
@@ -43,7 +43,7 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
 - [ ] **`af gen client` (the "wired guarantee").** The frontend harness rests on a generated
   typed client so an invented endpoint is a `tsc` error — but **orval is not even a dependency**, there
   is no `orval.config.ts`, no `af gen client`. The AFFE rules police a client nothing generates.
-  _FRAMEWORK-GAP._ (`docs/decisions/lazuli-net-frontend-harness.md` §3 vs `frontend-sdk/tools/generate.mjs:47`)
+  _FRAMEWORK-GAP._ (`docs/decisions/aerofortress-framework-frontend-harness.md` §3 vs `frontend-sdk/tools/generate.mjs:47`)
 - [x] **`AFFE008` endpoint-coverage — claimed "shipped", absent.** _Done:_ implemented as
   `frontend-sdk/tools/endpoint-coverage.mjs` (pure `extractHooks` + `checkEndpointCoverage` core + CLI
   tail) with a vitest twin; the doc claim now points at the real tool. _was FRAMEWORK-GAP (truthfulness)._
@@ -84,7 +84,7 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   analyzers (`analyzers/AeroFortress.Framework.Doctor/NoRepositoryAnalyzer.cs`, `FileSizeAnalyzer.cs`) with twin tests
   (7 green); `docs/CONVENTIONS.md` flipped planned→shipped. _was FRAMEWORK-GAP (documented commitment)._
 
-## Journey-depth (decision `lazuli-net-journey-depth-enforcement.md`)
+## Journey-depth (decision `aerofortress-framework-journey-depth-enforcement.md`)
 
 - [x] **Tier A1 `AFFE-JOURNEY-002`** — terminal-depth in `e2e-doctor.mjs` (+ tests). _done this session._
 - [ ] **Decision-doc fixes** — `AF0011` collides with `TestInfraPurityAnalyzer` → renumber to `AF0020`;
@@ -187,7 +187,7 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
   conformant (they are A scale — arguably fine) vs palette utilities (never fine).
 - [x] **`scrim` color role.** _portback — shipped inline (inner loop)._ The Dialog's backdrop had no
   semantic role; raw `rgba()` in `ui/` would trip AFFE026. Added to the taxonomy + default themes
-  (lazuli-net commit `37785aa`), re-scaffolded into both token instances.
+  (aerofortress-framework commit `37785aa`), re-scaffolded into both token instances.
 - [ ] **`'use client'` banners on the hooky kit primitives.** _portback, MEDIUM._ Next App Router needs
   them on Button/Input/Field (useState); added app-side in pauta. Harmless on non-Next — candidate for
   the `renderUiKitWeb` template (+ Dialog when it graduates).

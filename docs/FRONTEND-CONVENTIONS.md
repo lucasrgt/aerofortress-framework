@@ -12,7 +12,7 @@ The harness makes "wired" the only legal shape and "mock" structurally visible.
 
 Ground every frontend convention here, never memory. The backend constitution is
 [CONVENTIONS.md](CONVENTIONS.md); the decision that birthed this file is
-[`lazuli-net-frontend-harness`](decisions/lazuli-net-frontend-harness.md).
+[`aerofortress-framework-frontend-harness`](decisions/aerofortress-framework-frontend-harness.md).
 
 ---
 
@@ -135,7 +135,7 @@ rule (the frontend analog of the old `API-HANDLER-UNWIRED-001`: no silent 404).
 ```
 client.gen/              # GENERATED — never edited by hand, committed verbatim
   <slice>.gen.ts         #   one typed TanStack hook per slice (useDeposit, …)
-lazuli.client.ts         # the orval mutator — unwraps Result<T>, injects auth, maps error→state
+aerofortress.client.ts         # the orval mutator — unwraps Result<T>, injects auth, maps error→state
 lib/query.ts             # the QueryClient factory — the write-side mutation defaults (AFFE027, below)
 lib/feedback.ts          # the feedback seam — one door for toasts; the shell wires the sink at boot
 orval.config.ts          # the shipped convention config — the "poison" lives here
@@ -146,7 +146,7 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
   Building our own OpenAPI→TS→TanStack generator *is* the Lazuli-1 gesture — re-solving parsing
   and emission that orval already maintains, tests, and edge-cases for free.
 - **The opinion lives in config + convention, not in a fork.** The "envenenada" is two things:
-  the `orval.config.ts` we ship and the **mutator** (`lazuli.client.ts` — the typed AeroFortress
+  the `orval.config.ts` we ship and the **mutator** (`aerofortress.client.ts` — the typed AeroFortress
   client: `Result<T>` unwrap, auth, error mapping). This mirrors the back exactly — we do not
   fork EF Core; we use it stock and direct, and the opinion is the slice convention + the doctor.
 - **The generated layer is boring on purpose.** All semantic density lives *above* it, in the
@@ -160,7 +160,7 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
   other-audience endpoints carry a different `[Endpoint(...)]` kind (below), are tagged accordingly, and
   never enter `client.gen/`. So `AFFE008` (loose-endpoint coverage) is high-signal by construction — the
   noise is removed in the plumbing (config of a stock tool), not papered over by the rule. This is the old
-  lazuli's "audience SDK projection", done by tool config instead of a bespoke compiler.
+  af's "audience SDK projection", done by tool config instead of a bespoke compiler.
 
 ---
 
@@ -650,7 +650,7 @@ covered. Each entry is `{ name, target?: "web"|"native", spec, backendJourney?, 
   reached `Complete` while the frontend spec proved only entry — the bug lived in the **seam** between
   them. `terminal` forces the traversal across that seam to be asserted. Warn-tier first; promotes to a
   hard gate once flows declare their terminals. See
-  [`docs/decisions/lazuli-net-journey-depth-enforcement.md`](decisions/lazuli-net-journey-depth-enforcement.md).
+  [`docs/decisions/aerofortress-framework-journey-depth-enforcement.md`](decisions/aerofortress-framework-journey-depth-enforcement.md).
 
 ---
 
@@ -709,7 +709,7 @@ runs at error** for the sample tree — the exemplar proved green reachable, so 
 
 ## Scope — and non-goals
 
-**In:** the MVVM feature convention, the `AFFE*` harness, a `g view` scaffold, and `lazuli gen
+**In:** the MVVM feature convention, the `AFFE*` harness, a `g view` scaffold, and `af gen
 client` (stock orval, wrapped) with the shipped config + mutator. One blessed frontend shape.
 
 **Out (non-goals), by decision:**

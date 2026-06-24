@@ -23,7 +23,7 @@ maker approved the taxonomy and the pauta relift 2026-06-09.
 | 0003 | ui-kit-primitives     | The closed-API web kit + RN mirror in the sample's `ui/`; `--kit web` scaffold (`tools/ui-kit-web.mjs`, embed generated from the exemplar). |
 | 0004 | lzfe-design-band      | AFFE024 `ui-door` · AFFE025 `scale-only` · AFFE026 `semantic-colors` — shipped, error-tier on the sample. Known blind spot: Tailwind utility classes (HIGH portback). |
 | 0005 | canonical-screens     | The recipes: `deposit/` (form — mirrors the real Deposit slice) + `items/` (list). Band + web jsx-a11y promoted to error with them. |
-| 0006 | design-skill          | `lazuli-design` — the pointer-only context loader (repo + template, byte-identical). |
+| 0006 | design-skill          | `aerofortress-design` — the pointer-only context loader (repo + template, byte-identical). |
 | 0007 | pauta-design-dogfood  | Pauta wired (mirror 0.6.0, tokens, kit, app-owned Dialog replacing `window.confirm`, `billing-type-edit` exemplar). Harvest in `docs/PORTBACK-CHECKLIST.md` §design-dogfood. |
 
 ## Next wave (cut from this one, by decision)
@@ -40,7 +40,7 @@ maker approved the taxonomy and the pauta relift 2026-06-09.
 
 ## Killed — named so it stays dead
 
-- **Published `@lazuli/ui` npm component library** — a versioned component lib is the MUI/aerocoding
+- **Published `@af/ui` npm component library** — a versioned component lib is the MUI/aerocoding
   vector: theming API surface, breaking releases, platform sprawl. The kit is scaffolded code the app owns.
 - **Pilot-facing React Native kit** — hostpoint keeps NativeWind + its own components. The sample's
   mobile `ui/` mirror exists solely to keep the agnostic-View seam honest.

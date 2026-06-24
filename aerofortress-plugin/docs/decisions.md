@@ -1,4 +1,4 @@
-# Lazuli — Key decisions (ADR digest)
+# AeroFortress — Key decisions (ADR digest)
 
 - **Frontend harness**: MVVM over plain custom hooks (no classes/observables/two-way binding);
   orval stock wrapped, never a bespoke compiler; typed slice-hooks via OpenAPI so completeness
@@ -21,7 +21,7 @@
 - **Monorepo architecture**: `backends/` + `frontends/` with per-product core and platform
   shells (mobile = RN/Expo, os = react-dom admin, consumer web = RN-web ~95% shared + Astro
   for public/SEO). `shared/kernel` for auth/session/spine/ports; `shared/ui-*` promoted only at
-  ≥2 products. Ports & adapters for platform capabilities. `Lazuli.toml` single source of
+  ≥2 products. Ports & adapters for platform capabilities. `AeroFortress.toml` single source of
   topology, doctor-validated.
 
 - **Core mission**: scaffolding + the doctor + AI-context discipline (ctx.md). The framework is

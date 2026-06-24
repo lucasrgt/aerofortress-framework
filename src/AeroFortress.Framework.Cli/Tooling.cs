@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace AeroFortress.Framework.Cli;
 
-// Thin wire over the .NET tooling: lazuli verbs carry the blessed defaults, but the engines are
+// Thin wire over the .NET tooling: af verbs carry the blessed defaults, but the engines are
 // dotnet's own (test, stryker). We invoke `dotnet <command>` inheriting the current directory and
 // stdio, and return its exit code — no reimplementation, just opinionated invocation.
 internal static class Tooling
@@ -17,7 +17,7 @@ internal static class Tooling
         using var process = Process.Start(info);
         if (process is null)
         {
-            Console.Error.WriteLine($"lazuli: could not start 'dotnet {command}'.");
+            Console.Error.WriteLine($"af: could not start 'dotnet {command}'.");
             return 1;
         }
 
@@ -47,7 +47,7 @@ internal static class Tooling
         using var process = Process.Start(info);
         if (process is null)
         {
-            Console.Error.WriteLine($"lazuli: could not start '{exe}'.");
+            Console.Error.WriteLine($"af: could not start '{exe}'.");
             return 1;
         }
 

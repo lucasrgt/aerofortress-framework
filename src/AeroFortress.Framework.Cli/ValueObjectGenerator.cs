@@ -19,7 +19,7 @@ public static class ValueObjectGenerator
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
         {
-            Console.Error.WriteLine("lazuli: no .csproj here — run this from the application project directory.");
+            Console.Error.WriteLine("af: no .csproj here — run this from the application project directory.");
             return 1;
         }
 
@@ -28,7 +28,7 @@ public static class ValueObjectGenerator
         var path = Path.Combine(directory, name + ".cs");
         if (File.Exists(path))
         {
-            Console.Error.WriteLine($"lazuli: {path} already exists.");
+            Console.Error.WriteLine($"af: {path} already exists.");
             return 1;
         }
 

@@ -188,7 +188,7 @@ public class AeroFortressManifestTests
 
     private static string NewDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "lazuli-manifest-" + Guid.NewGuid().ToString("N"));
+        var dir = Path.Combine(Path.GetTempPath(), "aerofortress-manifest-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;
     }

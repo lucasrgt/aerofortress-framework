@@ -19,7 +19,7 @@
          ship); the doctor reads them as AdditionalFiles to require each slice has one. -->
     <Compile Remove="**\*.Tests.cs" />
     <AdditionalFiles Include="**\*.Tests.cs" />
-    <!-- The doctor reads the module ctx docs (LZ0004/LZ0005) as AdditionalFiles. -->
+    <!-- The doctor reads the module ctx docs (AF0004/AF0005) as AdditionalFiles. -->
     <AdditionalFiles Include="**\*.ctx.md" />
   </ItemGroup>
 

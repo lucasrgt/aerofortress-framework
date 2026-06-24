@@ -1,8 +1,8 @@
-# Lazuli — Frontend conventions
+# AeroFortress — Frontend conventions
 
 React Native (Expo) mobile + RN-web + Astro (public/SEO); admin OS in react-dom. Per-product
 `core` (ViewModels + client + i18n + model, platform-agnostic) promoted to `shared/` only at
-≥2 products. `shared/kernel` holds auth/client/spine/ports (no app↔os edge). `Lazuli.toml` is
+≥2 products. `shared/kernel` holds auth/client/spine/ports (no app↔os edge). `AeroFortress.toml` is
 the single source for workspace/turbo topology (doctor validates drift).
 
 ## MVVM triple (one screen = one feature folder)

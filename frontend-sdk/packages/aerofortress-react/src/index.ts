@@ -1,5 +1,5 @@
 // @aerofortress/react — the framework's frontend spine (platform- and design-system-agnostic React primitives the app
-// composes; the front-side parallel of the .NET packages). The canonical unit a lazuli-net screen is built from:
+// composes; the front-side parallel of the .NET packages). The canonical unit a aerofortress-framework screen is built from:
 // a ViewModel (data door) exposes its resource as AsyncState<T>; the View renders it through <Resource>. Auth/nav
 // primitives (SessionState, safeBack) graduate here from app pilots as they stabilize.
 export { type AsyncState, type QueryLike, toAsyncState, combineAsyncStates } from "./async-state";

@@ -37,7 +37,7 @@ public class ModuleGeneratorTests
 
     private static string NewProject(string name)
     {
-        var root = Directory.CreateTempSubdirectory("lazuli-module-test").FullName;
+        var root = Directory.CreateTempSubdirectory("aerofortress-module-test").FullName;
         File.WriteAllText(Path.Combine(root, name + ".csproj"), "<Project />");
         File.WriteAllText(Path.Combine(root, "Program.cs"), "var app = WebApplication.Create();\n\napp.Run();\n");
 

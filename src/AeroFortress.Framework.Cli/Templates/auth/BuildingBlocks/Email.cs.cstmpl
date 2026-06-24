@@ -1,7 +1,7 @@
 namespace MyApp.Api.BuildingBlocks;
 
 /// <summary>Error codes for the <see cref="Email"/> value object — stable i18n keys (a registry constant, not an
-/// inline literal, so the set stays discoverable: LZ0018).</summary>
+/// inline literal, so the set stays discoverable: AF0018).</summary>
 public static class EmailErrorCodes
 {
     /// <summary>The value is not a valid email address.</summary>

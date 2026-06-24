@@ -39,7 +39,7 @@ public class ValueObjectGeneratorTests
 
     private static string NewProject(string name)
     {
-        var root = Directory.CreateTempSubdirectory("lazuli-vo-test").FullName;
+        var root = Directory.CreateTempSubdirectory("aerofortress-vo-test").FullName;
         File.WriteAllText(Path.Combine(root, name + ".csproj"), "<Project />");
         return root;
     }

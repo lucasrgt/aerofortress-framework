@@ -8,7 +8,7 @@ namespace MyApp.Api.Modules.Account;
 /// </summary>
 /// <remarks>Critical: the sad path (a taken email) guards the one-human-one-account identity invariant.
 /// If a duplicate were silently created, login-by-email becomes ambiguous — an identity breach in the
-/// auth system. LZ0008 forces both the happy registration and the duplicate rejection to be proven
+/// auth system. AF0008 forces both the happy registration and the duplicate rejection to be proven
 /// end-to-end (see Journeys/AuthJourney).</remarks>
 [Slice]
 [Critical]
@@ -49,5 +49,5 @@ public static class Register
         app.MapPost("/register", async (Input input, AppDb db, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, clock, ct)).ToHttp())
             .WithName(nameof(Register))
-            .AllowAnonymous();   // public: registering is pre-identity (LZ0022 — the decision, made visible)
+            .AllowAnonymous();   // public: registering is pre-identity (AF0022 — the decision, made visible)
 }

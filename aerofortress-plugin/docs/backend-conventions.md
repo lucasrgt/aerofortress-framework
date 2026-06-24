@@ -1,10 +1,10 @@
-# Lazuli — Backend conventions
+# AeroFortress — Backend conventions
 
 Opinionated .NET convention bundle (Rails mindset). Vertical-slice architecture.
 
 ## Shape
 
-`src/<App>.Api/`: `Program.cs` (thin index: AddLazuli + AddPlatform + AddModules and the
+`src/<App>.Api/`: `Program.cs` (thin index: AddAeroFortress + AddPlatform + AddModules and the
 matching Use/Map — nothing else), `AppDb.cs` (ONE DbContext), `Platform/` (app cross-cutting,
 one partial per concern: Persistence, Security, Observability, Web), `Modules.cs` (explicit
 registry, no reflection), `Modules/<Module>/` (bounded contexts: entities + `Slices/` +
@@ -51,9 +51,9 @@ backplane + Redis at the composition root. Caller identity from `Context.User` v
 ## Testing
 
 Co-located next to the slice (`Deposit.Tests.cs` beside `Deposit.cs`), categorized
-[Unit]/[Integration]/[E2E]. Host: `LazuliWebTest<TProgram>` boots the real app;
+[Unit]/[Integration]/[E2E]. Host: `AeroFortressWebTest<TProgram>` boots the real app;
 `SwapStores(IServiceCollection)` reconfigures stores for tests — in-memory
-(`UseIsolatedInMemory<Db>()`) or real Postgres (`Lazuli.Testing.Postgres`, Testcontainers
+(`UseIsolatedInMemory<Db>()`) or real Postgres (`AeroFortress.Framework.Testing.Postgres`, Testcontainers
 template clone per test, pooled). [Critical] proves both paths: happy + sad journeys, sad
 asserting failure AND state unchanged.
 

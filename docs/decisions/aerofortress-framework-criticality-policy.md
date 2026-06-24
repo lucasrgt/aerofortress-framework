@@ -5,7 +5,7 @@
 (`analyzers/AeroFortress.Framework.Doctor/CriticalityPolicy.cs`), new rule **`AF0029`**
 (`analyzers/AeroFortress.Framework.Doctor/CriticalityPolicyAnalyzer.cs`), `AF0008`/`AF0010` rewired to the helper, the
 dial projected through `analyzers/AeroFortress.Framework.Doctor/buildTransitive/AeroFortress.Framework.Doctor.targets`, the template
-manifest section (`templates/lazuli-app/AeroFortress.toml`), and a light manifest check
+manifest section (`templates/aerofortress-app/AeroFortress.toml`), and a light manifest check
 (`src/AeroFortress.Framework.Cli/AeroFortressManifest.cs`). Tests green (AF0029 across the three levels + the `AF0008`/`AF0010`
 strict interaction + the manifest validator). Self-graded **8.6 — PASS** (see §Grading).
 **Date:** 2026-06-16.
@@ -81,7 +81,7 @@ format it has no other reason to know. Instead the doctor's `buildTransitive` ta
 by every consumer and removed with the package — locate `AeroFortress.toml`, read the one key with an MSBuild regex,
 and hand the analyzers the resolved level through a `CompilerVisibleProperty`
 (`build_property.AeroFortressCriticality`, surfaced in `AnalyzerConfigOptionsProvider.GlobalOptions`). Absent file
-or key ⇒ `opt-in`. The analyzer sees a single projected string; the TOML stays the CLI's concern. `lazuli
+or key ⇒ `opt-in`. The analyzer sees a single projected string; the TOML stays the CLI's concern. `af
 doctor`'s manifest leg adds a light textual check that the value, if present, names one of the three levels —
 so a typo (`"strickt"`) is caught at the doctor instead of silently degrading to `opt-in` at build time.
 

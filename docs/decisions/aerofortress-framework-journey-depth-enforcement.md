@@ -160,7 +160,7 @@ required `flows.json` field; the `terminal` field makes the previously-implicit 
 Gate: ≥ 8.5 weighted **and** no criterion < 7 → PASS; any < 6 → BLOCK; boundary violations always
 BLOCK. Anchored `path:line`, strongest + weakest.
 
-| # | Criterion (adapted to a lazuli-net analyzer proposal) | Score | Best evidence | Weakest spot |
+| # | Criterion (adapted to a aerofortress-framework analyzer proposal) | Score | Best evidence | Weakest spot |
 |---|---|---|---|---|
 | 1 | Cold-read legibility of the resulting convention | 9.0 | the rung table + canonical-form §make the arc explicit | a second required `flows.json` field every author must learn |
 | 2 | Scope / boundary discipline (80/20, no runtime invasion) | 9.5 | reuses framework-owned attributes + doctor; Tier C consumes, never runs | Tier C's mutation lane is adjacent to the "no external runner" line — held by *consume-artifact* framing |

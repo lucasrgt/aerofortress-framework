@@ -40,7 +40,7 @@ analyzers/AeroFortress.Framework.Doctor/      SHIPPED harness. AF* rules + the C
 analyzers/AeroFortress.Framework.SelfHarness/ FRAMEWORK-DEV ONLY. AFSELF* rules — run on OUR code. Never shipped.
 frontend-sdk/                 The front half: @aerofortress/react (the spine), eslint-plugin-aerofortress (AFFE* rules), tools/ (doctors).
 examples/sample-app/          The reference app + canonical slice (backend/Sample.Api, Sample.Tests, frontend/).
-templates/lazuli-app/         The `af new` starter the CLI scaffolds from.
+templates/aerofortress-app/         The `af new` starter the CLI scaffolds from.
 build/AeroFortress.Framework.Library.props    The library standard, declared once.
 docs/CONVENTIONS.md           The backend constitution + slice shape + full AF* rule catalog.
 docs/FRONTEND-CONVENTIONS.md  The frontend constitution + MVVM shape + full AFFE* rule catalog.

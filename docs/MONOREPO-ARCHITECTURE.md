@@ -54,7 +54,7 @@ npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@h
 4. **`AeroFortress.toml` is the single source of truth.** It **generates** the npm-workspaces config (root `package.json`
    `workspaces`) + the turbo pipeline, and a **`af doctor` check validates** that the declared topology
    (products, cores, deps) matches the real `package.json` workspace deps + folders. No hand-maintained parallel;
-   drift = a build error. *(Shipped first as a validator — `AeroFortress.toml` + `scripts/lazuli-doctor.mjs` in hostpoint;
+   drift = a build error. *(Shipped first as a validator — `AeroFortress.toml` + `scripts/aerofortress-doctor.mjs` in hostpoint;
    generation of the workspace config follows once the packages physically exist.)*
 
 5. **`core` per product; `shared/` by evidence.** A product's `core` = its integration+logic (its orval client +
@@ -64,7 +64,7 @@ npm scope `@hostpoint`; packages `<product>-<layer>` (`@hostpoint/app-core`, `@h
 6. **The View↔ViewModel split becomes a package boundary.** `core` literally has no `react-native`/`react-dom`
    dependency, so platform-agnosticism is *structural*, stronger than the lint rule.
 
-## Harness change this requires (lazuli-net)
+## Harness change this requires (aerofortress-framework)
 
 `AFFE005`/`AFFE006` today assume **co-location** (a `*.view.tsx` with a sibling `*.viewModel.ts`). With the split,
 the ViewModel is in `core` and the View in `mobile`/`web` — different packages. So the rules must detect the link by
@@ -117,8 +117,8 @@ The `af` CLI is the conductor (`af build/test/new/doctor/gen:client`); it **dele
 
 ## Migration sequence (big-bang, but in green-verified milestones)
 
-1. **(this doc)** capture — **done** (lazuli-net `d9ac8cf`).
-2. **lazuli-net**: evolve `AFFE006` to import-based detection (+ self-tests) — **done** (`716378b`). *Prereq.*
+1. **(this doc)** capture — **done** (aerofortress-framework `d9ac8cf`).
+2. **aerofortress-framework**: evolve `AFFE006` to import-based detection (+ self-tests) — **done** (`716378b`). *Prereq.*
 3. **hostpoint**: `AeroFortress.toml` + `af doctor` (topology single-source + drift validator) — **done** (hostpoint
    `f30ab3b`). The `backends/`/`frontends/` *folder* rename is deferred: with one backend it is cosmetic + YAGNI
    (decision F); the manifest points at `src/` + `clients/` today and moves with the split.
@@ -126,7 +126,7 @@ The `af` CLI is the conductor (`af build/test/new/doctor/gen:client`); it **dele
 5. **front**: extract `@hostpoint/kernel` (auth/session/spine/ports interfaces); convert `expo-*` direct imports to
    ports + wire impls in the shell. (RN-web for web; Astro stays.)
 6. **`AeroFortress.toml` generation**: generate the npm-workspaces config from the manifest (once the packages exist).
-7. **lazuli-net canon**: rewrite the identity (meta-framework, no language) + fold this doc into the convention set.
+7. **aerofortress-framework canon**: rewrite the identity (meta-framework, no language) + fold this doc into the convention set.
 
 `hostpoint-os` and `hostpoint-barcos` are **convention, applied when those products are real** — no empty scaffolds.
 
@@ -243,7 +243,7 @@ Verified green (tsc 0, vitest 85/85, lint pristine).
 
 **Remaining (follow-up):** (1) operator re-run `npx expo export` for the final-3 native bundle; (2) make
 `AeroFortress.toml` *generate* the npm-workspaces config (today it's the source + the doctor validates — generation is the
-single-source upgrade); (3) the lazuli-net canon identity rewrite (retire the language vocabulary).
+single-source upgrade); (3) the aerofortress-framework canon identity rewrite (retire the language vocabulary).
 
 ---
 

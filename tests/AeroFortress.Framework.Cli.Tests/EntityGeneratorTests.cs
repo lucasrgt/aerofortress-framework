@@ -41,7 +41,7 @@ public class EntityGeneratorTests
 
     private static string NewProject(string name)
     {
-        var root = Directory.CreateTempSubdirectory("lazuli-entity-test").FullName;
+        var root = Directory.CreateTempSubdirectory("aerofortress-entity-test").FullName;
         File.WriteAllText(Path.Combine(root, name + ".csproj"), "<Project />");
         return root;
     }

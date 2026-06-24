@@ -15,7 +15,7 @@ public static class ModuleGenerator
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
         {
-            Console.Error.WriteLine("lazuli: no .csproj here — run this from the application project directory.");
+            Console.Error.WriteLine("af: no .csproj here — run this from the application project directory.");
             return 1;
         }
 
@@ -23,7 +23,7 @@ public static class ModuleGenerator
         var modulePath = Path.Combine(root, "Modules", name, name + "Module.cs");
         if (File.Exists(modulePath))
         {
-            Console.Error.WriteLine($"lazuli: {modulePath} already exists.");
+            Console.Error.WriteLine($"af: {modulePath} already exists.");
             return 1;
         }
 

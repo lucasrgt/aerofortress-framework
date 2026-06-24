@@ -7,7 +7,7 @@ namespace MyApp.Api.Modules.Account;
 /// user is looked up by email — globally, one-human-one-account — and the identity is read off the
 /// user and put into the JWT, never assumed.</summary>
 /// <remarks>Critical: a silent regression on the sad path (bad credentials accidentally yielding a
-/// token) is an auth bypass — trivial code, catastrophic blast radius. LZ0008 forces the happy and the
+/// token) is an auth bypass — trivial code, catastrophic blast radius. AF0008 forces the happy and the
 /// deny path to be proven end-to-end (see Journeys/AuthJourney).</remarks>
 [Slice]
 [Critical]
@@ -20,7 +20,7 @@ public static class Login
     // A fixed argon2 hash for the no-account branch of the timing-equalizing credential check (see Handle).
     // Computed once at startup; the plaintext is irrelevant — it exists only to make Verify do real work so a
     // login for an unknown email costs the same as one with a wrong password.
-    internal static readonly PasswordHash DummyHash = PasswordHash.Create("lazuli-login-timing-equalizer");
+    internal static readonly PasswordHash DummyHash = PasswordHash.Create("aerofortress-login-timing-equalizer");
 
     public static async Task<Result<Output>> Handle(Input input, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct)
     {
@@ -62,7 +62,7 @@ public static class Login
         app.MapPost("/login", async (Input input, HttpContext http, AppDb db, IAccessTokens tokens, RefreshCookie cookies, TimeProvider clock, CancellationToken ct) =>
             Respond(await Handle(input, db, tokens, clock, ct), http, cookies, clock))
             .WithName(nameof(Login))
-            .AllowAnonymous();   // public: logging in is how you get a token (LZ0022 — the decision, made visible)
+            .AllowAnonymous();   // public: logging in is how you get a token (AF0022 — the decision, made visible)
 
     // Delivery, not logic (keeps the route thin): web gets the refresh in an httpOnly cookie and never
     // in the body; mobile/API gets the whole Output.
@@ -82,6 +82,6 @@ public static class Login
         app.MapPost("/login", async (Input input, AppDb db, IAccessTokens tokens, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, tokens, clock, ct)).ToHttp())
             .WithName(nameof(Login))
-            .AllowAnonymous();   // public: logging in is how you get a token (LZ0022 — the decision, made visible)
+            .AllowAnonymous();   // public: logging in is how you get a token (AF0022 — the decision, made visible)
     //</lz:!cookies>
 }

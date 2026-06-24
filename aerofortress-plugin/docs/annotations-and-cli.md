@@ -1,4 +1,4 @@
-# Lazuli — Annotations & CLI
+# AeroFortress — Annotations & CLI
 
 ## Backend markers (pure attributes; inert if the doctor is removed)
 
@@ -9,7 +9,7 @@
 - `[Critical]` — high-stakes slice: requires happy AND sad `[Journey]`, and a concurrency token on written entities (`[Timestamp] byte[]? RowVersion` or `[ConcurrencyCheck]`).
 - `[Journey(typeof(Slice), JourneyPath.Happy|Sad)]` — on an `[E2E]` test; binds it to a `[Critical]` slice.
 - `[Unit]` / `[Integration]` / `[E2E]` — xUnit traits categorizing co-located tests.
-- `[JsonConverter(typeof(ScalarJsonConverter<TVo, TPrim>))]` — scalar VO crosses the wire as its primitive; OpenAPI schema mirrored by `AddLazuliOpenApi`.
+- `[JsonConverter(typeof(ScalarJsonConverter<TVo, TPrim>))]` — scalar VO crosses the wire as its primitive; OpenAPI schema mirrored by `AddAeroFortressOpenApi`.
 - `[Endpoint(...)]` — endpoint nature: default `App`; `[Endpoint(Webhook)]`, `[Endpoint(Internal)]`, `[Endpoint(Audience = "admin")]`. Drives the orval audience filter.
 
 ## Frontend markers (file/folder conventions)
@@ -22,12 +22,12 @@
 
 ## CLI
 
-- `lazuli new [name]` — full project (Lazuli.toml, src/<App>.Api, Program.cs index, sample module, Modules.cs).
-- `lazuli g module <Name>` — module + `<Name>.ctx.md` + entities placeholder.
-- `lazuli g slice <Module> <Name>` — slice file + co-located `<Name>.Tests.cs`.
-- `lazuli g auth` — auth module (Login/Refresh/Register + journeys), Identity entity, session seam.
-- `lazuli g hub <Module> <Name>` — SignalR hub at `Modules/<Module>/Realtime/<Name>Hub.cs` (hub is wire: calls the slice, fans out).
-- `lazuli g view <Slice>` — frontend triple typed from the contract.
-- `lazuli gen client` — orval (react-query) → `client.gen/` hooks + mutator. Hook name = slice name via `.WithName(...)`.
-- `lazuli doctor` — Roslyn AF* + Lazuli.toml validation + frontend AFFE*.
-- `lazuli build` / `lazuli test` — dotnet + turbo per `[tasks]` in Lazuli.toml.
+- `af new [name]` — full project (AeroFortress.toml, src/<App>.Api, Program.cs index, sample module, Modules.cs).
+- `af g module <Name>` — module + `<Name>.ctx.md` + entities placeholder.
+- `af g slice <Module> <Name>` — slice file + co-located `<Name>.Tests.cs`.
+- `af g auth` — auth module (Login/Refresh/Register + journeys), Identity entity, session seam.
+- `af g hub <Module> <Name>` — SignalR hub at `Modules/<Module>/Realtime/<Name>Hub.cs` (hub is wire: calls the slice, fans out).
+- `af g view <Slice>` — frontend triple typed from the contract.
+- `af gen client` — orval (react-query) → `client.gen/` hooks + mutator. Hook name = slice name via `.WithName(...)`.
+- `af doctor` — Roslyn AF* + AeroFortress.toml validation + frontend AFFE*.
+- `af build` / `af test` — dotnet + turbo per `[tasks]` in AeroFortress.toml.

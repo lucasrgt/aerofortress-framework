@@ -289,7 +289,7 @@ the doctor and they become inert decoration — the domain still compiles and ru
   `DbSet<T>` (a table) must be `[Entity]`, and a complex member of an `[Entity]` must be `[ValueObject]` —
   the two places where "what this is" is structurally certain. It does not guess beyond those two signals: a
   DTO, an options bag, or a dead unused record is not forced to wear a mark. See
-  [the decision](decisions/lazuli-net-unmarked-domain-type.md).
+  [the decision](decisions/aerofortress-framework-unmarked-domain-type.md).
 
 ---
 
@@ -328,7 +328,7 @@ tests/<App>.Tests/                 # thin runner: globs the co-located *.Tests.c
   in-process calls across modules are free; a cross-module *effect* goes through the owner's service or a
   job, and domain events + an outbox are reserved for genuinely-async external integrations (a payment
   webhook), not internal decoupling. Extracting a module later re-platforms only its cross-module reads — a
-  move, not a rewrite. (See `lazuli-net-modular-monolith` in the decisions archive.)
+  move, not a rewrite. (See `aerofortress-framework-modular-monolith` in the decisions archive.)
 - The scaffold (`af new`) and generators (`af g module` / `g slice`) produce exactly this shape.
 
 ---
@@ -516,7 +516,7 @@ same floor via `build/AeroFortress.Framework.Library.props`.
 ## The self-harness — framework-dev only, never shipped
 
 The libraries hold *themselves* to a standard, the way the Rails repo does. This is the
-**self-harness** (`AeroFortress.Framework.SelfHarness`): analyzers that run only on lazuli-net's own source.
+**self-harness** (`AeroFortress.Framework.SelfHarness`): analyzers that run only on aerofortress-framework's own source.
 
 It is **closed to this repo**: `IsPackable=false`, referenced with
 `ReferenceOutputAssembly="false"`, never packaged, and **never part of the production CLI or

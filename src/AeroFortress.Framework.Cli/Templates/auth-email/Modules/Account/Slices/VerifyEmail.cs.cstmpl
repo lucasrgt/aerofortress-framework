@@ -7,7 +7,7 @@ namespace MyApp.Api.Modules.Account;
 /// email-verified. The user lookup crosses the tenant filter (the verifier is anonymous), so it is
 /// found by id regardless of org.</summary>
 /// <remarks>Critical: the sad path is the bypass guard — a wrong or expired token must be rejected and
-/// leave the email unverified. If it passed silently, an email could be confirmed without the link. LZ0008
+/// leave the email unverified. If it passed silently, an email could be confirmed without the link. AF0008
 /// forces both the happy confirmation and the bad-token rejection to be proven end-to-end (see
 /// Journeys/EmailJourney).</remarks>
 [Slice]
@@ -41,5 +41,5 @@ public static class VerifyEmail
         app.MapPost("/verify-email", async (Input input, AppDb db, TimeProvider clock, CancellationToken ct) =>
             (await Handle(input, db, clock, ct)).ToHttp())
             .WithName(nameof(VerifyEmail))
-            .AllowAnonymous();   // public: the verification token IS the credential (LZ0022 — the decision, made visible)
+            .AllowAnonymous();   // public: the verification token IS the credential (AF0022 — the decision, made visible)
 }

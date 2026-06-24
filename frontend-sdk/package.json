@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "The frontend side of lazuli-net — the spine (@aerofortress/react), the eslint-plugin (AFFE rules), and the tools. The canonical sample now lives at examples/sample-app (run via the repo-root vitest below).",
+  "description": "The frontend side of aerofortress-framework — the spine (@aerofortress/react), the eslint-plugin (AFFE rules), and the tools. The canonical sample now lives at examples/sample-app (run via the repo-root vitest below).",
   "workspaces": [
     "packages/*"
   ],

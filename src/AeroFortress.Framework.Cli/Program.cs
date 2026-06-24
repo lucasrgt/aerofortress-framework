@@ -86,7 +86,7 @@ static int Usage()
 {
     Console.Error.WriteLine(
         """
-        lazuli — the AeroFortress convention CLI
+        af — the AeroFortress convention CLI
 
         usage:
           af new <Name>                 scaffold a new AeroFortress project (dotnet new aerofortress)

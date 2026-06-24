@@ -30,7 +30,7 @@ public class EmailVerificationToken
     /// <summary>When the token was issued.</summary>
     public DateTime CreatedAt { get; private set; }
 
-    /// <summary>The optimistic-concurrency token (LZ0026): a concurrent consume of the same token fails loudly
+    /// <summary>The optimistic-concurrency token (AF0026): a concurrent consume of the same token fails loudly
     /// instead of two requests both verifying.</summary>
     [System.ComponentModel.DataAnnotations.Timestamp]
     public byte[]? RowVersion { get; private set; }

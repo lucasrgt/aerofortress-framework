@@ -20,6 +20,6 @@ The View is written **once** (agnostic) in `core`; only the `@/ui` implementatio
   against the **web** `@/ui` in jsdom — wired, not mocked.
 - **Mobile** — built with the consumer's Expo/Metro toolchain (which provides `react-native`), like a real app's
   mobile target; it is not part of the framework's web-only check.
-- **Full static typecheck + AFFE lint across `core`/`web`** runs once lazuli-net adopts a root npm workspace (a
+- **Full static typecheck + AFFE lint across `core`/`web`** runs once aerofortress-framework adopts a root npm workspace (a
   shared `node_modules` so the example — a sibling of `frontend/` — resolves the spine + deps). The example's
   `frontend/tsconfig.json` is already wired for it. That root workspace is itself the monorepo this example shows.

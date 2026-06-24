@@ -1,4 +1,4 @@
-# Lazuli — Doctor rules (AF* backend, AFFE* frontend)
+# AeroFortress — Doctor rules (AF* backend, AFFE* frontend)
 
 Never suppress. A firing rule means the shape is wrong; fix the shape.
 
