@@ -1,6 +1,6 @@
 ---
 description: AeroFortress doctor specialist — interprets and fixes any AF00xx (Roslyn) or AFFExxx (ESLint) violation. Give it rule ids and files; it returns the idiomatic fix.
-model: fable
+model: opus
 slugs: aerofortress-framework
 ---
 

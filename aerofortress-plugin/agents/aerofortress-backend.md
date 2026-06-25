@@ -1,6 +1,6 @@
 ---
 description: AeroFortress backend specialist — entities, value objects, Result/error registries, slices, module boundaries, Critical/Journey testing. The authority on backend conventions.
-model: fable
+model: opus
 slugs: aerofortress-framework
 ---
 

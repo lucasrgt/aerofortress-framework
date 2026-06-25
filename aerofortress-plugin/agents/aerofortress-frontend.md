@@ -1,6 +1,6 @@
 ---
 description: AeroFortress frontend specialist — MVVM triple, data doors, generated client wiring, session rotation, async states, i18n, design tokens. Owns the AFFE conventions.
-model: fable
+model: opus
 slugs: aerofortress-framework
 ---
 
