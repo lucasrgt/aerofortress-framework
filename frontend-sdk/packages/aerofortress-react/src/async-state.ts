@@ -18,6 +18,25 @@ export interface QueryLike<T> {
   refetch?: () => unknown;
 }
 
+/** Compatibility/input shape for app adapters that have not yet projected a query into the closed union. */
+export interface ResourceFlags {
+  isLoading: boolean;
+  isError: boolean;
+  isEmpty?: boolean;
+}
+
+/** Canonical lowering for a legacy/aggregate boolean resource into {@link AsyncState}. */
+export function fromResourceFlags<T>(
+  flags: ResourceFlags,
+  data: T,
+  errorMessage: string,
+): AsyncState<T> {
+  if (flags.isLoading) return { status: "loading" };
+  if (flags.isError) return { status: "error", message: errorMessage };
+  if (flags.isEmpty) return { status: "empty" };
+  return { status: "ready", data };
+}
+
 /**
  * Project a query result into an AsyncState. `errorMessage` is the localized string the ViewModel supplies (the
  * spine never hardcodes copy). `isEmpty` opts the resource into a distinct "empty" state (e.g. an empty list);
@@ -37,6 +56,11 @@ export function toAsyncState<T>(
   }
   if (opts.isEmpty?.(query.data)) return { status: "empty" };
   return { status: "ready", data: query.data };
+}
+
+/** Project the ready payload while passing loading/error/empty through unchanged. */
+export function mapAsyncState<T, U>(state: AsyncState<T>, project: (data: T) => U): AsyncState<U> {
+  return state.status === "ready" ? { status: "ready", data: project(state.data) } : state;
 }
 
 /**

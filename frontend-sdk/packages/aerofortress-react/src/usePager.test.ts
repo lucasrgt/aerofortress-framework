@@ -101,4 +101,27 @@ describe("usePager", () => {
     expect(result.current.page).toBe(1);
     expect(result.current.debouncedQ).toBe("camp");
   });
+
+  it("supports direct jumps and a configurable page size", () => {
+    const { result } = renderHook(() => usePager({ initialPageSize: 20 }));
+
+    act(() => result.current.goTo(4, 10));
+    expect(result.current.page).toBe(4);
+    act(() => result.current.setPageSize(50));
+    expect(result.current.pageSize).toBe(50);
+    expect(result.current.page).toBe(1);
+  });
+
+  it("can delegate page ownership to a router binding", () => {
+    let page = 3;
+    const setPage = vi.fn((next: number) => {
+      page = next;
+    });
+    const { result, rerender } = renderHook(() => usePager({ pageControl: { page, setPage } }));
+
+    act(() => result.current.next(8));
+    expect(setPage).toHaveBeenCalledWith(4);
+    rerender();
+    expect(result.current.page).toBe(4);
+  });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/react",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "AeroFortress Framework frontend spine — platform/design-system-agnostic React primitives (AsyncState, Resource, session, paging, …) the app composes.",
   "license": "MIT",
   "author": "Lucas Tinoco",
