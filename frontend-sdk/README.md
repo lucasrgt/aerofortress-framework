@@ -16,7 +16,7 @@ frontend/
   vitest.config.ts    # jsdom + the @/… aliases that let the sample run wired (not mocked)
   packages/
     aerofortress-react/     # @aerofortress/react — the spine: AsyncState, Resource (+ guards, session as they graduate)
-    eslint-plugin/    # eslint-plugin-aerofortress — the AFFE harness (rules + RuleTester self-tests)   [planned home]
+    eslint-plugin/    # eslint-plugin-aerofortress — the AFFE harness (rules + RuleTester self-tests)
   sample/
     items/            # the canonical feature unit — the blessed reference an app/agent copies (kept pristine)
     harness/          # stand-ins for the app's @/ui, @/i18n, @/client.gen — so the sample compiles + tests

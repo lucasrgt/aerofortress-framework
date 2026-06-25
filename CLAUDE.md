@@ -119,8 +119,8 @@ violation. Reject in line — do not defer it to a checklist.
 
 ## The package-first law — how a change reaches the pilots
 
-The pilots (hostpoint, pauta) consume this framework **only as versioned packages and a rebased
-eslint-plugin mirror — never as source copies, and never the other way around**. Framework-shaped code
+The pilots consume this framework **only as versioned NuGet/npm packages — never as source copies, and never
+the other way around**. Framework-shaped code
 (a rule, a primitive, a converter, a harness mechanism) lands HERE first; a pilot prototyping one inline
 is the failure mode that buried half this framework inside hostpoint for months. The release loop:
 
@@ -128,13 +128,13 @@ is the failure mode that buried half this framework inside hostpoint for months.
 2. `dotnet pack AeroFortress.Framework.slnx -c Release -o local-feed` — the pilots' `nuget.config` fronts nuget.org with
    this feed. **Re-packing the same version requires purging the consumer cache**
    (`rm -rf ~/.nuget/packages/<package>/<version>`) or the pilot keeps restoring the stale bits.
-3. In each pilot: bump the `AeroFortress*` package versions, rebase the eslint-plugin mirror (copy `index.cjs`
-   + `index.test.cjs`, bump its version), and fix what the new doctor reveals. The fallout IS the feature.
+3. In each pilot: bump the `AeroFortress*`, `eslint-plugin-aerofortress`, and `@aerofortress/react` package
+   versions, refresh the lockfiles, and fix what the new doctors reveal. The fallout IS the feature.
 
 Enforcement, not memory: `af doctor` carries a **framework-sync leg** (`src/AeroFortress.Framework.Cli/FrameworkSync.cs`)
-that fails a pilot on a stale package version or a drifted mirror when the checkout declared in its
-`AeroFortress.toml` `[framework] repo` is reachable; the pilots' lint chains run the mirror check on every commit
-(`frontend-sdk/tools/framework-sync.mjs`, delegated to — never copied). When a pilot legitimately discovers
+that fails a pilot on stale backend/frontend package versions or a retired in-repo frontend copy when the checkout
+declared in its `AeroFortress.toml` `[framework] repo` is reachable; lint chains may delegate the same package check
+to `frontend-sdk/tools/framework-sync.mjs`. When a pilot legitimately discovers
 a framework gap mid-feature, the order is: fix it here, repack, re-restore — the same loop, just inner.
 `docs/PORTBACK-CHECKLIST.md` tracks anything that historically leaked the wrong way.
 

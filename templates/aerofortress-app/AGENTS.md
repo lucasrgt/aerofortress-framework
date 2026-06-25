@@ -27,8 +27,8 @@ Topology is declared in `AeroFortress.toml` (the single source of truth; `af doc
 
 - **Backend** `src/AeroFortress.Framework.Starter.Api` — .NET vertical slices; the `AF*` Roslyn analyzers gate
   `AeroFortress.Framework.Starter.slnx`.
-- **Frontend** — add a React client under `clients/` (`af g`); the `AFFE*` ESLint plugin
-  (`clients/eslint-plugin-aerofortress`, the downstream mirror of the aerofortress-framework canonical) gates it.
+- **Frontend** — add a React client under `clients/` (`af g`); the published
+  `eslint-plugin-aerofortress` `AFFE*` harness gates it.
 - **Doctor**: `af doctor` runs both legs.
 
 ---
@@ -154,15 +154,15 @@ adapters in core, no runtime you inherit from. When a need smells like *capabili
 
 ## The package-first law (anti-desync)
 
-This app consumes the framework **only as versioned `AeroFortress*` packages and a rebased `eslint-plugin-aerofortress`
-mirror** — never as source copies. If a need here is framework-shaped (a rule, a spine primitive, a harness
+This app consumes the framework **only as versioned NuGet/npm packages** — never as source copies. If a need
+here is framework-shaped (a rule, a spine primitive, a harness
 mechanism, anything another AeroFortress app would also want), it does **not** get implemented in this repo:
 it lands in **aerofortress-framework first**, ships through the package feed, and arrives here as a version bump whose
 doctor fallout you then fix. Writing it here "for now" is how framework code gets lost in time.
 
 Enforcement: declare the framework checkout in `AeroFortress.toml` (`[framework] repo = "…"`) and `af doctor`
-fails on a stale package version or a drifted plugin mirror; the frontend lint chain re-checks the mirror on
-every commit. App-specific code (your domain, your vendors, your copy) stays here, obviously — the law is
+fails on stale backend/frontend package versions or a retired in-repo copy. App-specific code (your domain,
+your vendors, your copy) stays here, obviously — the law is
 about *generic* mechanisms only.
 
 ---
