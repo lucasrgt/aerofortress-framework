@@ -301,7 +301,7 @@ public static class AuthFlowGenerator
 
     // Add the flow's framework reference to the API csproj, idempotently. Matches the existing AeroFortress.Framework.*
     // reference style: ProjectReference in co-dev (when AeroFortress.Framework.AspNetCore is a ProjectReference), else a
-    // PackageReference 0.1.0.
+    // PackageReference at the framework release emitted by the current CLI.
     private static void AugmentApiProject(string csproj, FlowSpec spec)
     {
         var text = File.ReadAllText(csproj);
@@ -320,7 +320,8 @@ public static class AuthFlowGenerator
         }
         else
         {
-            reference = $"    <PackageReference Include=\"{spec.PackageId}\" Version=\"0.1.0\" />";
+            reference =
+                $"    <PackageReference Include=\"{spec.PackageId}\" Version=\"{FrameworkPackageVersions.Framework}\" />";
         }
 
         text = InsertBeforeClosingItemGroup(text, reference, nl);

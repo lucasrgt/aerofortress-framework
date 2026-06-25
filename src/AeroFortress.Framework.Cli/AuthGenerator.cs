@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace AeroFortress.Framework.Cli;
 
@@ -168,7 +169,7 @@ public static class AuthGenerator
             "    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"10.0.8\" />",
             "    <PackageReference Include=\"Microsoft.EntityFrameworkCore.InMemory\" Version=\"10.0.8\" />",
             "    <PackageReference Include=\"Konscious.Security.Cryptography.Argon2\" Version=\"1.3.1\" />",
-            "    <PackageReference Include=\"AeroFortress.Framework.Auth\" Version=\"0.1.0\" />",
+            $"    <PackageReference Include=\"AeroFortress.Framework.Auth\" Version=\"{FrameworkPackageVersions.Framework}\" />",
         });
 
         // Drop the packages into the first <ItemGroup> (where the framework references already live).
@@ -194,13 +195,17 @@ public static class AuthGenerator
             return;
 
         var nl = text.Contains("\r\n") ? "\r\n" : "\n";
-        var reference = "    <PackageReference Include=\"AeroFortress.Framework.Testing.InMemory\" Version=\"0.1.0\" />";
+        var reference =
+            $"    <PackageReference Include=\"AeroFortress.Framework.Testing.InMemory\" Version=\"{FrameworkPackageVersions.Framework}\" />";
         // Sit it next to the existing AeroFortress.Framework.Testing reference when present, else in the first group.
         if (text.Contains("AeroFortress.Framework.Testing\""))
         {
-            text = ReplaceFirst(text,
-                "<PackageReference Include=\"AeroFortress.Framework.Testing\" Version=\"0.1.0\" />",
-                "<PackageReference Include=\"AeroFortress.Framework.Testing\" Version=\"0.1.0\" />" + nl + reference);
+            var testing = Regex.Match(
+                text,
+                @"<PackageReference Include=""AeroFortress\.Framework\.Testing"" Version=""[^""]+""\s*/>");
+            text = testing.Success
+                ? text[..(testing.Index + testing.Length)] + nl + reference + text[(testing.Index + testing.Length)..]
+                : InsertBeforeClosingItemGroup(text, reference, nl);
         }
         else
         {

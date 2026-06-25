@@ -40,29 +40,41 @@ public class FrameworkSyncTests
     }
 
     [Fact]
-    public void A_drifted_plugin_mirror_fails_the_sync()
+    public void A_stale_frontend_package_fails_the_sync()
     {
         var (app, repo) = NewPair(frameworkVersion: "0.2.0", appPackageVersion: "0.2.0");
-        WritePlugin(repo, "// canonical v2");
-        WriteMirror(app, "// stale v1");
+        WriteFrontendPackages(repo, pluginVersion: "0.11.0", reactVersion: "0.6.0", sdkVersion: "0.1.0");
+        WriteFrontend(app, pluginVersion: "^0.10.0", reactVersion: "^0.6.0", sdkVersion: "^0.1.0");
 
         var outcome = FrameworkSync.Check(app);
 
         Assert.False(outcome.InSync);
-        Assert.Contains(outcome.Messages, m => m.Contains("eslint-plugin-aerofortress"));
+        Assert.Contains(outcome.Messages, m => m.Contains("eslint-plugin-aerofortress") && m.Contains("0.10.0"));
     }
 
     [Fact]
-    public void Matching_version_and_mirror_pass_even_across_line_endings()
+    public void Matching_backend_and_frontend_package_versions_pass()
     {
         var (app, repo) = NewPair(frameworkVersion: "0.2.0", appPackageVersion: "0.2.0");
-        WritePlugin(repo, "// same rules\n");
-        WriteMirror(app, "// same rules\r\n");   // a CRLF copy is not drift
+        WriteFrontendPackages(repo, pluginVersion: "0.11.0", reactVersion: "0.6.0", sdkVersion: "0.1.0");
+        WriteFrontend(app, pluginVersion: "^0.11.0", reactVersion: "^0.6.0", sdkVersion: "^0.1.0");
 
         var outcome = FrameworkSync.Check(app);
 
         Assert.True(outcome.Gating);
         Assert.True(outcome.InSync);
+    }
+
+    [Fact]
+    public void A_legacy_plugin_copy_fails_even_without_a_frontend()
+    {
+        var (app, _) = NewPair(frameworkVersion: "0.2.0", appPackageVersion: "0.2.0");
+        Directory.CreateDirectory(Path.Combine(app, "clients", "eslint-plugin-aerofortress"));
+
+        var outcome = FrameworkSync.Check(app);
+
+        Assert.False(outcome.InSync);
+        Assert.Contains(outcome.Messages, m => m.Contains("legacy vendored"));
     }
 
     private static string NewApp(string manifest)
@@ -90,17 +102,45 @@ public class FrameworkSyncTests
         return (app, repo);
     }
 
-    private static void WritePlugin(string repo, string content)
+    private static void WriteFrontendPackages(string repo, string pluginVersion, string reactVersion, string sdkVersion)
     {
-        var dir = Path.Combine(repo, "frontend-sdk", "packages", "eslint-plugin");
-        Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "index.cjs"), content);
+        WritePackage(
+            Path.Combine(repo, "frontend-sdk"),
+            "@aerofortress/frontend-sdk",
+            sdkVersion);
+        WritePackage(
+            Path.Combine(repo, "frontend-sdk", "packages", "eslint-plugin"),
+            "eslint-plugin-aerofortress",
+            pluginVersion);
+        WritePackage(
+            Path.Combine(repo, "frontend-sdk", "packages", "aerofortress-react"),
+            "@aerofortress/react",
+            reactVersion);
     }
 
-    private static void WriteMirror(string app, string content)
+    private static void WriteFrontend(string app, string pluginVersion, string reactVersion, string sdkVersion)
     {
-        var dir = Path.Combine(app, "clients", "eslint-plugin-aerofortress");
+        var dir = Path.Combine(app, "clients", "web");
         Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "index.cjs"), content);
+        File.WriteAllText(Path.Combine(dir, "eslint.config.mjs"), "export default [];");
+        File.WriteAllText(Path.Combine(dir, "package.json"),
+            $$"""
+            {
+              "dependencies": {
+                "@aerofortress/react": "{{reactVersion}}"
+              },
+              "devDependencies": {
+                "@aerofortress/frontend-sdk": "{{sdkVersion}}",
+                "eslint-plugin-aerofortress": "{{pluginVersion}}"
+              }
+            }
+            """);
+    }
+
+    private static void WritePackage(string dir, string name, string version)
+    {
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "package.json"),
+            $$"""{"name":"{{name}}","version":"{{version}}"}""");
     }
 }

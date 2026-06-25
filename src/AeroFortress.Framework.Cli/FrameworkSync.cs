@@ -1,36 +1,21 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace AeroFortress.Framework.Cli;
 
 /// <summary>
-/// The anti-desync leg of <c>af doctor</c> — the enforcement half of the <b>package-first law</b>
-/// (framework-shaped code lands in aerofortress-framework first; a pilot consumes it as a versioned package and a
-/// rebased plugin mirror, never as code written in the pilot and "ported back someday").
-///
-/// A pilot opts in by declaring where the framework checkout lives in <c>AeroFortress.toml</c>:
-/// <code>
-/// [framework]
-/// repo = "../../aerofortress-framework"
-/// </code>
-/// When that path resolves (a dev machine with the sibling checkout), the doctor compares two drift-prone
-/// surfaces and fails on a mismatch:
-/// <list type="bullet">
-/// <item><description><b>Package version</b> — the app's referenced <c>AeroFortress*</c> package versions vs the
-/// framework's current <c>Version</c> (<c>build/AeroFortress.Framework.Library.props</c>). Behind = the pilot is running an
-/// old doctor and silently missing rules.</description></item>
-/// <item><description><b>The eslint-plugin mirror</b> — <c>clients/eslint-plugin-aerofortress/index.cjs</c> hashed
-/// against the canonical <c>frontend-sdk/packages/eslint-plugin/index.cjs</c>. Different = the mirror missed
-/// a rule wave (or worse, grew a local rule that never went upstream).</description></item>
-/// </list>
-/// When the section is absent, or the repo path doesn't resolve (CI, another machine), the check degrades to
-/// a notice and gates nothing — the same posture as the manifest itself.
+/// The anti-desync leg of <c>af doctor</c> — the enforcement half of the package-first law. A pilot consumes
+/// framework behavior through released packages; framework-shaped source copies and stale package declarations
+/// are failures, not alternate distribution mechanisms.
 /// </summary>
 internal static class FrameworkSync
 {
+    private static readonly string[] DependencySections =
+        ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
+
     /// <summary>The outcome of the sync check.</summary>
     /// <param name="Gating">True when the framework checkout was reachable and the comparisons actually ran.</param>
     /// <param name="InSync">True when nothing gating drifted (vacuously true when not <paramref name="Gating"/>).</param>
@@ -56,12 +41,11 @@ internal static class FrameworkSync
 
         var messages = new List<string>();
         CheckPackageVersions(root, repo, messages);
-        CheckPluginMirror(root, repo, messages);
+        CheckFrontendPackages(root, repo, messages);
+        CheckLegacyFrontendCopies(root, messages);
         return new Outcome(Gating: true, InSync: messages.Count == 0, Messages: messages);
     }
 
-    // The app's AeroFortress* package references must match the framework's current version — behind means the
-    // pilot runs an old doctor and silently misses rules; ahead means a phantom version.
     private static void CheckPackageVersions(string root, string repo, List<string> messages)
     {
         var props = Path.Combine(repo, "build", "AeroFortress.Framework.Library.props");
@@ -72,7 +56,7 @@ internal static class FrameworkSync
             return;
 
         var stale = Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
-            .Where(p => !p.Contains("node_modules"))
+            .Where(IsConsumerFile)
             .SelectMany(p => Regex.Matches(File.ReadAllText(p), @"Include=""(AeroFortress[^""]*)""\s+Version=""([^""]+)""")
                 .Where(m => m.Groups[2].Value != current.Groups[1].Value)
                 .Select(m => $"{m.Groups[1].Value} {m.Groups[2].Value} in {Path.GetFileName(p)}"))
@@ -86,24 +70,105 @@ internal static class FrameworkSync
                 + " — bump the package(s), rebuild, and fix what the doctor reveals (the package-first law)");
     }
 
-    // The plugin mirror must be byte-identical to the canonical — a drifted mirror either missed a rule wave
-    // or grew a local rule that never went upstream; both are the desync this leg exists to catch.
-    private static void CheckPluginMirror(string root, string repo, List<string> messages)
+    private static void CheckFrontendPackages(string root, string repo, List<string> messages)
     {
-        var mirror = Path.Combine(root, "clients", "eslint-plugin-aerofortress", "index.cjs");
-        var canonical = Path.Combine(repo, "frontend-sdk", "packages", "eslint-plugin", "index.cjs");
-        if (!File.Exists(mirror) || !File.Exists(canonical))
+        if (!HasFrontend(root))
             return;
 
-        if (!HashOf(mirror).SequenceEqual(HashOf(canonical)))
-            messages.Add(
-                "framework-sync: clients/eslint-plugin-aerofortress/index.cjs differs from the framework canonical — "
-                + "rebase the mirror (copy index.cjs + index.test.cjs from frontend-sdk/packages/eslint-plugin, "
-                + "bump its package.json version) and adopt any new rules in the app's eslint config");
+        foreach (var canonicalPath in new[]
+                 {
+                     Path.Combine(repo, "frontend-sdk", "package.json"),
+                     Path.Combine(repo, "frontend-sdk", "packages", "eslint-plugin", "package.json"),
+                     Path.Combine(repo, "frontend-sdk", "packages", "aerofortress-react", "package.json"),
+                 })
+        {
+            if (!TryReadPackage(canonicalPath, out var packageName, out var currentVersion))
+                continue;
+
+            var declarations = FindDeclarations(root, packageName).ToList();
+            if (declarations.Count == 0)
+            {
+                messages.Add(
+                    $"framework-sync: frontend exists but no package.json declares {packageName} {currentVersion} — "
+                    + "consume the published framework package instead of carrying its source locally");
+                continue;
+            }
+
+            var stale = declarations
+                .Where(d => DeclaredVersion(d.Spec) != currentVersion)
+                .Select(d => $"{d.Spec} in {Path.GetRelativePath(root, d.Path)}")
+                .Distinct()
+                .ToList();
+            if (stale.Count > 0)
+                messages.Add(
+                    $"framework-sync: {packageName} canonical is {currentVersion} but this app declares "
+                    + string.Join(", ", stale)
+                    + " — install the canonical package version and refresh the lockfile");
+        }
     }
 
-    // Line-ending-insensitive: the mirror is copied across repos whose git eol normalization may differ,
-    // and a CRLF/LF-only difference is not drift.
-    private static byte[] HashOf(string path) =>
-        SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path).Replace("\r\n", "\n")));
+    private static void CheckLegacyFrontendCopies(string root, List<string> messages)
+    {
+        var legacyPlugin = Path.Combine(root, "clients", "eslint-plugin-aerofortress");
+        if (Directory.Exists(legacyPlugin))
+            messages.Add(
+                "framework-sync: clients/eslint-plugin-aerofortress is a legacy vendored plugin copy — delete it "
+                + "and consume eslint-plugin-aerofortress from npm");
+    }
+
+    private static bool HasFrontend(string root)
+    {
+        var clients = Path.Combine(root, "clients");
+        return Directory.Exists(clients)
+               && Directory.EnumerateDirectories(clients).Any(dir =>
+                   File.Exists(Path.Combine(dir, "package.json"))
+                   && new[] { "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs" }
+                       .Any(config => File.Exists(Path.Combine(dir, config))));
+    }
+
+    private static IEnumerable<(string Path, string Spec)> FindDeclarations(string root, string packageName)
+    {
+        foreach (var path in Directory.EnumerateFiles(root, "package.json", SearchOption.AllDirectories)
+                     .Where(IsConsumerFile))
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            foreach (var section in DependencySections)
+            {
+                if (!document.RootElement.TryGetProperty(section, out var dependencies)
+                    || dependencies.ValueKind != JsonValueKind.Object
+                    || !dependencies.TryGetProperty(packageName, out var version)
+                    || version.ValueKind != JsonValueKind.String)
+                    continue;
+
+                yield return (path, version.GetString()!);
+            }
+        }
+    }
+
+    private static bool TryReadPackage(string path, out string name, out string version)
+    {
+        name = "";
+        version = "";
+        if (!File.Exists(path))
+            return false;
+
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        if (!document.RootElement.TryGetProperty("name", out var nameValue)
+            || !document.RootElement.TryGetProperty("version", out var versionValue))
+            return false;
+
+        name = nameValue.GetString() ?? "";
+        version = versionValue.GetString() ?? "";
+        return name.Length > 0 && version.Length > 0;
+    }
+
+    private static string DeclaredVersion(string spec)
+    {
+        var match = Regex.Match(spec, @"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?");
+        return match.Success ? match.Value : spec;
+    }
+
+    private static bool IsConsumerFile(string path) =>
+        !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(segment => segment is "node_modules" or ".git" or "bin" or "obj" or "dist");
 }

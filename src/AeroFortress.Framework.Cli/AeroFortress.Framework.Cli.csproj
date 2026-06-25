@@ -16,7 +16,7 @@
     <!-- Package metadata (the CLI doesn't import AeroFortress.Framework.Library.props — that turns CS1591 into an error, and a
          tool isn't a documented library surface). Normally in step with the framework; 0.1.2 is a CLI-only patch
          (the packaging fix — a stray tools/ path that broke `dotnet tool install` on stricter SDKs). -->
-    <Version>0.1.2</Version>
+    <Version>0.1.3</Version>
     <Authors>Lucas Tinoco</Authors>
     <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
     <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>

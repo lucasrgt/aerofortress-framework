@@ -35,7 +35,7 @@ static int Doctor(string[] rest)
         Console.Error.WriteLine($"  {message}");
 
     // The anti-desync leg: when the framework checkout is reachable ([framework] repo in AeroFortress.toml), a
-    // stale package version or a drifted eslint-plugin mirror fails the doctor — the package-first law,
+    // stale backend/frontend package version or a legacy vendored frontend copy fails the doctor — the package-first law,
     // enforced. Unreachable (CI) degrades to a notice.
     var sync = FrameworkSync.Check(Directory.GetCurrentDirectory());
     Console.WriteLine("af doctor — framework sync...");
@@ -60,15 +60,17 @@ static int Doctor(string[] rest)
     return code;
 }
 
-// A AeroFortress frontend lives under clients/<app>/ with an eslint.config.js (wiring eslint-plugin-aerofortress). The
-// doctor discovers them by convention rather than configuration — no frontend, no frontend leg.
+// An AeroFortress frontend lives under clients/<app>/ with a flat ESLint config (wiring
+// eslint-plugin-aerofortress). Flat config supports js/mjs/cjs; treating only .js as a client made ESM pilots
+// silently skip the entire AFFE + typecheck leg.
 static IEnumerable<string> FrontendClients(string root)
 {
     var clients = Path.Combine(root, "clients");
     if (!Directory.Exists(clients))
         return [];
     return Directory.EnumerateDirectories(clients)
-        .Where(dir => File.Exists(Path.Combine(dir, "eslint.config.js"))
+        .Where(dir => new[] { "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs" }
+                          .Any(config => File.Exists(Path.Combine(dir, config)))
                    && File.Exists(Path.Combine(dir, "package.json")));
 }
 
