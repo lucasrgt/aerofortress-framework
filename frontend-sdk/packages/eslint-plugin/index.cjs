@@ -1751,7 +1751,16 @@ const rules = {
   },
 };
 
-module.exports = {
-  meta: { name: "eslint-plugin-aerofortress", version: "0.10.0" },
+const plugin = {
+  meta: { name: "eslint-plugin-aerofortress", version: "0.11.0" },
   rules,
+  configs: {},
 };
+
+plugin.configs["flat/recommended"] = {
+  name: "aerofortress/recommended",
+  plugins: { aerofortress: plugin },
+  rules: Object.fromEntries(Object.keys(rules).map((rule) => [`aerofortress/${rule}`, "warn"])),
+};
+
+module.exports = plugin;
