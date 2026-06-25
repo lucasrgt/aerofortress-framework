@@ -10,15 +10,11 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-
-const dirs = process.argv.slice(2);
-if (dirs.length === 0) {
-  console.error("usage: node tools/i18n-parity.mjs <catalogsDir> [...moreDirs]");
-  process.exit(2);
-}
+import { fileURLToPath } from "node:url";
+import { exportedObjectLiterals, topLevelObjectKeys } from "./object-literals.mjs";
 
 /** Recursively collect every *.i18n.ts under dir (matches assemble-i18n's discovery). */
-function findCatalogs(dir) {
+export function findCatalogs(dir) {
   const out = [];
   let entries;
   try {
@@ -37,45 +33,61 @@ function findCatalogs(dir) {
 // Each exported locale object: `export const <name> = { ... } [as const];`. Catalogs are flat (no nesting), so a
 // non-greedy match to the first line-starting `}` is the catalog close. Locale-agnostic by design — like the eslint
 // rule, it compares whatever objects the file exports, not a fixed pt/es/en set.
-const BLOCK = /export const (\w+)\s*=\s*(\{[\s\S]*?\n\}(?:\s+as\s+const)?)\s*;/g;
-// A key is a quoted OR bare identifier immediately after `{` or `,` (the property boundary), then a colon. Anchoring
-// to that boundary is what keeps a value — which always follows a `:` — from ever being mistaken for a key, so a
-// value containing a colon (or packed several entries to a line) parses correctly.
-const KEY = /[{,]\s*(?:"([^"]+)"|([A-Za-z_$][\w$]*))\s*:/g;
-
-function catalogsIn(src) {
-  const cats = [];
-  for (const block of src.matchAll(BLOCK)) {
-    const keys = new Set();
-    for (const k of block[2].matchAll(KEY)) keys.add(k[1] ?? k[2]);
-    cats.push({ name: block[1], keys });
-  }
-  return cats;
+export function catalogsIn(src) {
+  return exportedObjectLiterals(src).map((object) => ({
+    name: object.name,
+    keys: topLevelObjectKeys(object.source),
+  }));
 }
 
-const files = dirs.flatMap(findCatalogs);
-if (files.length === 0) {
-  console.error(`no *.i18n.ts catalogs found under ${dirs.join(", ")}`);
-  process.exit(1);
-}
-
-let failed = false;
-let checked = 0;
-for (const file of files) {
-  const cats = catalogsIn(readFileSync(file, "utf8"));
-  if (cats.length < 2) continue; // need >= 2 locales to compare
-  checked++;
-  const rel = file.replace(/\\/g, "/");
-  const union = new Set();
-  for (const c of cats) for (const k of c.keys) union.add(k);
-  for (const c of cats) {
-    const missing = [...union].filter((k) => !c.keys.has(k));
-    if (missing.length) {
-      failed = true;
-      console.error(`AFFE011 ${rel}: locale \`${c.name}\` missing ${missing.length} key(s): ${missing.sort().join(", ")}`);
+/**
+ * @param {Array<{path: string, source: string}>} files
+ * @param {string[]} requiredLocales
+ */
+export function checkI18nParity(files, requiredLocales = []) {
+  const messages = [];
+  let checked = 0;
+  for (const file of files) {
+    const cats = catalogsIn(file.source);
+    if (cats.length === 0) continue;
+    const names = new Set(cats.map((catalog) => catalog.name));
+    const missingLocales = requiredLocales.filter((locale) => !names.has(locale));
+    if (missingLocales.length)
+      messages.push(`AFFE011 ${file.path}: missing locale export(s): ${missingLocales.join(", ")}`);
+    if (cats.length < 2) continue;
+    checked++;
+    const union = new Set();
+    for (const catalog of cats) for (const key of catalog.keys) union.add(key);
+    for (const catalog of cats) {
+      const missing = [...union].filter((key) => !catalog.keys.has(key));
+      if (missing.length)
+        messages.push(
+          `AFFE011 ${file.path}: locale \`${catalog.name}\` missing ${missing.length} key(s): ${missing.sort().join(", ")}`,
+        );
     }
   }
+  return { checked, messages, ok: messages.length === 0 };
 }
 
-console.log(`AFFE011 i18n-parity: ${checked} multi-locale catalog(s) checked.`);
-process.exit(failed ? 1 : 0);
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const args = process.argv.slice(2);
+  const localesFlag = args.indexOf("--require-locales");
+  const requiredLocales =
+    localesFlag >= 0 ? String(args.splice(localesFlag, 2)[1] ?? "").split(",").filter(Boolean) : [];
+  if (args.length === 0) {
+    console.error("usage: affe-i18n-parity <catalogsDir> [...moreDirs] [--require-locales ptBR,esES,enUS]");
+    process.exit(2);
+  }
+  const paths = args.flatMap(findCatalogs);
+  if (paths.length === 0) {
+    console.error(`no *.i18n.ts catalogs found under ${args.join(", ")}`);
+    process.exit(1);
+  }
+  const result = checkI18nParity(
+    paths.map((path) => ({ path: path.replace(/\\/g, "/"), source: readFileSync(path, "utf8") })),
+    requiredLocales,
+  );
+  for (const message of result.messages) console.error(message);
+  console.log(`AFFE011 i18n-parity: ${result.checked} multi-locale catalog(s) checked.`);
+  process.exit(result.ok ? 0 : 1);
+}

@@ -1,9 +1,41 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "The frontend side of aerofortress-framework — the spine (@aerofortress/react), the eslint-plugin (AFFE rules), and the tools. The canonical sample now lives at examples/sample-app (run via the repo-root vitest below).",
+  "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
+  "license": "MIT",
+  "author": "Lucas Tinoco",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lucasrgt/aerofortress-framework.git",
+    "directory": "frontend-sdk"
+  },
+  "homepage": "https://github.com/lucasrgt/aerofortress-framework#readme",
+  "bugs": "https://github.com/lucasrgt/aerofortress-framework/issues",
+  "keywords": ["aerofortress", "frontend", "doctor", "eslint", "scaffolding"],
+  "files": ["tools/*.mjs", "tools/README.md"],
+  "exports": {
+    "./doctor": "./tools/doctor.mjs",
+    "./e2e-doctor": "./tools/e2e-doctor.mjs",
+    "./endpoint-coverage": "./tools/endpoint-coverage.mjs",
+    "./error-code-coverage": "./tools/error-code-coverage.mjs",
+    "./framework-sync": "./tools/framework-sync.mjs",
+    "./i18n-parity": "./tools/i18n-parity.mjs",
+    "./journey-parity": "./tools/journey-parity.mjs",
+    "./package-versions": "./tools/package-versions.mjs"
+  },
+  "bin": {
+    "affe-contract-freshness": "./tools/contract-freshness.mjs",
+    "affe-e2e-doctor": "./tools/e2e-doctor.mjs",
+    "affe-endpoint-coverage": "./tools/endpoint-coverage.mjs",
+    "affe-error-code-coverage": "./tools/error-code-coverage.mjs",
+    "affe-framework-sync": "./tools/framework-sync.mjs",
+    "affe-i18n-parity": "./tools/i18n-parity.mjs",
+    "affe-journey-parity": "./tools/journey-parity.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "workspaces": [
     "packages/*"
   ],

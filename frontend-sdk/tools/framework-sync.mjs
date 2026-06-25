@@ -1,57 +1,106 @@
 #!/usr/bin/env node
-// AFFE — framework sync (the frontend half of the package-first law). A pilot carries a MIRROR of
-// eslint-plugin-aerofortress (the AFFE rules) because the package isn't published yet; a mirror that drifts from the
-// canonical either missed a rule wave or grew a local rule that never went upstream — exactly how framework
-// code gets "lost in time" inside a pilot. This compares the mirror against the canonical byte-for-byte
-// (line-ending-insensitive) and fails on drift. The backend half (package versions) lives in `af doctor`
-// (the .NET CLI's FrameworkSync); pilots wire THIS into their lint chain via a thin delegating wrapper.
-//
-// Usage: node tools/framework-sync.mjs <app-root> <framework-repo>
+// Frontend package sync — the npm half of the package-first law. The frontend framework is published:
+// pilots consume eslint-plugin-aerofortress and @aerofortress/react as packages, never as in-repo mirrors.
 
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { FRONTEND_PACKAGE_VERSIONS } from "./package-versions.mjs";
 
-/** A line-ending-insensitive fingerprint (the mirror crosses repos with different git eol settings). */
-export function fingerprint(text) {
-  return createHash("sha256").update(text.replace(/\r\n/g, "\n")).digest("hex");
+const DEPENDENCY_SECTIONS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
+const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "bin", "obj"]);
+
+/** @param {string} spec */
+export function declaredVersion(spec) {
+  return spec.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/)?.[0] ?? spec;
 }
 
 /**
- * Compare the pilot's plugin mirror against the framework canonical. Pure (no I/O).
- * @param {{ mirror: string|null, canonical: string|null }} input - file contents, null when absent
- * @returns {{ status: "ok"|"drifted"|"skipped", messages: string[] }}
+ * @param {{
+ *   canonical: ReadonlyArray<{name: string, version: string}>,
+ *   declarations: ReadonlyArray<{path: string, packages: Record<string, string>}>,
+ *   hasFrontend: boolean,
+ *   legacyMirror: boolean,
+ * }} input
  */
-export function checkMirror({ mirror, canonical }) {
-  if (mirror === null || canonical === null)
-    return { status: "skipped", messages: ["framework-sync: mirror or canonical not found — skipping (normal on CI)"] };
-  if (fingerprint(mirror) !== fingerprint(canonical))
-    return {
-      status: "drifted",
-      messages: [
-        "framework-sync: clients/eslint-plugin-aerofortress/index.cjs differs from the framework canonical — rebase the "
-        + "mirror (copy index.cjs + index.test.cjs from frontend-sdk/packages/eslint-plugin, bump its package.json "
-        + "version) and adopt any new rules in the app's eslint config. If the difference is a rule you wrote HERE, "
-        + "it belongs in aerofortress-framework first (the package-first law) — upstream it, then rebase.",
-      ],
-    };
-  return { status: "ok", messages: ["framework-sync: the eslint-plugin mirror matches the canonical."] };
+export function checkPackages({ canonical, declarations, hasFrontend, legacyMirror }) {
+  const messages = [];
+  if (legacyMirror)
+    messages.push(
+      "framework-sync: clients/eslint-plugin-aerofortress is a legacy vendored plugin copy — delete it and "
+      + "consume eslint-plugin-aerofortress from npm.",
+    );
+  if (!hasFrontend) return { status: messages.length ? "drifted" : "ok", messages };
+
+  for (const pkg of canonical) {
+    const found = declarations.flatMap((entry) =>
+      entry.packages[pkg.name] ? [{ path: entry.path, spec: entry.packages[pkg.name] }] : [],
+    );
+    if (found.length === 0) {
+      messages.push(
+        `framework-sync: frontend exists but no package.json declares ${pkg.name} ${pkg.version} — `
+        + "consume the published framework package instead of carrying its source locally.",
+      );
+      continue;
+    }
+    const stale = found.filter((entry) => declaredVersion(entry.spec) !== pkg.version);
+    if (stale.length)
+      messages.push(
+        `framework-sync: ${pkg.name} canonical is ${pkg.version} but this app declares `
+        + stale.map((entry) => `${entry.spec} in ${entry.path}`).join(", ")
+        + " — install the canonical package version and refresh the lockfile.",
+      );
+  }
+  return { status: messages.length ? "drifted" : "ok", messages };
 }
 
-// ── CLI tail (the only I/O) ─────────────────────────────────────────────────────────────────────────────────────
-const invokedDirectly =
-  process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, "/").split("/").pop());
+function packageDeclarations(root) {
+  const declarations = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name)) walk(join(dir, entry.name));
+        continue;
+      }
+      if (entry.name !== "package.json") continue;
+      const path = join(dir, entry.name);
+      const json = JSON.parse(readFileSync(path, "utf8"));
+      const packages = {};
+      for (const section of DEPENDENCY_SECTIONS)
+        Object.assign(packages, json[section] ?? {});
+      declarations.push({ path: relative(root, path), packages });
+    }
+  };
+  walk(root);
+  return declarations;
+}
+
+function frontendExists(root) {
+  const clients = join(root, "clients");
+  if (!existsSync(clients)) return false;
+  return readdirSync(clients, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .some((entry) => {
+      const dir = join(clients, entry.name);
+      return existsSync(join(dir, "package.json"))
+        && ["eslint.config.js", "eslint.config.mjs", "eslint.config.cjs"].some((file) => existsSync(join(dir, file)));
+    });
+}
+
+const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (invokedDirectly) {
-  const [, , appRoot, frameworkRepo] = process.argv;
-  if (!appRoot || !frameworkRepo) {
-    console.error("usage: node tools/framework-sync.mjs <app-root> <framework-repo>");
+  const [, , appRoot] = process.argv;
+  if (!appRoot) {
+    console.error("usage: affe-framework-sync <app-root>");
     process.exit(2);
   }
-  const read = (p) => (existsSync(p) ? readFileSync(p, "utf8") : null);
-  const result = checkMirror({
-    mirror: read(join(appRoot, "clients", "eslint-plugin-aerofortress", "index.cjs")),
-    canonical: read(join(frameworkRepo, "frontend-sdk", "packages", "eslint-plugin", "index.cjs")),
+  const result = checkPackages({
+    canonical: FRONTEND_PACKAGE_VERSIONS,
+    declarations: packageDeclarations(appRoot),
+    hasFrontend: frontendExists(appRoot),
+    legacyMirror: existsSync(join(appRoot, "clients", "eslint-plugin-aerofortress")),
   });
-  for (const m of result.messages) console.log(m);
+  for (const message of result.messages) console.error(message);
+  if (result.status === "ok") console.log("framework-sync: frontend package versions match the published SDK contract.");
   process.exit(result.status === "drifted" ? 1 : 0);
 }

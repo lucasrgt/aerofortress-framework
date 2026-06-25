@@ -1,26 +1,57 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error - plain .mjs tool module, typed by its JSDoc
-import { checkMirror, fingerprint } from "./framework-sync.mjs";
+import { checkPackages, declaredVersion } from "./framework-sync.mjs";
+import { FRONTEND_PACKAGE_VERSIONS } from "./package-versions.mjs";
 
-// The mirror gate: a pilot's plugin copy must match the canonical — drift is how framework code gets
-// "lost in time" inside a pilot. CI machines without the checkout skip instead of failing.
+const canonical = FRONTEND_PACKAGE_VERSIONS;
+
 describe("framework-sync", () => {
-  it("a matching mirror passes", () => {
-    expect(checkMirror({ mirror: "// rules", canonical: "// rules" }).status).toBe("ok");
+  it("accepts normal semver ranges at the canonical versions", () => {
+    const result = checkPackages({
+      canonical,
+      declarations: [{
+        path: "clients/app/package.json",
+        packages: {
+          "@aerofortress/frontend-sdk": "^0.1.0",
+          "eslint-plugin-aerofortress": "^0.11.0",
+          "@aerofortress/react": "~0.6.0",
+        },
+      }],
+      hasFrontend: true,
+      legacyMirror: false,
+    });
+    expect(result.status).toBe("ok");
   });
 
-  it("a drifted mirror fails with the rebase + upstream instruction", () => {
-    const result = checkMirror({ mirror: "// stale", canonical: "// new rules" });
+  it("fails stale or missing framework packages", () => {
+    const result = checkPackages({
+      canonical,
+      declarations: [{
+        path: "clients/app/package.json",
+        packages: {
+          "@aerofortress/frontend-sdk": "^0.1.0",
+          "eslint-plugin-aerofortress": "^0.10.0",
+        },
+      }],
+      hasFrontend: true,
+      legacyMirror: false,
+    });
     expect(result.status).toBe("drifted");
-    expect(result.messages[0]).toContain("package-first");
+    expect(result.messages.join("\n")).toContain("0.10.0");
+    expect(result.messages.join("\n")).toContain("@aerofortress/react");
   });
 
-  it("a missing side skips — the CI posture, never a false failure", () => {
-    expect(checkMirror({ mirror: null, canonical: "// x" }).status).toBe("skipped");
-    expect(checkMirror({ mirror: "// x", canonical: null }).status).toBe("skipped");
+  it("rejects the retired in-repo plugin mirror", () => {
+    const result = checkPackages({
+      canonical,
+      declarations: [],
+      hasFrontend: false,
+      legacyMirror: true,
+    });
+    expect(result.status).toBe("drifted");
+    expect(result.messages[0]).toContain("legacy vendored");
   });
 
-  it("a CRLF copy is not drift", () => {
-    expect(fingerprint("// a\r\n// b\r\n")).toBe(fingerprint("// a\n// b\n"));
+  it("extracts the concrete version from a dependency range", () => {
+    expect(declaredVersion("^0.11.0")).toBe("0.11.0");
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { checkE2e } from "./e2e-doctor.mjs";
+import { checkE2e, classifySpec } from "./e2e-doctor.mjs";
 
 // The e2e doctor enforces "completeness via curated checklist": a curated flow with no spec is a gap; a fully
 // covered manifest is clean. Pin both edges + the bootstrap (not-set-up-yet) state. Temp dirs live under cwd.
@@ -153,6 +153,23 @@ describe("checkE2e", () => {
       const r = checkE2e(dir);
       expect(r.gaps).toBe(0);
       expect(r.depthGaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("classifies backend-gated, seed-pending, front-only, and native specs", () => {
+    const dir = tmp();
+    try {
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "backend.spec.ts"), "requireBackend();\n");
+      writeFileSync(join(dir, "e2e", "seed.spec.ts"), "requireBackend(); requireSeed();\n");
+      writeFileSync(join(dir, "e2e", "smoke.spec.ts"), "test('renders', () => {});\n");
+      writeFileSync(join(dir, "e2e", "native.yaml"), "appId: com.example\n");
+      expect(classifySpec(dir, "e2e/backend.spec.ts")).toBe("ci-gated");
+      expect(classifySpec(dir, "e2e/seed.spec.ts")).toBe("seed-pending");
+      expect(classifySpec(dir, "e2e/smoke.spec.ts")).toBe("front-only");
+      expect(classifySpec(dir, "e2e/native.yaml")).toBe("native");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

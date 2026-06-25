@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Journey parity — the fullstack-loop doctor. The backend declares its critical journeys as Journeys/*.Tests.cs;
 // the frontend declares its e2e journeys in e2e/flows.json. This proves the two SETS agree, so no critical journey
 // is half-built (tested on the back but never end-to-end on the front, or vice-versa). It closes the loop at the
@@ -11,6 +12,10 @@
 // Reports both directions:
 //   - uncovered: a backend journey with no frontend flow linking to it
 //   - orphans:   a frontend flow whose `backendJourney` names a journey the backend doesn't have
+
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * @param {string[]} backendJourneys - journey keys (Journeys/<key>.Tests.cs)
@@ -34,4 +39,36 @@ export function checkJourneyParity(backendJourneys, frontendFlows) {
   ];
 
   return { uncovered, orphans, linked: [...linked], gaps: uncovered.length + orphans.length, messages };
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const [, , journeysDir, flowsFile, flag] = process.argv;
+  if (!journeysDir || !flowsFile) {
+    console.error("usage: affe-journey-parity <backend-journeys-dir> <flows.json> [--strict]");
+    process.exit(2);
+  }
+  if (!existsSync(journeysDir) || !existsSync(flowsFile)) {
+    console.log("AFFE-JOURNEY: backend journeys or frontend flows manifest not found — bootstrap, nothing to compare.");
+    process.exit(0);
+  }
+
+  const backendJourneys = readdirSync(journeysDir)
+    .filter((file) => file.endsWith(".Tests.cs"))
+    .map((file) => file.replace(/\.Tests\.cs$/, ""));
+  let frontendFlows;
+  try {
+    frontendFlows = JSON.parse(readFileSync(flowsFile, "utf8"));
+    if (!Array.isArray(frontendFlows)) throw new Error("flows.json must be an array");
+  } catch (error) {
+    console.log(`AFFE-JOURNEY: flows.json invalid — ${error.message}`);
+    process.exit(flag === "--strict" ? 1 : 0);
+  }
+
+  const result = checkJourneyParity(backendJourneys, frontendFlows);
+  console.log(
+    `AFFE-JOURNEY: ${backendJourneys.length} backend journey(s), ${result.linked.length} linked by a frontend flow, `
+      + `${result.gaps} parity gap(s).`,
+  );
+  for (const message of result.messages) console.log(`  - ${message}`);
+  process.exit(flag === "--strict" && result.gaps > 0 ? 1 : 0);
 }

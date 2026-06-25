@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // The e2e tier of the frontend doctor (canonical, runner-agnostic + target-aware). E2E is flow-level and
 // expensive, so it is NOT enforced per component (that is the integration tier's job, AFFE006). It is enforced at
 // the PROJECT level via a CURATED checklist: a project declares its journeys in `e2e/flows.json`, and the doctor
@@ -23,10 +24,12 @@
 // existence `gaps`, so a consumer can warn while flows adopt `terminal` and promote to a hard gate once they have.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Known runners → how to detect each (config file or convention dir). Add a runner here, not in consumers.
 const RUNNER_DETECT = {
   playwright: { files: ["playwright.config.ts", "playwright.config.js", "playwright.config.mjs"], dirs: [] },
+  cypress: { files: ["cypress.config.ts", "cypress.config.js", "cypress.config.mjs"], dirs: [] },
   maestro: { files: [], dirs: [".maestro", "maestro"] },
   detox: { files: [".detoxrc.js", ".detoxrc.json", ".detoxrc"], dirs: [] },
 };
@@ -41,7 +44,25 @@ export function detectRunners(root) {
 }
 
 /**
- * Inspect a project's e2e tier. Returns `{ bootstrap, runners, flows, gaps, depthGaps, messages }`:
+ * Classify what an existing spec actually exercises. Presence alone is not execution coverage:
+ * `ci-gated` specs require a real backend, `seed-pending` specs still await deterministic seed data,
+ * `front-only` specs are browser/render smoke, and YAML specs are native.
+ */
+export function classifySpec(root, spec) {
+  if (/\.ya?ml$/i.test(spec)) return "native";
+  try {
+    const source = readFileSync(join(root, spec), "utf8");
+    if (/\brequireSeed\s*\(/.test(source)) return "seed-pending";
+    if (/\brequireBackend\s*\(/.test(source)) return "ci-gated";
+    return "front-only";
+  } catch {
+    return "missing";
+  }
+}
+
+/**
+ * Inspect a project's e2e tier. Returns
+ * `{ bootstrap, runners, flows, gaps, depthGaps, execution, seedPending, messages }`:
  *   - bootstrap: true when e2e/flows.json doesn't exist yet (nothing to enforce — the pillar isn't set up)
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
  *   - depthGaps: warn-tier journey-depth findings (AFFE-JOURNEY-002) — a linked flow with no `terminal`, or a spec
@@ -51,14 +72,26 @@ export function detectRunners(root) {
  * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
  */
 export function checkE2e(root) {
+  const emptyExecution = { "ci-gated": 0, "front-only": 0, "seed-pending": 0, native: 0 };
   const flowsFile = join(root, "e2e", "flows.json");
   if (!existsSync(flowsFile)) {
-    return { bootstrap: true, runners: detectRunners(root), flows: 0, gaps: 0, depthGaps: 0, messages: ["no e2e/flows.json yet (bootstrap)"] };
+    return {
+      bootstrap: true,
+      runners: detectRunners(root),
+      flows: 0,
+      gaps: 0,
+      depthGaps: 0,
+      execution: emptyExecution,
+      seedPending: [],
+      messages: ["no e2e/flows.json yet (bootstrap)"],
+    };
   }
 
   const messages = [];
   let gaps = 0;
   let depthGaps = 0;
+  const execution = { ...emptyExecution };
+  const seedPending = [];
   const runners = detectRunners(root);
   const hasWeb = runners.some((r) => WEB_RUNNERS.has(r));
   const hasNative = runners.some((r) => NATIVE_RUNNERS.has(r));
@@ -72,7 +105,16 @@ export function checkE2e(root) {
     flows = JSON.parse(readFileSync(flowsFile, "utf8"));
     if (!Array.isArray(flows)) throw new Error("flows.json must be an array");
   } catch (e) {
-    return { bootstrap: false, runners, flows: 0, gaps: gaps + 1, depthGaps: 0, messages: [...messages, `flows.json invalid — ${e.message}`] };
+    return {
+      bootstrap: false,
+      runners,
+      flows: 0,
+      gaps: gaps + 1,
+      depthGaps: 0,
+      execution,
+      seedPending,
+      messages: [...messages, `flows.json invalid — ${e.message}`],
+    };
   }
 
   for (const flow of flows) {
@@ -91,6 +133,10 @@ export function checkE2e(root) {
       messages.push(`journey "${name}" is target:web but no web runner (playwright) is configured`);
       gaps++;
     }
+
+    const executionClass = classifySpec(root, spec);
+    execution[executionClass] = (execution[executionClass] ?? 0) + 1;
+    if (executionClass === "seed-pending") seedPending.push(name);
 
     // Depth (AFFE-JOURNEY-002): a linked flow must declare its `terminal`, and any flow that declares one must
     // actually assert it in the spec — otherwise "covered" only proves the journey STARTS. Warn-tier (depthGaps),
@@ -112,5 +158,30 @@ export function checkE2e(root) {
     }
   }
 
-  return { bootstrap: false, runners, flows: flows.length, gaps, depthGaps, messages };
+  return { bootstrap: false, runners, flows: flows.length, gaps, depthGaps, execution, seedPending, messages };
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const [, , root, flag] = process.argv;
+  if (!root) {
+    console.error("usage: affe-e2e-doctor <frontend-root> [--strict]");
+    process.exit(2);
+  }
+  const result = checkE2e(root);
+  if (result.bootstrap) {
+    console.log("AFFE-E2E: no e2e/flows.json yet — e2e tier not set up (bootstrap).");
+    process.exit(0);
+  }
+  const execution = result.execution;
+  console.log(
+    `AFFE-E2E: ${result.flows} curated journey(s) `
+      + `[real-browser CI gate: ${execution["ci-gated"]}, front-only smoke: ${execution["front-only"]}, `
+      + `seed-pending: ${execution["seed-pending"]}, native: ${execution.native}], `
+      + `runners=[${result.runners.join(", ") || "none"}], ${result.gaps} roadmap gap(s), `
+      + `${result.depthGaps} depth gap(s).`,
+  );
+  for (const message of result.messages) console.log(`  - ${message}`);
+  if (result.seedPending.length)
+    console.log(`  - seed-pending: ${result.seedPending.join(", ")}`);
+  process.exit(flag === "--strict" && (result.gaps > 0 || result.depthGaps > 0) ? 1 : 0);
 }
