@@ -17,7 +17,7 @@ workarounds) because the SDK query did not exist yet — the AI reported "done" 
 was mocked. We want the frontend equivalent of the backend's guarantee: **wired is the only
 legal shape; mock is structurally visible and fails the build.**
 
-Two cautionary tales bound the design. **Lazuli-1** (the language) died owning a bespoke
+Two cautionary tales bound the design. **The predecessor language** died owning a bespoke
 compiler — including a frontend codegen apparatus (audience-scoped SDK projection, smart stubs)
 that shipped to nobody. **aerocoding** died generating artifacts for features that did not exist.
 Any frontend harness must avoid both: it is enforcement + convention, never a generator that
@@ -49,8 +49,8 @@ the harness.
 4. **The bright line: generate the contract, scaffold the behavior.** Types and the typed
    slice-hook are *generated* (plumbing, re-emitted, never edited). The ViewModel body is
    *scaffolded once* by `af g view <Slice>` and then owned — a visible skeleton, never
-   re-emitted. Source-gen of ViewModel behavior (and old-lazuli-style "smart stubs" that
-   pre-fill logic) is **out** — it is the Lazuli-2 vector.
+   re-emitted. Source-gen of ViewModel behavior (and predecessor-style "smart stubs" that
+   pre-fill logic) is **out** — it is the source-gen vector.
 
 5. **The harness is a separate, optional, doctor-removable package** — an `eslint-plugin-aerofortress`
    for in-file rules plus a thin `ts-morph` pass for cross-file shape, invoked alongside `af
@@ -65,14 +65,14 @@ the harness.
 - The policed surface collapses to the ViewModel; the View and completeness need no rules.
 - The harness lives in a toolchain (TS/ESLint) outside .NET — accepted cost of the React choice.
 - Plumbing-codegen is now *activated* (it was parked "not in v0" in `CONVENTIONS.md`), but only
-  via stock tooling — no bespoke compiler, so the Lazuli-1 vector stays closed.
+  via stock tooling — no bespoke compiler, so the bespoke-compiler vector stays closed.
 - `CONVENTIONS.md`'s "No frontend/UI generation" non-goal needs a one-line clarification that it
   forbids *behavior* generation and bespoke generators, not the enforcement harness.
 
 ## Alternatives rejected
 
 - **A bespoke AeroFortress OpenAPI→TS generator ("envenenada nativa").** Re-solves parsing/emission
-  orval already owns; it is the literal Lazuli-1 gesture. Stock-wrapped wins. Bespoke is earned
+  orval already owns; it is the literal bespoke-compiler gesture. Stock-wrapped wins. Bespoke is earned
   only by a concrete, proven limitation of orval — and even then as a thin post-processor, not a
   rewrite.
 - **Blazor/MAUI frontend** (would keep the harness in Roslyn). Rejected: too immature for the

@@ -28,7 +28,7 @@ Ground every frontend convention here, never memory. The backend constitution is
    apparatus.
 
 Any feature that fails both — a bespoke compiler, source-gen of behavior, a ViewModel framework
-you inherit from — is **out, by construction**. Both are the lessons of Lazuli-1 (died owning a
+you inherit from — is **out, by construction**. Both are the lessons of the predecessor language (died owning a
 compiler) and aerocoding (died generating artifacts for features that did not exist).
 
 ---
@@ -64,7 +64,7 @@ the schemas — is **pure TypeScript with no platform dependency** (`AFFE009` en
 ViewModels + client + types; only the Views differ. And it is **tested once, in Vitest** (jsdom), since none of
 it touches a native runtime. Platform capabilities (storage, navigation, push, camera) are **injected ports**
 (the frontend's `IFileStorage`), wired by each platform's View/shell — never imported into the ViewModel. This
-is the old lazuli's "audience/platform projection" done as plain shared TS + thin per-platform Views, not a
+is the predecessor's "audience/platform projection" done as plain shared TS + thin per-platform Views, not a
 bespoke compiler. Physically extracting a `core` package is a `move` when the web client lands (YAGNI until
 then); the discipline holds from day one.
 
@@ -143,7 +143,7 @@ orval.config.ts          # the shipped convention config — the "poison" lives 
 
 - **The generator is stock, wrapped — never bespoke.** `af gen client` runs **orval**
   (target `react-query`) under our config. We do not own a compiler; we wire an existing one.
-  Building our own OpenAPI→TS→TanStack generator *is* the Lazuli-1 gesture — re-solving parsing
+  Building our own OpenAPI→TS→TanStack generator *is* the bespoke-compiler gesture — re-solving parsing
   and emission that orval already maintains, tests, and edge-cases for free.
 - **The opinion lives in config + convention, not in a fork.** The "envenenada" is two things:
   the `orval.config.ts` we ship and the **mutator** (`aerofortress.client.ts` — the typed AeroFortress
@@ -541,13 +541,13 @@ to an unchecked `string`.
 
 ## The bright line — generate vs scaffold (the law)
 
-This is the whole game. Cross it wrong and the harness becomes the Lazuli-2 vector.
+This is the whole game. Cross it wrong and the harness becomes the source-gen vector.
 
 | | **Generate** (re-emits every build; you never edit) | **Scaffold** (`g`, runs once; you own it after) |
 |---|---|---|
 | Contract types (`Input`/`Output` → TS) | ✅ plumbing — the wire | |
 | Typed slice-hook (`useDeposit()`) | ✅ plumbing — a wrap of the client | |
-| ViewModel body (state, commands, derived, UX) | ❌ **source-gen of behavior — the Lazuli-2 vector** | ✅ a visible skeleton you write |
+| ViewModel body (state, commands, derived, UX) | ❌ **source-gen of behavior — the vector we refuse** | ✅ a visible skeleton you write |
 
 The test that separates them: **scaffold** runs on demand, writes visible code you edit and
 own, and is doctor-removable (deleting the generator does not touch existing files) — the output
@@ -556,7 +556,7 @@ behavior lives in the generator, not the file.
 
 So `af g view <Slice>` scaffolds the `view`/`viewModel`/`test` triple with the **types fiber
 from the contract** and the **behavior as a TODO you write** — a starting point, never an owner.
-Explicitly **out**, on the same law: the old lazuli's "smart stubs" that pre-filled the body
+Explicitly **out**, on the same law: the predecessor's "smart stubs" that pre-filled the body
 with the "correct" runtime call. That delegates behavior; it is the frontend twin of the
 "runtime framework you inherit from" the back rejects.
 
@@ -575,7 +575,7 @@ a `.mjs` scanner for exactly this, the tell that Biome's custom plugins are not 
 
 With the MVVM seam, the policed surface collapses to **the ViewModel** — the View is mock-free
 by construction, and completeness is the compiler. Every rule is born from observed pain
-(hostpoint's port + the old-lazuli wiring rules), never speculation.
+(hostpoint's port + the predecessor's wiring rules), never speculation.
 
 | Rule | Enforces | Status | Origin |
 |------|----------|--------|--------|
@@ -714,9 +714,9 @@ client` (stock orval, wrapped) with the shipped config + mutator. One blessed fr
 
 **Out (non-goals), by decision:**
 - **No bespoke generator.** orval stock, wrapped — never a AeroFortress OpenAPI→TS compiler. (The
-  Lazuli-1 vector.)
+  bespoke-compiler vector.)
 - **No source-gen of behavior.** The ViewModel body is scaffolded once and owned, never
-  re-emitted. No "smart stubs" that pre-fill logic. (The Lazuli-2 vector.)
+  re-emitted. No "smart stubs" that pre-fill logic. (The source-gen vector.)
 - **No MVVM framework.** Plain custom hooks, not classes/observables/two-way binding. (The
   stranger-maintainable law.)
 - **No prescribed styling *mechanism* — but the design *vocabulary* is conventional.** The blessed

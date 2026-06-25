@@ -95,13 +95,13 @@ New framework-dev tooling never lands on the published surface.
 
 ## Scope discipline — the anti-drift guardrails
 
-The two cautionary tales are concrete. **Lazuli-the-language** died from owning a compiler
+The two cautionary tales are concrete. **The predecessor language** died from owning a compiler
 (gargantuan apparatus, generated non-code, zero adoption). **Aerocoding** died from scope
 explosion (a generator that metastasized into a full-SaaS meta-framework + frontend sprawl +
 28K LOC of specs for unbuilt features). Do not repeat either:
 
 - **No source-gen of behavior.** Plumbing only, if ever — and not yet. A source generator is
-  a mini-compiler: the Lazuli-2 vector. Behavior always stays visible in the slice.
+  a mini-compiler: the source-gen vector. Behavior always stays visible in the slice.
 - **No vendor adapters in core.** Ship the *standard* a component follows, not the plugins.
 - **No frontend/UI generation, no realtime, no multi-app sprawl.** The aerocoding failure
   modes — designed out.

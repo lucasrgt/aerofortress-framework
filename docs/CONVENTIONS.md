@@ -25,7 +25,7 @@ specific need.
 
 The boundary is deliberate — the lesson of two failures we will not repeat:
 
-- **Lazuli-1** (the language) grew into a gargantuan apparatus — per-vendor adapters, a runtime, a
+- **The predecessor language** grew into a gargantuan apparatus — per-vendor adapters, a runtime, a
   compiler — and shipped to nobody.
 - **aerocoding** became a "unification engine," building artifacts for features that did not exist.
 
@@ -39,7 +39,7 @@ the app. The framework earns new surface from evidence, never from the ambition 
 ## The two laws (read before adding anything)
 
 1. **Stranger-maintainable.** The output is always plain, idiomatic C# that a .NET dev who
-   has never heard of AeroFortress can read and maintain. (Lazuli-the-language died failing this:
+   has never heard of AeroFortress can read and maintain. (The predecessor language died failing this:
    its real code was generated Go.)
 2. **Doctor-removable.** `dotnet remove` the analyzer and the project still **compiles and
    runs** — you only lose enforcement. The harness is wire, not apparatus.
@@ -544,7 +544,7 @@ planned), a knowledge-graph dump for the LLM (planned).
 
 **Out (non-goals), by decision:**
 - **No source-gen of behavior.** Plumbing only, if ever — and not in v0. (It is a
-  mini-compiler: the Lazuli-2 vector.)
+  mini-compiler: the source-gen vector.)
 - **No vendor adapters in the core.** MercadoPago/Twilio/etc. are written *following* the
   component standard, in separate repos — the kit ships the standard, not the plugins.
 - **No frontend/UI generation, no realtime, no multi-app sprawl.** (The aerocoding-2
