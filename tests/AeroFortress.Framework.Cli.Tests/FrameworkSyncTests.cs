@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using AeroFortress.Framework.Cli;
 
 namespace AeroFortress.Framework.Cli.Tests;
@@ -5,70 +7,47 @@ namespace AeroFortress.Framework.Cli.Tests;
 public class FrameworkSyncTests
 {
     [Fact]
-    public void No_framework_section_is_a_notice_not_a_gate()
+    public void An_app_with_no_aerofortress_references_is_in_sync()
     {
-        var app = NewApp("[workspace]\nname = \"shop\"\n");
+        var app = NewApp();
 
         var outcome = FrameworkSync.Check(app);
 
-        Assert.False(outcome.Gating);
+        Assert.True(outcome.Gating);
         Assert.True(outcome.InSync);
-        Assert.Single(outcome.Messages);
+        Assert.Empty(outcome.Messages);
     }
 
     [Fact]
-    public void An_unreachable_repo_skips_instead_of_failing_the_ci_machine()
+    public void A_stale_backend_version_fails_without_any_framework_checkout()
     {
-        var app = NewApp("[workspace]\nname = \"shop\"\n\n[framework]\nrepo = \"../nowhere\"\n");
-
-        var outcome = FrameworkSync.Check(app);
-
-        Assert.False(outcome.Gating);
-        Assert.True(outcome.InSync);
-    }
-
-    [Fact]
-    public void A_stale_package_version_fails_the_sync()
-    {
-        var (app, _) = NewPair(frameworkVersion: "0.2.0", appPackageVersion: "0.1.0");
+        var app = NewApp();
+        WriteCsproj(app, "Shop.Api.csproj", "AeroFortress.Framework", StaleVersion);
 
         var outcome = FrameworkSync.Check(app);
 
         Assert.True(outcome.Gating);
         Assert.False(outcome.InSync);
-        Assert.Contains(outcome.Messages, m => m.Contains("0.2.0") && m.Contains("0.1.0"));
+        Assert.Contains(outcome.Messages,
+            m => m.Contains(StaleVersion) && m.Contains(FrameworkPackageVersions.Framework));
     }
 
     [Fact]
-    public void A_stale_frontend_package_fails_the_sync()
+    public void The_version_this_doctor_ships_for_passes()
     {
-        var (app, repo) = NewPair(frameworkVersion: "0.2.0", appPackageVersion: "0.2.0");
-        WriteFrontendPackages(repo, pluginVersion: "0.11.0", reactVersion: "0.6.0", sdkVersion: "0.1.0");
-        WriteFrontend(app, pluginVersion: "^0.10.0", reactVersion: "^0.6.0", sdkVersion: "^0.1.0");
+        var app = NewApp();
+        WriteCsproj(app, "Shop.Api.csproj",
+            "AeroFortress.Framework.EntityFrameworkCore", FrameworkPackageVersions.Framework);
 
         var outcome = FrameworkSync.Check(app);
 
-        Assert.False(outcome.InSync);
-        Assert.Contains(outcome.Messages, m => m.Contains("eslint-plugin-aerofortress") && m.Contains("0.10.0"));
-    }
-
-    [Fact]
-    public void Matching_backend_and_frontend_package_versions_pass()
-    {
-        var (app, repo) = NewPair(frameworkVersion: "0.2.0", appPackageVersion: "0.2.0");
-        WriteFrontendPackages(repo, pluginVersion: "0.11.0", reactVersion: "0.6.0", sdkVersion: "0.1.0");
-        WriteFrontend(app, pluginVersion: "^0.11.0", reactVersion: "^0.6.0", sdkVersion: "^0.1.0");
-
-        var outcome = FrameworkSync.Check(app);
-
-        Assert.True(outcome.Gating);
         Assert.True(outcome.InSync);
     }
 
     [Fact]
     public void A_legacy_plugin_copy_fails_even_without_a_frontend()
     {
-        var (app, _) = NewPair(frameworkVersion: "0.2.0", appPackageVersion: "0.2.0");
+        var app = NewApp();
         Directory.CreateDirectory(Path.Combine(app, "clients", "eslint-plugin-aerofortress"));
 
         var outcome = FrameworkSync.Check(app);
@@ -77,70 +56,28 @@ public class FrameworkSyncTests
         Assert.Contains(outcome.Messages, m => m.Contains("legacy vendored"));
     }
 
-    private static string NewApp(string manifest)
+    // The SSOT safety net: the version baked into the CLI (what scaffolds stamp and the gate enforces) must equal
+    // the library props <Version> the packages are actually built with, so the two copies can never drift apart.
+    [Fact]
+    public void Baked_framework_version_matches_the_props_ssot()
     {
-        var root = Directory.CreateTempSubdirectory("aerofortress-sync-test").FullName;
-        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), manifest);
-        return root;
+        var version = Regex.Match(File.ReadAllText(PropsPath()), @"<Version>([^<]+)</Version>");
+
+        Assert.True(version.Success, "could not read <Version> from AeroFortress.Framework.Library.props");
+        Assert.Equal(version.Groups[1].Value, FrameworkPackageVersions.Framework);
     }
 
-    // An app + a framework checkout side by side, with the manifest pointing at the checkout.
-    private static (string App, string Repo) NewPair(string frameworkVersion, string appPackageVersion)
-    {
-        var parent = Directory.CreateTempSubdirectory("aerofortress-sync-pair").FullName;
-        var repo = Path.Combine(parent, "aerofortress-framework");
-        var app = Path.Combine(parent, "app");
-        Directory.CreateDirectory(Path.Combine(repo, "build"));
-        Directory.CreateDirectory(app);
+    private const string StaleVersion = "0.0.1-stale";
 
-        File.WriteAllText(Path.Combine(repo, "build", "AeroFortress.Framework.Library.props"),
-            $"<Project><PropertyGroup><Version>{frameworkVersion}</Version></PropertyGroup></Project>");
-        File.WriteAllText(Path.Combine(app, "AeroFortress.toml"),
-            "[workspace]\nname = \"shop\"\n\n[framework]\nrepo = \"../aerofortress-framework\"\n");
-        File.WriteAllText(Path.Combine(app, "Shop.Api.csproj"),
-            $"""<Project><ItemGroup><PackageReference Include="AeroFortress" Version="{appPackageVersion}" /></ItemGroup></Project>""");
-        return (app, repo);
-    }
+    private static string NewApp() => Directory.CreateTempSubdirectory("aerofortress-sync-test").FullName;
 
-    private static void WriteFrontendPackages(string repo, string pluginVersion, string reactVersion, string sdkVersion)
-    {
-        WritePackage(
-            Path.Combine(repo, "frontend-sdk"),
-            "@aerofortress/frontend-sdk",
-            sdkVersion);
-        WritePackage(
-            Path.Combine(repo, "frontend-sdk", "packages", "eslint-plugin"),
-            "eslint-plugin-aerofortress",
-            pluginVersion);
-        WritePackage(
-            Path.Combine(repo, "frontend-sdk", "packages", "aerofortress-react"),
-            "@aerofortress/react",
-            reactVersion);
-    }
+    private static void WriteCsproj(string app, string file, string package, string version) =>
+        File.WriteAllText(Path.Combine(app, file),
+            $"""<Project><ItemGroup><PackageReference Include="{package}" Version="{version}" /></ItemGroup></Project>""");
 
-    private static void WriteFrontend(string app, string pluginVersion, string reactVersion, string sdkVersion)
-    {
-        var dir = Path.Combine(app, "clients", "web");
-        Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "eslint.config.mjs"), "export default [];");
-        File.WriteAllText(Path.Combine(dir, "package.json"),
-            $$"""
-            {
-              "dependencies": {
-                "@aerofortress/react": "{{reactVersion}}"
-              },
-              "devDependencies": {
-                "@aerofortress/frontend-sdk": "{{sdkVersion}}",
-                "eslint-plugin-aerofortress": "{{pluginVersion}}"
-              }
-            }
-            """);
-    }
-
-    private static void WritePackage(string dir, string name, string version)
-    {
-        Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "package.json"),
-            $$"""{"name":"{{name}}","version":"{{version}}"}""");
-    }
+    // The library props is the version SSOT; resolve it from this test's source location so the assertion holds
+    // both locally and on CI (the checkout path is embedded at compile time and exists at test time).
+    private static string PropsPath([CallerFilePath] string thisFile = "") =>
+        Path.GetFullPath(Path.Combine(
+            Path.GetDirectoryName(thisFile)!, "..", "..", "build", "AeroFortress.Framework.Library.props"));
 }

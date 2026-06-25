@@ -34,9 +34,9 @@ static int Doctor(string[] rest)
     foreach (var message in manifest.Messages)
         Console.Error.WriteLine($"  {message}");
 
-    // The anti-desync leg: when the framework checkout is reachable ([framework] repo in AeroFortress.toml), a
-    // stale backend/frontend package version or a legacy vendored frontend copy fails the doctor — the package-first law,
-    // enforced. Unreachable (CI) degrades to a notice.
+    // The anti-desync leg (package-first law): a stale AeroFortress.Framework.* package version or a revived
+    // vendored frontend copy fails the doctor. The expected version is baked into this CLI, so the gate fires on
+    // CI and on any machine — no sibling framework checkout required.
     var sync = FrameworkSync.Check(Directory.GetCurrentDirectory());
     Console.WriteLine("af doctor — framework sync...");
     foreach (var message in sync.Messages)
