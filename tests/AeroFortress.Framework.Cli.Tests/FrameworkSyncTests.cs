@@ -67,6 +67,22 @@ public class FrameworkSyncTests
         Assert.Equal(version.Groups[1].Value, FrameworkPackageVersions.Framework);
     }
 
+    // The scaffold starter ships literal package versions (the generators stamp the constant, but `af new`'s
+    // csproj is static), so a test pins them to the SSOT — a freshly-scaffolded app is never born on a historical
+    // framework version (the "nasce velho" drift).
+    [Fact]
+    public void Template_package_references_match_the_shipped_version()
+    {
+        var refs = Directory
+            .EnumerateFiles(Path.Combine(RepoRoot(), "templates"), "*.csproj", SearchOption.AllDirectories)
+            .SelectMany(p => Regex.Matches(File.ReadAllText(p), @"Include=""(AeroFortress[^""]*)""\s+Version=""([^""]+)""")
+                .Select(m => (Package: m.Groups[1].Value, Version: m.Groups[2].Value)))
+            .ToList();
+
+        Assert.NotEmpty(refs);
+        Assert.All(refs, reference => Assert.Equal(FrameworkPackageVersions.Framework, reference.Version));
+    }
+
     private const string StaleVersion = "0.0.1-stale";
 
     private static string NewApp() => Directory.CreateTempSubdirectory("aerofortress-sync-test").FullName;
@@ -75,9 +91,11 @@ public class FrameworkSyncTests
         File.WriteAllText(Path.Combine(app, file),
             $"""<Project><ItemGroup><PackageReference Include="{package}" Version="{version}" /></ItemGroup></Project>""");
 
-    // The library props is the version SSOT; resolve it from this test's source location so the assertion holds
-    // both locally and on CI (the checkout path is embedded at compile time and exists at test time).
-    private static string PropsPath([CallerFilePath] string thisFile = "") =>
-        Path.GetFullPath(Path.Combine(
-            Path.GetDirectoryName(thisFile)!, "..", "..", "build", "AeroFortress.Framework.Library.props"));
+    // The repo root, resolved from this test's source location so file assertions hold both locally and on CI
+    // (the checkout path is embedded at compile time and exists at test time). tests/<proj>/<file> → up two.
+    private static string RepoRoot([CallerFilePath] string thisFile = "") =>
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(thisFile)!, "..", ".."));
+
+    // The library props is the version SSOT.
+    private static string PropsPath() => Path.Combine(RepoRoot(), "build", "AeroFortress.Framework.Library.props");
 }
