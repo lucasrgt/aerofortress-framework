@@ -547,8 +547,10 @@ planned), a knowledge-graph dump for the LLM (planned).
   mini-compiler: the source-gen vector.)
 - **No vendor adapters in the core.** MercadoPago/Twilio/etc. are written *following* the
   component standard, in separate repos — the kit ships the standard, not the plugins.
-- **No frontend/UI generation, no realtime, no multi-app sprawl.** (The aerocoding-2
-  failure modes — designed out.)
+- **No source-gen of UI behavior, no realtime *on by default*, no multi-app sprawl.** (The
+  aerocoding-2 failure modes — designed out.) *Nuance:* the frontend is scaffolded-once-and-owned
+  + enforced, never re-generated (`af g view`); real-time is **opt-in** via `af g hub` (see
+  §"Real-time — hubs"). The failure mode is the sprawl/source-gen, not the capability.
 - **No runtime framework you inherit from.** Conventions + analyzer, not base classes.
 
 When a proposal smells like capability instead of convention+enforcement, it is a scope

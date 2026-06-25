@@ -103,8 +103,11 @@ explosion (a generator that metastasized into a full-SaaS meta-framework + front
 - **No source-gen of behavior.** Plumbing only, if ever — and not yet. A source generator is
   a mini-compiler: the source-gen vector. Behavior always stays visible in the slice.
 - **No vendor adapters in core.** Ship the *standard* a component follows, not the plugins.
-- **No frontend/UI generation, no realtime, no multi-app sprawl.** The aerocoding failure
-  modes — designed out.
+- **No source-gen of UI behavior, no realtime *on by default*, no multi-app sprawl.** The
+  aerocoding failure modes — designed out. *Nuance (so this never reads as a ban):* the frontend
+  is scaffolded-once-and-owned + enforced, never re-generated (`af g view`); real-time is **opt-in**
+  via `af g hub` (CONVENTIONS.md §"Real-time — hubs"). The failure mode is the sprawl/source-gen,
+  not the capability.
 - **No runtime framework you inherit from.** Conventions + analyzers, not base classes.
 - **`[Slice]` stays a pure marker; `.ctx.md` stays prose.** Reject fattening either into a
   mini-language.
