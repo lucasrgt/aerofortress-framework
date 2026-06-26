@@ -59,6 +59,16 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
             .WithDatabase("postgres")
             .WithUsername("postgres")
             .WithPassword("postgres")
+            // A throwaway test database needs no crash durability, so the server runs without it. This is the
+            // lever that matters at scale: CREATE DATABASE … TEMPLATE physically copies the template, and a suite
+            // that cuts hundreds of clones otherwise drowns the disk in WAL — 200-second checkpoints until the
+            // clone command times out (the failure this fixes). fsync/synchronous_commit/full_page_writes off
+            // makes every checkpoint cheap; a wide max_wal_size stops the checkpoints firing every few seconds.
+            .WithCommand(
+                "-c", "fsync=off",
+                "-c", "synchronous_commit=off",
+                "-c", "full_page_writes=off",
+                "-c", "max_wal_size=2GB")
             .Build();
     }
 
@@ -103,7 +113,11 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
             // CA2100: not user input — `name` is a fresh GUID and the template name is ctor-fixed; CREATE
             // DATABASE is DDL and cannot be parameterized.
 #pragma warning disable CA2100
-            cmd.CommandText = $"CREATE DATABASE \"{name}\" TEMPLATE \"{_template}\"";
+            // STRATEGY file_copy: copy the template's files directly instead of the PG15+ default (wal_log),
+            // which journals every block of the copied database. At hundreds of clones a run, wal_log buries the
+            // disk in WAL — the checkpoint thrash that times the clone out; file_copy (the pre-PG15 behaviour)
+            // skips it, and pairs with the durability-off server flags set on the container.
+            cmd.CommandText = $"CREATE DATABASE \"{name}\" TEMPLATE \"{_template}\" STRATEGY file_copy";
 #pragma warning restore CA2100
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
