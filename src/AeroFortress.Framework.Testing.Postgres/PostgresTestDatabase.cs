@@ -43,6 +43,14 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
     private bool _ready;
     private string _maintenanceConnection = "";
 
+    // A template clone is serialized (via _gate) and is one-time setup, not a query under an SLA — but under a full
+    // suite's worth of concurrent test databases the file_copy checkpoint can momentarily exceed Npgsql's 30s
+    // default and flake the clone (observed: a 33s clone tripping the timeout). Let the client wait instead;
+    // generous yet bounded, so a genuine hang still surfaces. A retry is the wrong tool — a client-side timeout
+    // does not cancel the server-side CREATE DATABASE, so retrying would launch a second concurrent clone and make
+    // the contention worse.
+    private const int SetupCommandTimeoutSeconds = 300;
+
     /// <summary>Declare the suite's database. Nothing starts until the first store is asked for.</summary>
     /// <param name="migrateTemplate">Migrates the template database the clones are cut from; receives its
     /// connection string (typically <c>ctx.Database.MigrateAsync()</c> over the app's context).</param>
@@ -119,6 +127,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
             // skips it, and pairs with the durability-off server flags set on the container.
             cmd.CommandText = $"CREATE DATABASE \"{name}\" TEMPLATE \"{_template}\" STRATEGY file_copy";
 #pragma warning restore CA2100
+            cmd.CommandTimeout = SetupCommandTimeoutSeconds;
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
         finally
@@ -153,6 +162,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
 #pragma warning disable CA2100 // the template name is ctor-fixed, not user input
                 create.CommandText = $"DROP DATABASE IF EXISTS \"{_template}\"; CREATE DATABASE \"{_template}\"";
 #pragma warning restore CA2100
+                create.CommandTimeout = SetupCommandTimeoutSeconds;
                 await create.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
 
