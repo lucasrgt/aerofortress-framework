@@ -90,6 +90,66 @@ public class SliceGeneratorTests
         Assert.Contains("[Journey(typeof(Place), JourneyPath.Sad)]", journey);
     }
 
+    [Fact]
+    public void Verify_declares_the_criteria_and_scaffolds_the_red_proof()
+    {
+        var root = NewProject("Shop.Api");
+
+        var code = SliceGenerator.Generate(root, "Wallets", "Withdraw", critical: true,
+            verify: ["idempotency-key-honored"]);
+
+        Assert.Equal(0, code);
+
+        // The obligation: the module manifest declares the slice with the criterion (what AF0031 wants),
+        // and the file is exactly what the doctor/Assay.Net readers parse.
+        var manifestPath = Path.Combine(root, "Modules", "Wallets", "Wallets.spec.toml");
+        var manifest = Assay.Net.SpecManifest.Load(manifestPath);
+        Assert.Equal("Wallets", manifest.Module);
+        Assert.Equal(new[] { "idempotency-key-honored" }, manifest.Slices["Withdraw"]);
+
+        // The proof: co-located, anchored with [AVP] (what AF0030 scans), wired to the right archetype,
+        // and red by design (the subject factory throws until the real endpoint is bound).
+        var proof = File.ReadAllText(Path.Combine(root, "Modules", "Wallets", "Slices", "Withdraw.Avp.Tests.cs"));
+        Assert.Contains("namespace Shop.Tests.Modules.Wallets;", proof);
+        Assert.Contains("[AVP(\"idempotency-key-honored\")]", proof);
+        Assert.Contains("new RequestIdempotency()", proof);
+        Assert.Contains("RequestIdempotencySubject", proof);
+        Assert.Contains("NotImplementedException", proof);
+    }
+
+    [Fact]
+    public void An_off_catalog_criterion_still_gets_a_red_anchor_proof()
+    {
+        var root = NewProject("Shop.Api");
+
+        SliceGenerator.Generate(root, "Orders", "Place", critical: true, verify: ["my-domain-invariant"]);
+
+        var proof = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.Avp.Tests.cs"));
+        Assert.Contains("[AVP(\"my-domain-invariant\")]", proof);
+        Assert.Contains("Assert.Fail", proof);   // a proof that cannot fail must never ship
+    }
+
+    [Fact]
+    public void Run_parses_the_verify_flag_and_rejects_unknown_ones()
+    {
+        // Run() reads the current directory, so pin it to a fresh project for the duration.
+        var root = NewProject("Shop.Api");
+        var before = Directory.GetCurrentDirectory();
+        Directory.SetCurrentDirectory(root);
+        try
+        {
+            Assert.Equal(0, SliceGenerator.Run("Wallets", "Withdraw", ["--critical", "--verify", "idempotency-key-honored"]));
+            Assert.True(File.Exists(Path.Combine(root, "Modules", "Wallets", "Wallets.spec.toml")));
+
+            Assert.Equal(1, SliceGenerator.Run("Wallets", "Deposit", ["--verify"]));      // missing the id list
+            Assert.Equal(1, SliceGenerator.Run("Wallets", "Deposit", ["--nonsense"]));    // unknown flag
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(before);
+        }
+    }
+
     private static string NewProject(string name)
     {
         var root = Directory.CreateTempSubdirectory("aerofortress-framework-cli-test").FullName;

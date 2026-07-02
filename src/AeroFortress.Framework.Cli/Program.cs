@@ -4,8 +4,7 @@ return args switch
 {
     ["new", var name] => Tooling.Dotnet("new", ["aerofortress", "-n", name]),
     ["g", "module", var name] => ModuleGenerator.Generate(Directory.GetCurrentDirectory(), name),
-    ["g", "slice", var module, var name] => SliceGenerator.Generate(Directory.GetCurrentDirectory(), module, name),
-    ["g", "slice", var module, var name, "--critical"] => SliceGenerator.Generate(Directory.GetCurrentDirectory(), module, name, critical: true),
+    ["g", "slice", var module, var name, .. var flags] => SliceGenerator.Run(module, name, flags),
     ["g", "entity", var module, var name] => EntityGenerator.Generate(Directory.GetCurrentDirectory(), module, name),
     ["g", "vo", var name] => ValueObjectGenerator.Generate(Directory.GetCurrentDirectory(), name),
     ["g", "crud", var module, var entity] => CrudGenerator.Generate(Directory.GetCurrentDirectory(), module, entity),
@@ -14,6 +13,7 @@ return args switch
     ["g", "auth:otp"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.Otp),
     ["g", "auth:oauth"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.OAuth),
     ["g", "auth:email"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.Email),
+    ["criteria", .. var rest] => CriteriaCommand.Run(rest),
     ["doctor", .. var rest] => DoctorCommand.Run(rest),
     ["gate", .. var rest] => GateCommand.Run(rest),
     ["mutate", .. var rest] => Tooling.Dotnet("stryker", rest),
@@ -40,7 +40,11 @@ static int Usage()
         usage:
           af new <Name>                 scaffold a new AeroFortress project (dotnet new aerofortress)
           af g module <Name>            generate a module + wire it into Program.cs
-          af g slice <Module> <Name> [--critical]   generate a slice + tests (+ journeys if critical)
+          af g slice <Module> <Name> [--critical] [--verify <id,id>]
+                                        generate a slice + tests (+ journeys if critical); --verify also
+                                        declares the AVP criteria in <Module>.spec.toml and scaffolds the
+                                        co-located [AVP] proof (red by design — correct by construction)
+          af criteria list|suggest <words...>   the AVP catalog menu / ranked criteria for a slice
           af g entity <Module> <Name>   generate a rich [Entity] — encapsulated, with an EnsureValid invariant funnel
           af g vo <Name>                generate an always-valid [ValueObject] in BuildingBlocks
           af g crud <Module> <Entity>   generate CRUD slices (list/lookup/create/update/delete +me) for a data-bag entity

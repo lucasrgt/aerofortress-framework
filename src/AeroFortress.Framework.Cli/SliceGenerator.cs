@@ -12,12 +12,51 @@ namespace AeroFortress.Framework.Cli;
 /// </summary>
 public static class SliceGenerator
 {
+    /// <summary>
+    /// The <c>af g slice</c> entry: parse the flags (<c>--critical</c>, <c>--verify id,id</c>) and generate
+    /// from the current directory. Kept beside the generator so <c>Program</c> stays an index.
+    /// </summary>
+    /// <param name="module">The module the slice belongs to.</param>
+    /// <param name="name">The slice (operation) name.</param>
+    /// <param name="flags">The remaining command-line flags.</param>
+    public static int Run(string module, string name, string[] flags)
+    {
+        var critical = false;
+        var verify = new List<string>();
+        for (var i = 0; i < flags.Length; i++)
+        {
+            switch (flags[i])
+            {
+                case "--critical":
+                    critical = true;
+                    break;
+                case "--verify" when i + 1 < flags.Length:
+                    verify.AddRange(flags[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                    break;
+                case "--verify":
+                    Console.Error.WriteLine("af: --verify expects a comma-separated list of AVP criterion ids (see `af criteria list`).");
+                    return 1;
+                default:
+                    Console.Error.WriteLine($"af: unknown flag '{flags[i]}' for `g slice` (expected --critical and/or --verify <id,id>).");
+                    return 1;
+            }
+        }
+
+        return Generate(Directory.GetCurrentDirectory(), module, name, critical, verify);
+    }
+
     /// <summary>Generate <paramref name="name"/> in <paramref name="module"/> under the <paramref name="root"/> project.</summary>
     /// <param name="root">The application project directory (holding the .csproj).</param>
     /// <param name="module">The module the slice belongs to.</param>
     /// <param name="name">The slice (operation) name.</param>
     /// <param name="critical">When true, mark the slice <c>[Critical]</c> and scaffold happy + sad journeys.</param>
-    public static int Generate(string root, string module, string name, bool critical = false)
+    /// <param name="verify">
+    /// AVP criterion ids to declare for the slice — correct-by-construction: the module's spec manifest gains
+    /// the declaration and a co-located, red-by-design <c>[AVP]</c> proof scaffold is emitted with it, so the
+    /// AF0030/AF0031 bridge is born closed instead of caught later.
+    /// </param>
+    public static int Generate(
+        string root, string module, string name, bool critical = false, IReadOnlyList<string>? verify = null)
     {
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
@@ -60,7 +99,36 @@ public static class SliceGenerator
             Console.WriteLine($"created {journeyPath}");
         }
 
+        if (verify is { Count: > 0 })
+            DeclareAndProve(root, directory, testNamespace, module, name, verify);
+
         return 0;
+    }
+
+    // The correct-by-construction leg: declare the criteria in the module's spec manifest and scaffold the
+    // co-located, red-by-design proof file — obligation and proof in the same change-set, always.
+    private static void DeclareAndProve(
+        string root, string sliceDir, string testNamespace, string module, string name, IReadOnlyList<string> verify)
+    {
+        var manifest = SpecManifestScaffold.EnsureDeclared(Path.Combine(root, "Modules", module), module, name, verify);
+        Console.WriteLine($"declared {name} ({string.Join(", ", verify)}) in {manifest}");
+
+        var proofPath = Path.Combine(sliceDir, name + ".Avp.Tests.cs");
+        if (File.Exists(proofPath))
+        {
+            Console.Error.WriteLine($"af: {proofPath} already exists — declaration updated, proof scaffold left untouched.");
+            return;
+        }
+
+        File.WriteAllText(proofPath, AvpProofScaffold.Render(testNamespace, module, name, verify));
+        Console.WriteLine($"created {proofPath} (red by design — bind the real endpoint to turn it green)");
+
+        var known = new HashSet<string>(
+            Assay.Net.Catalog.LoadDefault().Archetypes.SelectMany(a => a.Criteria).Select(c => c.Id),
+            StringComparer.Ordinal);
+        foreach (var id in verify.Where(id => !known.Contains(id)))
+            Console.WriteLine($"note: '{id}' is not in the AVP catalog — treated as an off-catalog criterion "
+                            + "(ADR 0002); its proof scaffold is a red placeholder until you write the verifier.");
     }
 
     private static string Slice(string appNamespace, string module, string name, bool critical)
