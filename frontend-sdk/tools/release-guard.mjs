@@ -8,6 +8,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { FRONTEND_PACKAGE_VERSIONS } from "./package-versions.mjs";
 
 // The publishable surface. A unit "changed" if any shipped path differs since the tag; `version` is the file
 // whose number must move when that happens. The NuGet packages share one number (the library props); each npm
@@ -48,6 +49,36 @@ export function violations(units) {
       + "tagging. A published version is immutable; shipping new content under the same number is the "
       + "'0.x published != 0.x canonical' drift.",
     );
+}
+
+// Where each canonical entry's own package.json lives (repo-root relative, like RELEASE_UNITS).
+const CANONICAL_MANIFESTS = Object.freeze({
+  "@aerofortress/frontend-sdk": "frontend-sdk/package.json",
+  "@aerofortress/react": "frontend-sdk/packages/aerofortress-react/package.json",
+  "eslint-plugin-aerofortress": "frontend-sdk/packages/eslint-plugin/package.json",
+});
+
+/**
+ * The canonical table must agree with the packages it describes: FRONTEND_PACKAGE_VERSIONS ships INSIDE
+ * @aerofortress/frontend-sdk and is what `affe-framework-sync` holds every pilot to — a release where the
+ * table lags its own package (0.1.2 shipped saying "canonical is 0.1.1") turns the sync gate red in every
+ * pilot for the wrong reason. Caught here, at publish time, where the fix is one line.
+ * @param {ReadonlyArray<{name: string, version: string}>} canonical
+ * @param {(path: string) => string} readManifest
+ * @returns {string[]}
+ */
+export function canonicalDrift(canonical, readManifest) {
+  return canonical.flatMap(({ name, version }) => {
+    const path = CANONICAL_MANIFESTS[name];
+    if (!path) return [`release-guard: ${name} is in FRONTEND_PACKAGE_VERSIONS but has no known manifest path.`];
+    const actual = JSON.parse(readManifest(path)).version;
+    return actual === version
+      ? []
+      : [
+        `release-guard: FRONTEND_PACKAGE_VERSIONS says ${name} is ${version} but ${path} says ${actual} — `
+        + "the canonical table ships inside the sdk and gates every pilot; keep it equal to the versions being published.",
+      ];
+  });
 }
 
 /** @param {string} content @param {string} versionPath */
@@ -99,7 +130,10 @@ if (invokedDirectly) {
     versionBumped: versionOf(fileAt(base, unit.version), unit.version) !== versionOf(readFileSync(unit.version, "utf8"), unit.version),
   }));
 
-  const messages = violations(units);
+  const messages = [
+    ...violations(units),
+    ...canonicalDrift(FRONTEND_PACKAGE_VERSIONS, (path) => readFileSync(path, "utf8")),
+  ];
   for (const message of messages) console.error(message);
   if (messages.length === 0) console.log(`release-guard: every changed publishable unit was bumped since ${base}.`);
   process.exit(messages.length ? 1 : 0);
