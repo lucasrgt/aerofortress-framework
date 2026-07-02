@@ -497,8 +497,8 @@ never speculation. Keep it minimal; add only on real drift.
 | `AF0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
 | `AF0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
 | `AF0029` | **A slice decides its criticality under the explicit policy**: when `AeroFortress.toml`'s `[testing] criticality = "explicit"`, a `[Slice]` carrying neither `[Critical]` nor `[NonCritical]` is flagged — criticality becomes a decision on every slice, the mirror of `AF0022`'s posture on authorization. Inert under the default `"opt-in"` (only `[Critical]` matters) and under `"strict"` (where an undecided slice is *treated as* critical and `AF0008`/`AF0010` demand its journeys). The dial is read from the manifest through MSBuild and projected to the analyzers — no TOML parsing in the doctor | **shipped** | criticality was opt-in-only; a team wanting it considered on every slice (like auth) had no enforcement, and a forced `[NonCritical]` is reviewable where a silent absence is not |
-| `AF0030` | **A `[Verify("id")]` obligation has a matching AVP proof**: code that declares it must be proven against an AVP acceptance criterion (`[Verify("own-resource-only")]`) is flagged unless an `[AVP("id")]` verification for the same id exists in the compilation or its test files (`AdditionalFiles`). This couples the static doctor to the runtime verifier (AVP / Assay.Net) — the build refuses a slice that names a proof obligation it never proves. Detection is textual by attribute name, so the framework takes no dependency on the AVP package (the relation stays one-way: framework knows AVP, never the reverse) | **shipped** | the spec-driven bridge — an acceptance criterion declared on a slice must be a verifiable proof, not a comment |
-| `AF0031` | **A `[Critical]` slice declares a proven criterion**: a slice critical under the active policy (`[Critical]`, or any slice under `"strict"`) that carries no `[Verify("id")]` — on the slice or a method within it — is flagged. The reverse of `AF0030` on the other axis: AF0030 forces a declared criterion to have an `[AVP]` proof (criterion ⟹ proof); this forces a high-stakes behaviour to declare a criterion at all (critical ⟹ criterion), closing the bridge both ways. One rung finer than `AF0008`'s journeys — a journey proves the path runs, the AVP criterion proves a named property holds — and reads "critical" through the same `CriticalityPolicy`, so AF0008/AF0010/AF0029/AF0031 agree. Detection is textual by attribute name (no dependency on the AVP package) | **shipped** | a high-stakes slice could ship its journeys yet name no AVP criterion — the bridge's critical→criterion direction was open |
+| `AF0030` | **A manifest-declared criterion has a matching AVP proof**: a criterion a module's `<Module>.spec.toml` (the Clockwork spec manifest) declares for a slice is flagged unless an `[AVP("id")]` verification for the same id exists in the compilation or its test files (`AdditionalFiles`). This couples the static doctor to the runtime verifier (AVP / Assay.Net) — the build refuses a manifest that declares an acceptance criterion it never proves. The obligation lives in the manifest (a reviewable file beside the module), **not** on an inline attribute — the earlier `[Verify]` marker is retired; matching is textual by id and repo-wide (one proof covers every slice declaring the id), so the framework takes no dependency on the AVP package (the relation stays one-way: framework knows AVP, never the reverse) | **shipped** | the spec-driven bridge — an acceptance criterion a module declares must be a verifiable proof, not a comment |
+| `AF0031` | **A `[Critical]` slice declares a criterion in its spec manifest**: a slice critical under the active policy with no `[slices.<Name>]` table carrying a non-empty `criteria` array in its module's `<Module>.spec.toml` is flagged. The reverse of `AF0030` on the other axis: AF0030 forces a declared criterion to have an `[AVP]` proof (criterion ⟹ proof); this forces a high-stakes behaviour to declare a criterion at all (critical ⟹ criterion), closing the bridge both ways. One rung finer than `AF0008`'s journeys — a journey proves the path runs, the AVP criterion proves a named property holds — and reads "critical" through the same `CriticalityPolicy`, so AF0008/AF0010/AF0029/AF0031 agree | **shipped** | a high-stakes slice could ship its journeys yet name no AVP criterion — the bridge's critical→criterion direction was open |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
 review. Expect it to reclaim the *structural* fraction of drift, not 100%.
@@ -510,6 +510,45 @@ deprecated TLS (CA53xx) — raised to error tier. Same removability story: opt o
 with `<AeroFortressSecurityAnalysis>false</AeroFortressSecurityAnalysis>`, or override a single rule from
 your own `.globalconfig` at a `global_level` above 50. The libraries hold themselves to the
 same floor via `build/AeroFortress.Framework.Library.props`.
+
+---
+
+## The gate — `af gate` and the verification matrix
+
+The doctor answers "is the form right?"; the AVP proofs answer "does the behavior hold?".
+`af gate` is the one deterministic command that answers both and writes the evidence down:
+
+1. **Doctor legs** — manifest validation, framework sync, the backend build (every AF* rule,
+   including the AF0030/AF0031 bridge) and each client's lint + typecheck.
+2. **Proof leg** — `dotnet test` over the workspace, which executes every `[AVP]` verification.
+3. **The matrix** — declarations (`*.spec.toml`) × proof sites (`[AVP("id")]`) × test verdicts,
+   joined per module: criterion → proof → verdict, plus the findings the gate refuses to swallow —
+   a declared criterion with no proof (the gap), a proof no manifest declares (creep), an explicitly
+   `[Critical]` slice declaring nothing, a proof that never reached a decision (a skip is never a
+   pass), a malformed manifest.
+
+Artifacts, written at the workspace root: **`VERIFICATION.md`** (human — commit it; a reviewer reads
+the proof state without running anything) and **`VERIFICATION.json`** (machine — CI and the harness
+read the verdict without parsing prose). The exit code IS the verdict: 0 only when every leg and the
+matrix hold. Run it to close a slice, as the CI gate, or fanned out across an ecosystem of repos.
+
+### Declaring criteria — born closed, not caught later
+
+The bridge is cheapest when the slice is born with it:
+
+```
+af criteria list                          # the catalog menu — and what Assay.Net can actually run
+af criteria suggest CreateCheckout        # ranked archetype families for a slice, with the matched words
+af g slice Payments Charge --critical --verify idempotency-key-honored,gate-enforced-on-submission
+```
+
+`--verify` declares the ids in `Modules/<M>/<M>.spec.toml` (creating the manifest with the house
+header, or surgically merging into an existing one — human edits survive) and scaffolds the
+co-located `<Slice>.Avp.Tests.cs`: one test per criterion carrying `[AVP("id")]`, already wired to
+the right Assay.Net archetype, **red by design** until the subject factory boots the real endpoint.
+Obligation and proof ship in the same change-set — deferral is exactly the gap the bridge exists to
+close. Calibrate before trusting a green: the same verifier must FAIL an escape variant (the
+sample-app's `Withdraw.Avp.Tests.cs` shows the full shape).
 
 ---
 
