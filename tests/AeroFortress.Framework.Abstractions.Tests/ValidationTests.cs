@@ -57,4 +57,23 @@ public class ValidationTests
         Assert.True(validation.Failed);
         Assert.Equal(2, validation.ToError().Fields!.Count);
     }
+
+    [Fact]
+    public void Collect_merges_a_nested_multi_field_error_keeping_each_specific_code()
+    {
+        // A value object that itself accumulated field errors (ToError → the generic envelope code)
+        // must surface THOSE codes, not one flattened "validation.failed" — the client localizes
+        // from the field code, and the specific rule is the whole point of the registry constant.
+        var nested = new Validation()
+            .Check(false, "installments", "installments.mismatch", "must match the expected total")
+            .Check(false, "installments[0].valueInCents", "installments.invalid", "value must be positive")
+            .ToError();
+        var validation = new Validation().Collect("installments", Result<int>.Fail(nested));
+
+        var fields = validation.ToError().Fields!;
+        Assert.Equal(2, fields.Count);
+        Assert.Contains(fields, f => f.Code == "installments.mismatch");
+        Assert.Contains(fields, f => f.Code == "installments.invalid" && f.Field == "installments[0].valueInCents");
+        Assert.DoesNotContain(fields, f => f.Code == "validation.failed");
+    }
 }

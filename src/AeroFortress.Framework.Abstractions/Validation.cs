@@ -35,11 +35,18 @@ public sealed class Validation
     /// Fold a value object's construction into the accumulation: if <paramref name="result"/>
     /// failed, record its error under <paramref name="field"/> — inheriting the value object's own
     /// <see cref="Error.Code"/> and message, since the value object is the single source of the rule
-    /// (and its code). Fluent.
+    /// (and its code). A value object that itself accumulated field errors (a multi-field
+    /// <c>ToError()</c>) merges them verbatim — its <see cref="FieldError"/>s already carry their own
+    /// paths and specific codes, and flattening them into the generic envelope code would lose the
+    /// rule the client localizes from. Fluent.
     /// </summary>
     public Validation Collect<T>(string field, Result<T> result)
     {
-        if (result.IsFailure)
+        if (!result.IsFailure)
+            return this;
+        if (result.Error.Fields is { Count: > 0 } nested)
+            _fields.AddRange(nested);
+        else
             _fields.Add(new FieldError(field, result.Error.Code, result.Error.Message));
         return this;
     }
