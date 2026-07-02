@@ -1,0 +1,26 @@
+name: CI
+
+# The AeroFortress done-gate, wired from birth: every push and PR runs `af gate` — the doctor
+# (the AF*/AFFE* convention analyzers), every test including the [AVP] runtime proofs, and the
+# declarations × proofs traceability matrix. The exit code IS the verdict, so a red gate cannot
+# land silently; the local lefthook hooks are the fast echo, this job is the backstop.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    name: af gate (doctor + proofs + matrix)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      # When a frontend client joins (clients/<app>), add setup-node + `npm ci` here — the doctor
+      # discovers each client and runs its lint + typecheck legs automatically.
+      - name: install the AeroFortress CLI
+        run: dotnet tool install -g aerofortress-framework-cli
+      - name: af gate
+        run: af gate

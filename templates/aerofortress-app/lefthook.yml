@@ -1,0 +1,10 @@
+# Git hooks via lefthook — the local echo of the CI gate, so a violation is caught at the keyboard,
+# not in review. Wired by `npx lefthook install`, which the root package.json's `prepare` script runs
+# on `npm install`. Bypass with `git push --no-verify` when you must — CI's `af gate` is the backstop
+# that cannot be skipped.
+pre-push:
+  parallel: true
+  commands:
+    backend-doctor: # the AF* convention analyzers run inside the build — the fast form check
+      glob: "**/*.cs"
+      run: dotnet build -v q -nologo

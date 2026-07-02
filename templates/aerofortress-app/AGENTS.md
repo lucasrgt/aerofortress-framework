@@ -30,6 +30,9 @@ Topology is declared in `AeroFortress.toml` (the single source of truth; `af doc
 - **Frontend** — add a React client under `clients/` (`af g`); the published
   `eslint-plugin-aerofortress` `AFFE*` harness gates it.
 - **Doctor**: `af doctor` runs both legs.
+- **Done-gate**: `af gate` (doctor + every test incl. the `[AVP]` proofs + the traceability
+  matrix) — wired from birth into CI (`.github/workflows/ci.yml`) and echoed locally by lefthook
+  (`npm install` wires the hooks). A change is done when the gate is green; never merge red.
 
 ---
 

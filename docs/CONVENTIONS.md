@@ -532,6 +532,18 @@ the proof state without running anything) and **`VERIFICATION.json`** (machine �
 read the verdict without parsing prose). The exit code IS the verdict: 0 only when every leg and the
 matrix hold. Run it to close a slice, as the CI gate, or fanned out across an ecosystem of repos.
 
+### The gate travels with the scaffold — born gated, like slices and modules
+
+A gate nobody is forced to run is opt-in by human memory — and a pilot proved the failure mode:
+a whole module landed on `main` with every one of its tests red, silently, because nothing watched
+the push. So the wiring is part of the supply, not an exercise for each app:
+
+- **`af new` scaffolds the enforcement**: `.github/workflows/ci.yml` runs `af gate` on every push
+  and PR (the backstop that cannot be skipped), and `lefthook.yml` + the root `package.json`
+  (`prepare: lefthook install`) give the fast local echo — the doctor build on pre-push.
+- An app is **born gated** exactly as it is born with slices, modules and the doctor: red work
+  cannot reach `main` unnoticed. Retrofitting an existing app is the same three files.
+
 ### Declaring criteria — born closed, not caught later
 
 The bridge is cheapest when the slice is born with it:
