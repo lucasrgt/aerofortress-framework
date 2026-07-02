@@ -1,0 +1,59 @@
+using AeroFortress.Framework.Cli;
+using Assay.Net;
+
+namespace AeroFortress.Framework.Cli.Tests;
+
+public class GateReportTests
+{
+    [Fact]
+    public void The_markdown_artifact_carries_the_verdict_the_rows_and_the_findings()
+    {
+        var matrix = SampleMatrix(passing: false);
+
+        var md = GateReport.Markdown(matrix, new GateLegs(Doctor: 0, Tests: 1), DateTimeOffset.UnixEpoch);
+
+        Assert.Contains("# Verification matrix", md);
+        Assert.Contains("**Gate verdict: RED**", md);
+        Assert.Contains("| Withdraw | `idempotency-key-honored` |", md);
+        Assert.Contains("FAIL", md);
+        Assert.Contains("Creep", md);   // the undeclared stray proof surfaces as a finding
+    }
+
+    [Fact]
+    public void The_json_artifact_is_camel_cased_and_machine_readable()
+    {
+        var matrix = SampleMatrix(passing: true);
+
+        var json = GateReport.Json(matrix, new GateLegs(0, 0), DateTimeOffset.UnixEpoch);
+
+        Assert.Contains("\"verdict\": \"red\"", json);   // the stray proof keeps the matrix blocking
+        Assert.Contains("\"criterion\": \"idempotency-key-honored\"", json);
+        Assert.Contains("\"orphanProofs\"", json);
+    }
+
+    [Fact]
+    public void The_gate_is_green_only_when_every_leg_and_the_matrix_hold()
+    {
+        var clean = GateMatrix.Build(
+            [new ManifestFile("Wallets.spec.toml",
+                SpecManifest.Parse("module = \"Wallets\"\n[slices.Withdraw]\ncriteria = [\"idempotency-key-honored\"]"), null)],
+            [new AvpProof("idempotency-key-honored", "W.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
+            [new TestVerdict("Sample.WithdrawAvpProof", "Honors_the_key", "Passed")]);
+
+        Assert.True(GateReport.Green(clean, new GateLegs(0, 0)));
+        Assert.False(GateReport.Green(clean, new GateLegs(0, 1)));   // a red leg is never argued away by the matrix
+    }
+
+    // A one-module matrix carrying one declared criterion and one stray (undeclared) proof, so both the row
+    // table and the findings section have content to assert on.
+    private static GateMatrix SampleMatrix(bool passing) => GateMatrix.Build(
+        [new ManifestFile("Wallets.spec.toml",
+            SpecManifest.Parse("module = \"Wallets\"\n[slices.Withdraw]\ncriteria = [\"idempotency-key-honored\"]"), null)],
+        [
+            new AvpProof("idempotency-key-honored", "W.cs", "WithdrawAvpProof", "Honors_the_key"),
+            new AvpProof("stray-criterion", "S.cs", "StrayProof", "Proves_the_undeclared"),
+        ],
+        [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
+        [new TestVerdict("Sample.WithdrawAvpProof", "Honors_the_key", passing ? "Passed" : "Failed")]);
+}

@@ -14,65 +14,12 @@ return args switch
     ["g", "auth:otp"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.Otp),
     ["g", "auth:oauth"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.OAuth),
     ["g", "auth:email"] => AuthFlowGenerator.Generate(Directory.GetCurrentDirectory(), AuthFlow.Email),
-    ["doctor", .. var rest] => Doctor(rest),
+    ["doctor", .. var rest] => DoctorCommand.Run(rest),
+    ["gate", .. var rest] => GateCommand.Run(rest),
     ["mutate", .. var rest] => Tooling.Dotnet("stryker", rest),
     ["test", .. var rest] => Tooling.Dotnet("test", TestArgs(rest)),
     _ => Usage(),
 };
-
-// The doctor is bidirectional — one verdict over both halves of the stack. The backend leg is the build-time
-// Roslyn analyzers (a clean build = a clean bill of health; an AF#### error fails it). The frontend leg, for
-// each AeroFortress client (a dir under clients/ carrying eslint.config.js), is the TS-world harness: eslint
-// (eslint-plugin-aerofortress, the AFFE* rules) + tsc (the "wired" gate against the generated client). One command,
-// both sides — so nothing is left loose in either direction.
-static int Doctor(string[] rest)
-{
-    // The manifest is the topology's source of truth — confirm the project has one and that the paths it
-    // declares exist before trusting the rest. A missing manifest is a notice; a broken one fails the doctor.
-    var manifest = AeroFortressManifest.Validate(Directory.GetCurrentDirectory());
-    Console.WriteLine("af doctor — manifest (AeroFortress.toml)...");
-    foreach (var message in manifest.Messages)
-        Console.Error.WriteLine($"  {message}");
-
-    // The anti-desync leg (package-first law): a stale AeroFortress.Framework.* package version or a revived
-    // vendored frontend copy fails the doctor. The expected version is baked into this CLI, so the gate fires on
-    // CI and on any machine — no sibling framework checkout required.
-    var sync = FrameworkSync.Check(Directory.GetCurrentDirectory());
-    Console.WriteLine("af doctor — framework sync...");
-    foreach (var message in sync.Messages)
-        Console.Error.WriteLine($"  {message}");
-
-    Console.WriteLine("af doctor — backend conventions (build)...");
-    var code = Tooling.Dotnet("build", rest);
-    if (manifest.Present && !manifest.Valid)
-        code = Math.Max(code, 1);
-    if (sync.Gating && !sync.InSync)
-        code = Math.Max(code, 1);
-
-    foreach (var client in FrontendClients(Directory.GetCurrentDirectory()))
-    {
-        Console.WriteLine($"af doctor — frontend conventions ({Path.GetFileName(client)}: eslint + tsc)...");
-        code = Math.Max(code, Tooling.Run("npm", ["run", "lint"], client));
-        code = Math.Max(code, Tooling.Run("npm", ["run", "typecheck"], client));
-    }
-
-    Console.WriteLine(code == 0 ? "doctor: conventions pass." : "doctor: violations reported above.");
-    return code;
-}
-
-// An AeroFortress frontend lives under clients/<app>/ with a flat ESLint config (wiring
-// eslint-plugin-aerofortress). Flat config supports js/mjs/cjs; treating only .js as a client made ESM pilots
-// silently skip the entire AFFE + typecheck leg.
-static IEnumerable<string> FrontendClients(string root)
-{
-    var clients = Path.Combine(root, "clients");
-    if (!Directory.Exists(clients))
-        return [];
-    return Directory.EnumerateDirectories(clients)
-        .Where(dir => new[] { "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs" }
-                          .Any(config => File.Exists(Path.Combine(dir, config)))
-                   && File.Exists(Path.Combine(dir, "package.json")));
-}
 
 // The fast leg: dotnet test, with a category shorthand. --unit/--integration/--e2e map to the
 // xUnit Category trait so a single layer can be run; anything else is passed straight through.
@@ -103,6 +50,8 @@ static int Usage()
           af g auth:oauth               augment auth with Google sign-up/sign-in
           af g auth:email               augment auth with email verification + password reset
           af doctor                     run the convention analyzers (build)
+          af gate                       run the full verification gate (doctor + proofs) and emit the matrix
+                                        (VERIFICATION.md + VERIFICATION.json; the exit code is the verdict)
           af test [--unit|--integration|--e2e]   run the .NET tests (fast leg)
           af mutate                     run mutation testing via Stryker (deep leg)
 

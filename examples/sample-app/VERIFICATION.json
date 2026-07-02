@@ -1,0 +1,58 @@
+{
+  "tool": "af gate",
+  "generatedAt": "2026-07-02T00:59:12.1946779-03:00",
+  "verdict": "green",
+  "legs": {
+    "doctor": 0,
+    "tests": 0
+  },
+  "modules": [
+    {
+      "module": "Wallets",
+      "declared": 2,
+      "proven": 2,
+      "rows": [
+        {
+          "slice": "Withdraw",
+          "criterion": "idempotency-key-honored",
+          "verdict": "pass",
+          "proofs": [
+            {
+              "file": "backend/Sample.Api/Modules/Wallets/Slices/Deposit.Avp.Tests.cs",
+              "class": "DepositAvpProof",
+              "method": "Deposit_honors_the_idempotency_key"
+            },
+            {
+              "file": "backend/Sample.Api/Modules/Wallets/Slices/Withdraw.Avp.Tests.cs",
+              "class": "WithdrawAvpProof",
+              "method": "Withdraw_honors_the_idempotency_key"
+            }
+          ]
+        },
+        {
+          "slice": "Deposit",
+          "criterion": "idempotency-key-honored",
+          "verdict": "pass",
+          "proofs": [
+            {
+              "file": "backend/Sample.Api/Modules/Wallets/Slices/Deposit.Avp.Tests.cs",
+              "class": "DepositAvpProof",
+              "method": "Deposit_honors_the_idempotency_key"
+            },
+            {
+              "file": "backend/Sample.Api/Modules/Wallets/Slices/Withdraw.Avp.Tests.cs",
+              "class": "WithdrawAvpProof",
+              "method": "Withdraw_honors_the_idempotency_key"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "findings": {
+    "orphanProofs": [],
+    "undeclaredCritical": [],
+    "declaredWithoutClass": [],
+    "malformedManifests": []
+  }
+}
