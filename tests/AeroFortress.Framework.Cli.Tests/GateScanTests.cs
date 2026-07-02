@@ -67,6 +67,38 @@ public class GateScanTests
     }
 
     [Fact]
+    public void A_marker_mentioned_in_prose_is_never_read_as_the_mark()
+    {
+        // The fluxoterra false positive: a doc comment explaining why a slice is NOT [Critical]
+        // ("no write, so no [Critical] requirement") must not turn the slice critical — and prose
+        // mentioning [Slice] must not mint a slice. Only attribute lines carry markers.
+        var root = NewDir();
+        Write(root, "HypothesizeMaterial.cs", """
+            namespace Fluxo.Api.Modules.Catalog;
+
+            /// <summary>Read-only hypothesis, deliberately not
+            /// <c>[Critical]</c>: no write, so no journey requirement.</summary>
+            [Slice]
+            public static class HypothesizeMaterial
+            {
+            }
+            """);
+        Write(root, "Prose.cs", """
+            namespace Fluxo.Api.Modules.Catalog;
+
+            // This helper explains what a [Slice] is, but is not one.
+            public static class JustProse
+            {
+            }
+            """);
+
+        var slice = Assert.Single(GateScan.ScanSlices(root));
+
+        Assert.Equal("HypothesizeMaterial", slice.Name);
+        Assert.False(slice.Critical);
+    }
+
+    [Fact]
     public void DiscoverManifests_parses_the_wellformed_and_reports_the_malformed()
     {
         var root = NewDir();

@@ -196,19 +196,25 @@ internal static class GateScan
     }
 
     // The attribute lines directly above (and on) a class line — the region [Slice]/[Critical] live in.
+    // Only attribute-shaped lines (starting with '[') carry a marker: comments and blanks BRIDGE the walk
+    // but never match — a doc comment explaining why a slice is NOT [Critical] must not read as the mark.
     private static string AttributeBlockAbove(string[] lines, int classLine)
     {
-        var block = lines[classLine];
+        var attributes = new List<string>();
+        if (lines[classLine].TrimStart().StartsWith('['))
+            attributes.Add(lines[classLine]);
         for (var j = classLine - 1; j >= 0; j--)
         {
             var t = lines[j].Trim();
-            if (t.Length == 0 || t.StartsWith('[') || t.StartsWith("//", StringComparison.Ordinal))
-                block = lines[j] + "\n" + block;
+            if (t.StartsWith('['))
+                attributes.Add(lines[j]);
+            else if (t.Length == 0 || t.StartsWith("//", StringComparison.Ordinal))
+                continue;
             else
                 break;
         }
 
-        return block;
+        return string.Join("\n", attributes);
     }
 
     // A slice's module: the `namespace <App>.Modules.<M>` line when present, else the Modules/<M>/ path segment.
