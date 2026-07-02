@@ -2,34 +2,33 @@
 id: fba62b6a-0526-4b22-92fc-f6b3d6dc4630
 slug: decisions
 type: decision
-title: Engine anti-drift: supply publicado (nuget.org+npmjs) + SSOT em AeroFortress.lock + enforcement no overlay
-tags: anti-drift, package-first, supply, AeroFortress.lock, doctor, decisao, nuget, npm
+title: Engine anti-drift: supply publicado (nuget.org+npmjs) + SSOT no doctor shipado (SEM lock novo) + enforcement no overlay
+tags: anti-drift, package-first, supply, doctor, ssot, decisao, nuget, npm
 provenance: dito
 evidence: 
 decay: stable
 created: 2026-06-25T17:36:54.314649100+00:00
-updated: 2026-06-25T17:40:14.636026800+00:00
-validated: 2026-06-25T17:40:14.636026800+00:00
+updated: 2026-06-25T17:54:29.648104+00:00
+validated: 2026-06-25T17:54:29.648104+00:00
 links: 
 ---
 
-Decisão do Lucas (2026-06-25) pra resolver o desync recorrente dos pilots (hostpoint/pauta/fluxoterra) com o framework, AVP e harness, de uma vez por todas.
+Decisão do Lucas (2026-06-25) pra resolver o desync recorrente dos pilots (hostpoint/pauta/fluxoterra) com o framework, de uma vez por todas.
 
-**Supply (CORRIGIDO após ler publish.yml):** registries PÚBLICOS, disparado por tag `v*` no `.github/workflows/publish.yml` que JÁ existe e está certo:
-- NuGet → **nuget.org** via Trusted Publishing (OIDC, `NuGet/login@v1`, policy bound a owner lucasrgt/repo aerofortress-framework/workflow publish.yml — sem chave armazenada).
-- npm → **registry.npmjs.org** via secret `NPM_TOKEN` (automation token do scope `@aerofortress`).
-Os "github tokens" do Lucas = os secrets/OIDC do Actions. A supply NÃO está arquiteturalmente quebrada: as versões 2.0.0 / eslint 0.11.0 / react 0.6.0 / frontend-sdk 0.1.0 nunca foram tagueadas/publicadas — só existem no cache global/%TEMP% desta máquina (ver scar [[verde-falso-supply-efemera]]). Fix = bump consistente → tag → workflow publica. Invariante: clone limpo → restore → build → test VERDE restaurando dos registries públicos, zero seed manual.
+**Supply:** registries PÚBLICOS via tag `v*` no `.github/workflows/publish.yml` (já existe): NuGet→nuget.org (Trusted Publishing/OIDC), npm→npmjs (secret NPM_TOKEN, scope @aerofortress). As versões 2.0.0 / eslint 0.11.0 / react 0.6.0 / frontend-sdk 0.1.0 nunca foram tagueadas/publicadas — só existem locais (scar [[verde-falso-supply-efemera]]). Fix = tag → workflow publica. Invariante: clone limpo → restore → build → test VERDE dos registries, zero seed manual.
 
-**SSOT de versões:** `AeroFortress.lock` por pilot — gerado pelo `af` (deriva da fonte única do framework: `<Version>` + versões dos package.json npm canônicos), commitado, e VERIFICADO pelo doctor. Nada hardcoda versão. `AeroFortress.toml` continua só topologia humana.
+**SSOT (CORRIGIDO pelo Lucas — NÃO criar AeroFortress.lock):** um lock próprio seria REDUNDANTE. A conformidade já é totalmente expressa por: (1) as refs dos pacotes DO FRAMEWORK nos csproj/package.json (= a declaração de versão); (2) o doctor SHIPADO que crava a versão esperada e gateia, auto-contido (FrameworkSync usa FrameworkPackageVersions baked — JÁ construído na branch engine/anti-drift); (3) os lockfiles do ecossistema (package-lock.json / nuget packages.lock.json) pra integridade de conteúdo. Um AeroFortress.lock seria uma 4ª cópia das versões = MAIS superfície de drift. **AeroFortress.toml fica SÓ topologia (sem versão).**
+
+**Escopo da conformidade:** SÓ os pacotes que o framework PRODUZ (AeroFortress.Framework.* nuget; @aerofortress/* + eslint-plugin-aerofortress npm). NUNCA as deps de terceiros do app (React, EF, TanStack, Npgsql...) — isso é do app. O FrameworkSync já casa só Include="AeroFortress..." + os 3 nomes @aerofortress.
 
 **Componentes da engine (no framework, package-first):**
-1. SSOT/`AeroFortress.lock` gerado + commitado.
-2. Gate AUTO-CONTIDO no `AeroFortress.Framework.Doctor` shipado: carrega versões-peer esperadas (release conjunto), então `af doctor` verifica conformidade em QUALQUER máquina/CI sem checkout-irmão — não degrada mais pra "aviso" (a brecha do verde-falso). Evoluir FrameworkSync.cs (já reescrito pelo GPT: valida versões npm + bane mirror vendorado).
-3. Integridade de CONTEÚDO: fingerprint do ruleset do eslint-plugin + pre-pack gate que recusa empacotar versão com conteúdo ≠ do já tagueado (mata "0.10.0 publicado ≠ 0.10.0 canônico").
-4. Ban determinístico de vendor + reimplementação de primitives shipados (denylist de símbolos).
-5. Scaffolder/templates emitem versão derivada da SSOT (mata o "nasce velho").
+1. ✅ Gate auto-contido no doctor shipado (FrameworkSync crava FrameworkPackageVersions, gateia no CI sem checkout-irmão; o lado npm já é auto-contido no @aerofortress/frontend-sdk). FEITO.
+2. ✅ Teste de consistência da SSOT (FrameworkPackageVersions.Framework == <Version> dos props). FEITO.
+3. Integridade de CONTEÚDO: imutabilidade do registry + pre-pack/CI gate que recusa empacotar versão já publicada com conteúdo ≠ (mata "0.10.0 ≠ 0.10.0"). + fingerprint do eslint-plugin se valer. PENDENTE.
+4. Ban de vendor/mirror + reimplementação de primitives shipados. (mirror: FEITO; primitives-denylist: pendente)
+5. Scaffolder/templates emitem versão da SSOT (FrameworkPackageVersions). GPT fez a base; verificar.
 6. CI de cada pilot roda `af doctor` (drift falha o build).
 
-**Enforcement comportamental:** overlay "framework-detected" manda a sessão verificar/curar drift (package-first) ANTES de trabalho substancial.
+**DROPADO:** AeroFortress.lock + versionamento no AeroFortress.toml (redundantes com o acima).
 
-Já existe (GPT, uncommitted, framework VERDE build+test): rebrand lazuli→aerofortress finalizado; FrameworkSync.cs + framework-sync.mjs reescritos; @aerofortress/frontend-sdk (tooling package) com package-versions.mjs; primitives subidas pro @aerofortress/react 0.6.0.
+**Enforcement comportamental:** overlay "framework-detected" manda a sessão verificar/curar drift (package-first) antes de trabalho substancial.
