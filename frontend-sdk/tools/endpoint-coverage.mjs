@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // AFFE008 — back->front endpoint coverage. Every app-facing generated hook (`use<Slice>`) should be consumed by at
 // least one ViewModel; one with no consumer is a "loose endpoint" — the backend slice exists but no screen wired it.
 // This is a WARNING, never a build failure: the front->back direction (a UI calling an endpoint that does not exist)
