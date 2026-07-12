@@ -231,7 +231,11 @@ export default defineConfig({
       prettier: false,
       override: {
         mutator: { path: "./src/lib/aerofortress-client.ts", name: "aerofortressClient" },
-        query: { useQuery: true, useMutation: true },
+        // No hook-kind override on purpose: orval's verb-based default IS the convention — GET verbs
+        // generate a read hook, write verbs (POST/PUT/PATCH/DELETE) generate a mutation hook with
+        // { data: <Input> } variables. Do NOT add an override that forces both hook kinds on every
+        // operation: on orval 8.20 that turns every endpoint into a read hook, silently stripping the
+        // write path of its mutation shape (.mutate / isPending) so the deposit/form recipe cannot bind.
       },
     },
   },

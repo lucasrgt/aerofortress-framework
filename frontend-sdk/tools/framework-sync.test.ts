@@ -11,7 +11,7 @@ describe("framework-sync", () => {
       declarations: [{
         path: "clients/app/package.json",
         packages: {
-          "@aerofortress/frontend-sdk": "^0.1.1",
+          "@aerofortress/frontend-sdk": "^0.1.4",
           "eslint-plugin-aerofortress": "^0.11.0",
           "@aerofortress/react": "~0.6.0",
         },

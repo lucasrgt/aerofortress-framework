@@ -41,6 +41,19 @@ describe("client-scaffold", () => {
     expect(config).toContain('target: "./src/client.gen/shop.ts"');
   });
 
+  it("the orval config leaves writes as mutations — no query override that would force every op to useQuery", () => {
+    const config = renderOrvalConfig("shop", "./contract/Shop.Api.json");
+
+    // Scar frontend/3d49a75f: query: { useQuery: true, useMutation: true } does NOT mean "both, by verb" — on
+    // orval 8.20 it forces EVERY operation (including POST/PUT/PATCH/DELETE) into a useQuery hook, so writes lose
+    // their mutation shape (.mutate, isPending) and the deposit/form recipe has nothing to bind to. The cure is
+    // the ABSENCE of the override: orval's verb-based default gives GET → useQuery, writes → useMutation. Guard
+    // it here so the flag pair can never be re-introduced.
+    expect(config).not.toMatch(/query:\s*\{/);
+    expect(config).not.toContain("useQuery");
+    expect(config).not.toContain("useMutation");
+  });
+
   it("the QueryClient carries the write-side defaults: invalidate on success, feedback on error", () => {
     const query = renderQueryClient();
 
