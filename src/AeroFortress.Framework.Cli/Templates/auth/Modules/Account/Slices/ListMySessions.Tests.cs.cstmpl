@@ -85,6 +85,7 @@ public class ListMySessionsTests
     {
         public bool IsAuthenticated => true;
         public Guid UserId => userId;
+        public Guid OrgId => Guid.Empty;
         public string? Role => null;
         public Guid SessionId => sessionId;
     }

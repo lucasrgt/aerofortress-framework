@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using MyApp.Api;
 using MyApp.Api.Modules.Account;
 
 namespace MyApp.Tests.Modules.Account;
@@ -22,14 +23,14 @@ public class AuthFlowTests
 
         var loginResponse = await client.PostAsJsonAsync("/account/login", new { email = "a@x.com", password = "password1" });
         loginResponse.EnsureSuccessStatusCode();
-        var login = await loginResponse.Content.ReadFromJsonAsync<Login.Output>();
+        var login = await loginResponse.Content.ReadFromJsonAsync<Login.Output>(AppJson.Options);
 
         var request = new HttpRequestMessage(HttpMethod.Get, "/account/me");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", login!.AccessToken);
         var meResponse = await client.SendAsync(request);
 
         meResponse.EnsureSuccessStatusCode();
-        var me = await meResponse.Content.ReadFromJsonAsync<Me.Output>();
+        var me = await meResponse.Content.ReadFromJsonAsync<Me.Output>(AppJson.Options);
         Assert.Equal("a@x.com", me!.Email);
     }
 

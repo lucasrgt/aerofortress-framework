@@ -18,8 +18,8 @@ public static class AccountErrorCodes
     /// <summary>The refresh session was revoked.</summary>
     public const string SessionRevoked = "auth.session_revoked";
 
-    /// <summary>A refresh lost a benign race — the token was just rotated by a concurrent refresh (a shared
-    /// cookie across tabs). Transient: the client re-reads the rotated cookie and retries; not theft.</summary>
+    /// <summary>A refresh lost the optimistic-concurrency race while the same live token was being rotated.
+    /// Transient: the winning request already delivered the replacement token, so the client retries with it.</summary>
     public const string SessionRetry = "auth.session_retry";
 
     /// <summary>No session exists for the given id.</summary>

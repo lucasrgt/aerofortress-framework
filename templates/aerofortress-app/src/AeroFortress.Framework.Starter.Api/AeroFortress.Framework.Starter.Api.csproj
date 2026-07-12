@@ -7,11 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AeroFortress.Framework.Abstractions" Version="2.1.4" />
-    <PackageReference Include="AeroFortress.Framework.AspNetCore" Version="2.1.4" />
+    <PackageReference Include="AeroFortress.Framework.Abstractions" Version="2.1.5" />
+    <PackageReference Include="AeroFortress.Framework.AspNetCore" Version="2.1.5" />
     <!-- The doctor rides along as a build analyzer. Remove it and the app still compiles and runs
          (Law 2) — you only lose the enforcement. -->
-    <PackageReference Include="AeroFortress.Framework.Doctor" Version="2.1.4" PrivateAssets="all" />
+    <PackageReference Include="AeroFortress.Framework.Doctor" Version="2.1.5" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +21,8 @@
     <AdditionalFiles Include="**\*.Tests.cs" />
     <!-- The doctor reads the module ctx docs (AF0004/AF0005) as AdditionalFiles. -->
     <AdditionalFiles Include="**\*.ctx.md" />
+    <!-- Clockwork manifests bind critical slices to their executable AVP proofs (AF0030/AF0031). -->
+    <AdditionalFiles Include="**\*.spec.toml" />
   </ItemGroup>
 
 </Project>

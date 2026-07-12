@@ -12,5 +12,6 @@ public static class Ping
 
     public static void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/ping", async (Input input, CancellationToken ct) =>
-            (await Handle(input, ct)).ToHttp());
+            (await Handle(input, ct)).ToHttp())
+            .WithName(nameof(Ping));
 }

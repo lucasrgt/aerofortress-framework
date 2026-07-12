@@ -27,15 +27,11 @@ public static class Refresh
 
         var now = clock.GetUtcNow().UtcDateTime;
 
-        // Reuse of a spent token. Within a short grace window of its rotation it is a benign concurrent
-        // refresh — two tabs sharing one httpOnly cookie, or a double-bootstrap: the loser re-reads the
-        // cookie the winner just rotated and retries, so the family is NOT burned. After the window the legit
-        // client has long since rotated, so a second presentation means the token leaked — theft — and the
-        // whole family burns (thief's and victim's alike), forcing a fresh login.
+        // Reuse of a spent token: the legitimate client holds the live replacement, so a second presentation
+        // means the rotated token leaked. Burn the whole family — thief's and victim's alike — immediately,
+        // forcing a fresh login. This is the replay-burns-family obligation in Account.spec.toml.
         if (session.UsedAt is not null)
         {
-            if (now - session.UsedAt.Value <= SessionToken.RefreshReuseGrace)
-                return Error.Unauthorized(AccountErrorCodes.SessionRetry, "refresh superseded, retry");
             await RevokeFamily(db, session.FamilyId, ct);
             return Error.Unauthorized(AccountErrorCodes.SessionRevoked, "session revoked");
         }

@@ -20,6 +20,7 @@ public static class AccountSetup
             ?? "myapp-dev-jwt-secret-change-in-production-please";
 
         builder.Services.AddDbContext<AppDb>(options => options.UseInMemoryDatabase("myapp"));
+        builder.Services.ConfigureHttpJsonOptions(options => AppJson.Configure(options.SerializerOptions));
         builder.Services.AddSingleton(TimeProvider.System);
         //<lz:tenancy>
         builder.Services.AddScoped<ITenant, RequestTenant>();

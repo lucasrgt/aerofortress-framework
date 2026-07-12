@@ -22,13 +22,6 @@ public static class SessionToken
     /// matter how often it refreshes.</summary>
     public static readonly TimeSpan FamilyMaxAge = TimeSpan.FromDays(90);
 
-    /// <summary>The grace window after a token is rotated within which presenting it again is treated as a
-    /// <em>benign</em> concurrent refresh — two tabs sharing one httpOnly cookie, or a double-bootstrap — not
-    /// theft. Within the window the reuse gets a transient "retry" (the client re-reads the rotated cookie);
-    /// only a reuse <em>after</em> it burns the family. Short, because a real leaked token is replayed long
-    /// after the legit client has rotated, while a cross-tab race fires near-simultaneously.</summary>
-    public static readonly TimeSpan RefreshReuseGrace = TimeSpan.FromSeconds(10);
-
     /// <summary>Mint a fresh token: the raw value (returned to the client once) and its stored hash.
     /// Base64Url, so the token is safe to carry in a cookie or URL without escaping (no <c>+ / =</c>).</summary>
     public static (string Raw, string Hash) Issue()

@@ -89,14 +89,12 @@ the live one, so a second use of a rotated one is **theft**. The response is to 
 family too. (Tokens are Base64Url so they are cookie/URL-safe; the chain grows append-only — pruning
 spent/expired rows is a future job.)
 
-A reuse **within `SessionToken.RefreshReuseGrace` (10s)** of the rotation is the exception: it is a
-*benign* concurrent refresh — two tabs sharing the one httpOnly cookie, or a double-bootstrap, each
-presenting the same live token at the same instant — not theft. It gets a transient `SessionRetry` (the
-client re-reads the rotated cookie and retries) and the family survives; only a reuse *after* the window
-burns it. The rotation save is also guarded by `UserSession.RowVersion` (optimistic concurrency): the racer
-that loses the write gets a `DbUpdateConcurrencyException`, caught and mapped to the same benign retry —
-so two simultaneous refreshes of one token yield one winner and one retry, never a forked family or a false
-theft-burn. (The exception path is enforced only by a relational provider; the in-memory store never raises it.)
+There is no time-based replay grace: once rotation commits, presenting the spent token burns the family
+immediately. A genuinely simultaneous refresh is distinguished structurally instead: `UserSession.RowVersion`
+guards the rotation save with optimistic concurrency. The racer that loses the write gets a
+`DbUpdateConcurrencyException`, caught and mapped to `SessionRetry`; the winner already delivered the live
+replacement. Thus concurrent use yields one winner and one retry, while every replay observed after rotation
+is theft. (The exception path is enforced only by a relational provider; the in-memory store never raises it.)
 
 A family also has an **absolute ceiling** (`SessionToken.FamilyMaxAge`, 90 days): a session may slide
 (rotate) freely within that window, but `Refresh` retires the family once its first token is older than

@@ -158,24 +158,43 @@ public static class AuthGenerator
     private static void WireApiProject(string csproj, string appLower)
     {
         var text = File.ReadAllText(csproj);
-        if (text.Contains("AeroFortress.Framework.Auth"))
-            return;
-
         var nl = text.Contains("\r\n") ? "\r\n" : "\n";
         // AeroFortress.Framework.Auth carries the JWT mechanism (and JwtBearer transitively) — the app names no JWT
         // package itself. EF + argon2 are the data + crypto the Account module needs.
-        var packages = string.Join(nl, new[]
+        var packages = new[]
         {
-            "    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"10.0.8\" />",
-            "    <PackageReference Include=\"Microsoft.EntityFrameworkCore.InMemory\" Version=\"10.0.8\" />",
-            "    <PackageReference Include=\"Konscious.Security.Cryptography.Argon2\" Version=\"1.3.1\" />",
-            $"    <PackageReference Include=\"AeroFortress.Framework.Auth\" Version=\"{FrameworkPackageVersions.Framework}\" />",
-        });
+            (Name: "Microsoft.EntityFrameworkCore", Line: "    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"10.0.8\" />"),
+            (Name: "Microsoft.EntityFrameworkCore.InMemory", Line: "    <PackageReference Include=\"Microsoft.EntityFrameworkCore.InMemory\" Version=\"10.0.8\" />"),
+            (Name: "Konscious.Security.Cryptography.Argon2", Line: "    <PackageReference Include=\"Konscious.Security.Cryptography.Argon2\" Version=\"1.3.1\" />"),
+            (Name: "AeroFortress.Framework.Auth", Line: $"    <PackageReference Include=\"AeroFortress.Framework.Auth\" Version=\"{FrameworkPackageVersions.Framework}\" />"),
+        }
+            .Where(package => !text.Contains($"PackageReference Include=\"{package.Name}\"", StringComparison.Ordinal))
+            .Select(package => package.Line)
+            .ToList();
 
-        // Drop the packages into the first <ItemGroup> (where the framework references already live).
-        text = InsertBeforeClosingItemGroup(text, packages, nl);
+        if (packages.Count > 0)
+        {
+            // Drop the packages into the first <ItemGroup> (where the framework references already live).
+            text = InsertBeforeClosingItemGroup(text, string.Join(nl, packages), nl);
+            Console.WriteLine($"added auth package references to {Path.GetFileName(csproj)}");
+        }
+
+        // AF0030/AF0031 read the Account manifest through Roslyn AdditionalFiles. The starter now carries this,
+        // but auth also supports an existing plain app and therefore makes the verification seam explicit itself.
+        if (!text.Contains("AdditionalFiles Include=\"**\\*.spec.toml\"", StringComparison.Ordinal))
+        {
+            var itemGroup = string.Join(nl, new[]
+            {
+                "  <ItemGroup>",
+                "    <AdditionalFiles Include=\"**\\*.spec.toml\" />",
+                "  </ItemGroup>",
+                string.Empty,
+            });
+            text = InsertBeforeProjectEnd(text, itemGroup);
+            Console.WriteLine($"added Clockwork spec manifests to {Path.GetFileName(csproj)}");
+        }
+
         File.WriteAllText(csproj, text);
-        Console.WriteLine($"added auth package references to {Path.GetFileName(csproj)}");
     }
 
     private static void WireTestProject(string testDir)
@@ -191,29 +210,25 @@ public static class AuthGenerator
         }
 
         var text = File.ReadAllText(csproj);
-        if (text.Contains("AeroFortress.Framework.Testing.InMemory"))
+        var nl = text.Contains("\r\n") ? "\r\n" : "\n";
+        var assayVersion = typeof(Assay.Net.Catalog).Assembly.GetName().Version?.ToString(3)
+            ?? throw new InvalidOperationException("Assay.Net assembly has no package-compatible version.");
+        var references = new[]
+        {
+            (Name: "AeroFortress.Framework.Testing.InMemory", Line: $"    <PackageReference Include=\"AeroFortress.Framework.Testing.InMemory\" Version=\"{FrameworkPackageVersions.Framework}\" />"),
+            (Name: "Assay.Net", Line: $"    <PackageReference Include=\"Assay.Net\" Version=\"{assayVersion}\" />"),
+        }
+            .Where(package => !text.Contains($"PackageReference Include=\"{package.Name}\"", StringComparison.Ordinal))
+            .Select(package => package.Line)
+            .ToList();
+        if (references.Count == 0)
             return;
 
-        var nl = text.Contains("\r\n") ? "\r\n" : "\n";
-        var reference =
-            $"    <PackageReference Include=\"AeroFortress.Framework.Testing.InMemory\" Version=\"{FrameworkPackageVersions.Framework}\" />";
-        // Sit it next to the existing AeroFortress.Framework.Testing reference when present, else in the first group.
-        if (text.Contains("AeroFortress.Framework.Testing\""))
-        {
-            var testing = Regex.Match(
-                text,
-                @"<PackageReference Include=""AeroFortress\.Framework\.Testing"" Version=""[^""]+""\s*/>");
-            text = testing.Success
-                ? text[..(testing.Index + testing.Length)] + nl + reference + text[(testing.Index + testing.Length)..]
-                : InsertBeforeClosingItemGroup(text, reference, nl);
-        }
-        else
-        {
-            text = InsertBeforeClosingItemGroup(text, reference, nl);
-        }
-
+        // Sit the verification dependencies next to the existing test packages. Both are required: the isolated
+        // store boots the journeys/proofs and Assay.Net supplies the executable AVP catalog.
+        text = InsertBeforeClosingItemGroup(text, string.Join(nl, references), nl);
         File.WriteAllText(csproj, text);
-        Console.WriteLine($"added AeroFortress.Framework.Testing.InMemory to {Path.GetFileName(csproj)}");
+        Console.WriteLine($"added auth verification package references to {Path.GetFileName(csproj)}");
     }
 
     private static void WireGlobalUsings(string root, string appName)
@@ -251,6 +266,12 @@ public static class AuthGenerator
             return text;
         var lineStart = text.LastIndexOf('\n', at) + 1;   // start of the </ItemGroup> line
         return text[..lineStart] + lines + nl + text[lineStart..];
+    }
+
+    private static string InsertBeforeProjectEnd(string text, string block)
+    {
+        var at = text.LastIndexOf("</Project>", StringComparison.Ordinal);
+        return at < 0 ? text : text[..at] + block + text[at..];
     }
 
     private static string Summary(bool tenancy, bool cookies) =>

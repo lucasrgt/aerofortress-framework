@@ -1,5 +1,4 @@
 using MyApp.Api;
-using MyApp.Api.Modules.Account;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MyApp.Tests;

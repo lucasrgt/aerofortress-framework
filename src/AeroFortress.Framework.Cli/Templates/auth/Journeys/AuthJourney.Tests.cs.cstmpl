@@ -70,15 +70,13 @@ public class AuthJourney
         Assert.NotEqual(first.RefreshToken, rotated.RefreshToken);   // the family rotated
     }
 
-    // The replay path — the highest-stakes sad: a token already rotated is presented again. Within the grace
-    // window that is a benign concurrent refresh (two tabs sharing one cookie), so it is rejected as a
-    // transient retry but does NOT kill the family — the legitimately-rotated token keeps working. (Theft
-    // proper — a replay long after rotation — burns the whole family; that, and the grace boundary, are proven
-    // deterministically in RefreshTests with a controllable clock, which an E2E journey cannot advance.)
+    // The replay path — the highest-stakes sad: a token already rotated is presented again. That token leaked,
+    // so the family burns immediately and the legitimately-rotated token dies with it. This is deliberately
+    // the same sequence the replay-burns-family AVP oracle executes.
     [E2E]
     [Journey(typeof(Refresh), JourneyPath.Sad)]
     [Fact]
-    public async Task A_replayed_refresh_token_is_rejected_without_killing_the_live_one()
+    public async Task A_replayed_refresh_token_is_rejected_and_burns_the_live_one()
     {
         await using var app = new TestApp();
         var client = app.CreateClient();
@@ -92,9 +90,9 @@ public class AuthJourney
         var replay = await client.PostAsJsonAsync("/account/refresh", new { refreshToken = first.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
 
-        // The family survives the benign concurrent replay: the legitimately-rotated token still refreshes.
+        // Theft burns the family: the legitimately-rotated token can no longer refresh.
         var live = await client.PostAsJsonAsync("/account/refresh", new { refreshToken = rotated!.RefreshToken });
-        live.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Unauthorized, live.StatusCode);
     }
 
     [E2E]
