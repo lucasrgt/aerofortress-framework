@@ -4,17 +4,42 @@ using Microsoft.AspNetCore.Http;
 namespace AeroFortress.Framework.Auth.Tests;
 
 // Pins what actually reaches the wire when the refresh cookie is planted. The non-negotiable security
-// attributes (httpOnly, Secure) are always on; SameSite and Domain ride from the options — the
+// attributes (httpOnly, Secure outside HTTP loopback) are framework-owned; SameSite and Domain ride from the options — the
 // multi-subdomain knob a real pilot needed (a "remember this device" cookie shared across sibling
 // subdomains) instead of re-implementing the cookie by hand app-side. Reading the Set-Cookie header proves
 // the attributes survive serialization, not merely that the CookieOptions were set.
 public class RefreshCookieTests
 {
-    private static string PlantAndRead(RefreshCookieOptions options)
+    private static string PlantAndRead(
+        RefreshCookieOptions options,
+        string scheme = "https",
+        string host = "app.example.com")
     {
         var ctx = new DefaultHttpContext();
+        ctx.Request.Scheme = scheme;
+        ctx.Request.Host = new HostString(host);
         new RefreshCookie(options).SetRefresh(ctx.Response, "the-token", DateTimeOffset.UtcNow.AddDays(30));
         return ctx.Response.Headers["Set-Cookie"].ToString();
+    }
+
+    [Theory]
+    [InlineData("localhost")]
+    [InlineData("127.0.0.1")]
+    [InlineData("[::1]")]
+    public void Plain_http_loopback_omits_secure_so_local_web_refresh_can_return_the_cookie(string host)
+    {
+        var cookie = PlantAndRead(new RefreshCookieOptions("app_refresh"), "http", host);
+
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secure", cookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Non_loopback_http_stays_secure_when_tls_terminates_upstream()
+    {
+        var cookie = PlantAndRead(new RefreshCookieOptions("app_refresh"), "http", "app.example.com");
+
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
