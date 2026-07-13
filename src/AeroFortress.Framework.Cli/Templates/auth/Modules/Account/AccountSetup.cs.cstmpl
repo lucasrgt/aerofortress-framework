@@ -27,7 +27,7 @@ public static class AccountSetup
         //</lz:tenancy>
         builder.Services.AddJwtAccessTokens(jwtSecret, issuer: "myapp", audience: "myapp");
         //<lz:cookies>
-        builder.Services.AddRefreshCookie("myapp_refresh", path: "/api/account");
+        builder.Services.AddRefreshCookie("myapp_refresh", path: "/account");
         //</lz:cookies>
         builder.Services.AddAuthorization();
     }
