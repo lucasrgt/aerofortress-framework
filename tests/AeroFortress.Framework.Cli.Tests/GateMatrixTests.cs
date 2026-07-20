@@ -10,7 +10,7 @@ public class GateMatrixTests
     {
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
-            [new AvpProof("idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
             [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
 
@@ -24,7 +24,7 @@ public class GateMatrixTests
     {
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
-            [new AvpProof("idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
             [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Failed")]);
 
@@ -51,9 +51,25 @@ public class GateMatrixTests
         // The AVP stance: a skipped/never-executed proof must not read as green.
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
-            [new AvpProof("idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
             [new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "NotExecuted")]);
+
+        Assert.Equal(MatrixVerdict.NotRun, Assert.Single(matrix.Rows).Verdict);
+        Assert.True(matrix.Blocking);
+    }
+
+    [Fact]
+    public void One_passing_proof_never_hides_a_second_proof_that_did_not_run()
+    {
+        var matrix = GateMatrix.Build(
+            [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
+            [
+                new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "A.cs", "ProofA", "Checks_it"),
+                new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "B.cs", "ProofB", "Checks_it_too"),
+            ],
+            [new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs")],
+            [new TestVerdict("Sample.ProofA", "Checks_it", "Passed")]);
 
         Assert.Equal(MatrixVerdict.NotRun, Assert.Single(matrix.Rows).Verdict);
         Assert.True(matrix.Blocking);
@@ -65,8 +81,8 @@ public class GateMatrixTests
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
             [
-                new AvpProof("idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key"),
-                new AvpProof("stray-criterion", "S.Avp.Tests.cs", "StrayProof", "Proves_something_undeclared"),
+                new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key"),
+                new AvpProof("Wallets", "Withdraw", "stray-criterion", "S.Avp.Tests.cs", "StrayProof", "Proves_something_undeclared"),
             ],
             [new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
@@ -77,7 +93,7 @@ public class GateMatrixTests
     }
 
     [Fact]
-    public void A_critical_slice_with_no_nonempty_declaration_is_reported()
+    public void Any_slice_with_no_nonempty_declaration_is_reported()
     {
         // Charge is [Critical] but its module manifest gives it an empty criteria array — the same
         // "declares nothing" AF0031 refuses; a table with no criteria is not a declaration.
@@ -87,22 +103,21 @@ public class GateMatrixTests
             [new SliceSite("Payments", "Charge", Critical: true, "Charge.cs")],
             verdicts: []);
 
-        var undeclared = Assert.Single(matrix.UndeclaredCritical);
+        var undeclared = Assert.Single(matrix.UndeclaredSlices);
         Assert.Equal("Charge", undeclared.Name);
         Assert.True(matrix.Blocking);
     }
 
     [Fact]
-    public void One_passing_proof_covers_every_slice_declaring_the_id()
+    public void One_passing_proof_cannot_cover_another_slice_declaring_the_same_id()
     {
-        // The binding is per-criterion-id, repo-wide (the representative-proof model): two slices in two
-        // modules declare the same id; the single passing proof turns both rows green.
+        // The binding is module + subject + criterion: two slices can share an invariant, but each owes its proof.
         var matrix = GateMatrix.Build(
             [
                 Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]"),
                 Manifest("Payments", "[slices.Charge]", "criteria = [\"idempotency-key-honored\"]"),
             ],
-            [new AvpProof("idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
             [
                 new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs"),
                 new SliceSite("Payments", "Charge", Critical: false, "C.cs"),
@@ -110,8 +125,9 @@ public class GateMatrixTests
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
 
         Assert.Equal(2, matrix.Rows.Count);
-        Assert.All(matrix.Rows, r => Assert.Equal(MatrixVerdict.Pass, r.Verdict));
-        Assert.False(matrix.Blocking);
+        Assert.Equal(MatrixVerdict.Pass, matrix.Rows[0].Verdict);
+        Assert.Equal(MatrixVerdict.NoProof, matrix.Rows[1].Verdict);
+        Assert.True(matrix.Blocking);
     }
 
     [Fact]
@@ -120,7 +136,7 @@ public class GateMatrixTests
         var broken = new ManifestFile("Broken.spec.toml", null, "spec.toml has no 'module' key.");
         var matrix = GateMatrix.Build(
             [broken, Manifest("Wallets", "[slices.Ghost]", "criteria = [\"idempotency-key-honored\"]")],
-            [new AvpProof("idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new AvpProof("Wallets", "Ghost", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
             slices: [],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
 
@@ -132,7 +148,7 @@ public class GateMatrixTests
         // Drop the malformed file: only the informational note remains, and the matrix no longer blocks.
         var healthy = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Ghost]", "criteria = [\"idempotency-key-honored\"]")],
-            [new AvpProof("idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new AvpProof("Wallets", "Ghost", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
             slices: [],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
         Assert.Single(healthy.DeclaredWithoutClass);

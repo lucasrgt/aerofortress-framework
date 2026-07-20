@@ -37,12 +37,15 @@ public class GateReportTests
         var clean = GateMatrix.Build(
             [new ManifestFile("Wallets.spec.toml",
                 SpecManifest.Parse("module = \"Wallets\"\n[slices.Withdraw]\ncriteria = [\"idempotency-key-honored\"]"), null)],
-            [new AvpProof("idempotency-key-honored", "W.cs", "WithdrawAvpProof", "Honors_the_key")],
+            [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.cs", "WithdrawAvpProof", "Honors_the_key")],
             [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
             [new TestVerdict("Sample.WithdrawAvpProof", "Honors_the_key", "Passed")]);
 
         Assert.True(GateReport.Green(clean, new GateLegs(0, 0)));
         Assert.False(GateReport.Green(clean, new GateLegs(0, 1)));   // a red leg is never argued away by the matrix
+        Assert.False(GateReport.Green(clean, new GateLegs(0, 0, SkippedTests: 1)));
+        Assert.False(GateReport.Green(clean, new GateLegs(0, 0,
+            [new FrontendGateLeg("web", Tests: 0, Avp: 1, E2eShape: 0, E2e: 0)])));
     }
 
     // A one-module matrix carrying one declared criterion and one stray (undeclared) proof, so both the row
@@ -51,8 +54,8 @@ public class GateReportTests
         [new ManifestFile("Wallets.spec.toml",
             SpecManifest.Parse("module = \"Wallets\"\n[slices.Withdraw]\ncriteria = [\"idempotency-key-honored\"]"), null)],
         [
-            new AvpProof("idempotency-key-honored", "W.cs", "WithdrawAvpProof", "Honors_the_key"),
-            new AvpProof("stray-criterion", "S.cs", "StrayProof", "Proves_the_undeclared"),
+            new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.cs", "WithdrawAvpProof", "Honors_the_key"),
+            new AvpProof("Wallets", "Withdraw", "stray-criterion", "S.cs", "StrayProof", "Proves_the_undeclared"),
         ],
         [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
         [new TestVerdict("Sample.WithdrawAvpProof", "Honors_the_key", passing ? "Passed" : "Failed")]);

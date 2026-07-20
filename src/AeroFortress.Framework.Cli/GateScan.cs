@@ -1,15 +1,21 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Assay.Net;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace AeroFortress.Framework.Cli;
 
-/// <summary>An <c>[AVP("id")]</c> proof site: which test method, in which class and file, proves a criterion.</summary>
+/// <summary>An AVP proof site: which subject and test method proves a criterion.</summary>
+/// <param name="Module">The module namespace containing the proof.</param>
+/// <param name="Subject">The production subject, or <c>null</c> for a legacy unbound marker.</param>
 /// <param name="CriterionId">The catalog criterion id the proof carries.</param>
 /// <param name="File">The proof file, relative to the workspace root.</param>
-/// <param name="ClassName">The declaring class (unqualified), used to match the test-run verdict.</param>
+/// <param name="ClassName">The namespace-qualified declaring class, used to match the test-run verdict.</param>
 /// <param name="Method">The proof method name, used to match the test-run verdict.</param>
-internal sealed record AvpProof(string CriterionId, string File, string ClassName, string Method);
+internal sealed record AvpProof(
+    string Module, string? Subject, string CriterionId, string File, string ClassName, string Method);
 
 /// <summary>A <c>[Slice]</c> class found in source: the code-side inventory the manifest is checked against.</summary>
 /// <param name="Module">The module the slice belongs to (namespace-derived, path fallback).</param>
@@ -32,23 +38,14 @@ internal sealed record ManifestFile(string Path, SpecManifest? Manifest, string?
 
 /// <summary>
 /// The gate's evidence collectors: the <c>*.spec.toml</c> declarations, the <c>[AVP]</c> proof sites, the
-/// <c>[Slice]</c> inventory and the test-run verdicts. Everything is gathered textually — the same trade-off
-/// the doctor makes (AF0030 scans AdditionalFiles by regex) — so the matrix and the analyzers agree on what
-/// counts as a proof. The scans only REPORT; enforcement stays with the doctor's symbol-aware rules.
+/// <c>[Slice]</c> inventory and the test-run verdicts. C# sites are read from Roslyn syntax so examples inside
+/// strings, analyzer fixtures, templates and comments cannot impersonate executable evidence. The scans only
+/// report; enforcement stays with the doctor's symbol-aware rules.
 /// </summary>
 internal static class GateScan
 {
     private static readonly string[] SkippedDirs =
-        ["bin", "obj", "node_modules", ".git", "dist", "coverage", "vendor", "local-feed"];
-
-    // Mirrors the doctor's AvpProofPattern (VerifyProofAnalyzer) so both ends agree on what a proof is.
-    private static readonly Regex AvpPattern =
-        new("\\bAVP(?:Attribute)?\\s*\\(\\s*\"(?<id>[^\"]+)\"", RegexOptions.Compiled);
-
-    private static readonly Regex MethodPattern =
-        new(@"\b(?:async\s+)?(?:Task|ValueTask|void)\s*(?:<[^>\n]+>)?\s+(?<name>\w+)\s*\(", RegexOptions.Compiled);
-
-    private static readonly Regex ClassPattern = new(@"\bclass\s+(?<name>\w+)", RegexOptions.Compiled);
+        ["bin", "obj", "node_modules", ".git", "dist", "coverage", "vendor", "local-feed", "templates"];
 
     private static readonly Regex ModuleNamespacePattern =
         new(@"namespace\s+[\w.]+\.Modules\.(?<module>\w+)", RegexOptions.Compiled);
@@ -72,7 +69,7 @@ internal static class GateScan
         return manifests;
     }
 
-    /// <summary>Collect every <c>[AVP("id")]</c> site in the workspace's C# sources, with its class and method.</summary>
+    /// <summary>Collect every AVP site in the workspace's C# sources, with its subject, class and method.</summary>
     public static IReadOnlyList<AvpProof> ScanProofs(string root)
     {
         var proofs = new List<AvpProof>();
@@ -82,17 +79,22 @@ internal static class GateScan
             if (!text.Contains("AVP", StringComparison.Ordinal))
                 continue;
 
-            var lines = text.Split('\n');
-            var currentClass = "";
-            for (var i = 0; i < lines.Length; i++)
+            var syntax = CSharpSyntaxTree.ParseText(text).GetRoot();
+            foreach (var method in syntax.DescendantNodes().OfType<MethodDeclarationSyntax>())
             {
-                var cls = ClassPattern.Match(lines[i]);
-                if (cls.Success)
-                    currentClass = cls.Groups["name"].Value;
-
-                foreach (Match m in AvpPattern.Matches(lines[i]))
+                foreach (var attribute in method.AttributeLists.SelectMany(list => list.Attributes)
+                             .Where(attribute => IsAttribute(attribute, "AVP")))
+                {
+                    if (!TryReadAvp(attribute, out var subject, out var criterionId))
+                        continue;
+                    var declaringClass = method.Ancestors().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+                    if (declaringClass is null)
+                        continue;
+                    var fileNamespace = NamespaceOf(declaringClass);
                     proofs.Add(new AvpProof(
-                        m.Groups["id"].Value, Relative(root, file), currentClass, MethodBelow(lines, i + 1)));
+                        ModuleOf(fileNamespace, file), subject, criterionId, Relative(root, file),
+                        Qualified(fileNamespace, ClassOf(method)), method.Identifier.ValueText));
+                }
             }
         }
 
@@ -111,22 +113,19 @@ internal static class GateScan
         foreach (var file in Walk(root, "*.cs"))
         {
             var text = File.ReadAllText(file);
-            if (!text.Contains("[Slice]", StringComparison.Ordinal))
+            if (!text.Contains("Slice", StringComparison.Ordinal))
                 continue;
 
-            var lines = text.Split('\n');
-            for (var i = 0; i < lines.Length; i++)
+            var syntax = CSharpSyntaxTree.ParseText(text).GetRoot();
+            foreach (var declaration in syntax.DescendantNodes().OfType<ClassDeclarationSyntax>())
             {
-                var cls = ClassPattern.Match(lines[i]);
-                if (!cls.Success)
+                if (!HasAttribute(declaration, "Slice"))
                     continue;
-                var block = AttributeBlockAbove(lines, i);
-                if (!block.Contains("[Slice]", StringComparison.Ordinal))
-                    continue;
+                var fileNamespace = NamespaceOf(declaration);
                 slices.Add(new SliceSite(
-                    ModuleOf(text, file),
-                    cls.Groups["name"].Value,
-                    block.Contains("[Critical]", StringComparison.Ordinal),
+                    ModuleOf(fileNamespace, file),
+                    declaration.Identifier.ValueText,
+                    HasAttribute(declaration, "Critical"),
                     Relative(root, file)));
             }
         }
@@ -181,46 +180,55 @@ internal static class GateScan
         return comma < 0 ? className : className[..comma];
     }
 
-    // The first method declaration under an [AVP] attribute — walked a bounded number of lines so an attribute
-    // stack ([AVP] + [Integration] + [Fact]) still lands on its method without ever crossing into the next member.
-    private static string MethodBelow(string[] lines, int from)
+    private static string Qualified(string fileNamespace, string className) =>
+        fileNamespace.Length == 0 ? className : fileNamespace + "." + className;
+
+    private static bool TryReadAvp(AttributeSyntax attribute, out string? subject, out string criterionId)
     {
-        for (var i = from; i < lines.Length && i < from + 12; i++)
+        subject = null;
+        criterionId = "";
+        var arguments = attribute.ArgumentList?.Arguments;
+        if (arguments is null || arguments.Value.Count == 0)
+            return false;
+
+        var criterionIndex = 0;
+        if (arguments.Value[0].Expression is TypeOfExpressionSyntax typeOf)
         {
-            var m = MethodPattern.Match(lines[i]);
-            if (m.Success)
-                return m.Groups["name"].Value;
+            subject = SimpleTypeName(typeOf.Type.ToString());
+            criterionIndex = 1;
         }
 
-        return "";
+        if (arguments.Value.Count <= criterionIndex
+            || arguments.Value[criterionIndex].Expression is not LiteralExpressionSyntax literal
+            || !literal.IsKind(SyntaxKind.StringLiteralExpression))
+            return false;
+        criterionId = literal.Token.ValueText;
+        return criterionId.Length > 0;
     }
 
-    // The attribute lines directly above (and on) a class line — the region [Slice]/[Critical] live in.
-    // Only attribute-shaped lines (starting with '[') carry a marker: comments and blanks BRIDGE the walk
-    // but never match — a doc comment explaining why a slice is NOT [Critical] must not read as the mark.
-    private static string AttributeBlockAbove(string[] lines, int classLine)
+    private static string SimpleTypeName(string type) =>
+        type.Replace("global::", "", StringComparison.Ordinal).Split('.').Last().Split('<')[0];
+
+    private static bool HasAttribute(ClassDeclarationSyntax declaration, string expected) =>
+        declaration.AttributeLists.SelectMany(list => list.Attributes).Any(attribute => IsAttribute(attribute, expected));
+
+    private static bool IsAttribute(AttributeSyntax attribute, string expected)
     {
-        var attributes = new List<string>();
-        if (lines[classLine].TrimStart().StartsWith('['))
-            attributes.Add(lines[classLine]);
-        for (var j = classLine - 1; j >= 0; j--)
-        {
-            var t = lines[j].Trim();
-            if (t.StartsWith('['))
-                attributes.Add(lines[j]);
-            else if (t.Length == 0 || t.StartsWith("//", StringComparison.Ordinal))
-                continue;
-            else
-                break;
-        }
-
-        return string.Join("\n", attributes);
+        var name = attribute.Name.ToString().Replace("global::", "", StringComparison.Ordinal).Split('.').Last();
+        return name == expected || name == expected + "Attribute";
     }
+
+    private static string NamespaceOf(SyntaxNode declaration) =>
+        declaration.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault()?.Name.ToString() ?? "";
+
+    private static string ClassOf(MethodDeclarationSyntax method) =>
+        string.Join("+", method.Ancestors().OfType<ClassDeclarationSyntax>().Reverse()
+            .Select(declaration => declaration.Identifier.ValueText));
 
     // A slice's module: the `namespace <App>.Modules.<M>` line when present, else the Modules/<M>/ path segment.
-    private static string ModuleOf(string text, string file)
+    private static string ModuleOf(string fileNamespace, string file)
     {
-        var ns = ModuleNamespacePattern.Match(text);
+        var ns = ModuleNamespacePattern.Match("namespace " + fileNamespace);
         if (ns.Success)
             return ns.Groups["module"].Value;
 

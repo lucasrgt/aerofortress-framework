@@ -9,7 +9,7 @@ public class SliceGeneratorTests
     {
         var root = NewProject("Shop.Api");
 
-        var code = SliceGenerator.Generate(root, "Orders", "Place");
+        var code = SliceGenerator.Generate(root, "Orders", "Place", verify: ["my-domain-invariant"]);
 
         Assert.Equal(0, code);
         var slice = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.cs"));
@@ -44,7 +44,7 @@ public class SliceGeneratorTests
     {
         var root = NewProject("Shop.Api");
 
-        SliceGenerator.Generate(root, "Orders", "Place");
+        SliceGenerator.Generate(root, "Orders", "Place", verify: ["my-domain-invariant"]);
 
         var test = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.Tests.cs"));
         Assert.Contains("namespace Shop.Tests.Modules.Orders;", test);
@@ -58,8 +58,8 @@ public class SliceGeneratorTests
     {
         var root = NewProject("Shop.Api");
 
-        Assert.Equal(0, SliceGenerator.Generate(root, "Orders", "Place"));
-        Assert.Equal(1, SliceGenerator.Generate(root, "Orders", "Place"));
+        Assert.Equal(0, SliceGenerator.Generate(root, "Orders", "Place", verify: ["my-domain-invariant"]));
+        Assert.Equal(1, SliceGenerator.Generate(root, "Orders", "Place", verify: ["my-domain-invariant"]));
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class SliceGeneratorTests
     {
         var root = NewProject("Shop.Api");
 
-        SliceGenerator.Generate(root, "Orders", "Place");
+        SliceGenerator.Generate(root, "Orders", "Place", verify: ["my-domain-invariant"]);
 
         var slice = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.cs"));
         Assert.DoesNotContain("[Critical]", slice);
@@ -79,7 +79,7 @@ public class SliceGeneratorTests
     {
         var root = NewProject("Shop.Api");
 
-        SliceGenerator.Generate(root, "Orders", "Place", critical: true);
+        SliceGenerator.Generate(root, "Orders", "Place", critical: true, verify: ["my-domain-invariant"]);
 
         var slice = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.cs"));
         Assert.Contains("[Critical]", slice);
@@ -111,7 +111,7 @@ public class SliceGeneratorTests
         // and red by design (the subject factory throws until the real endpoint is bound).
         var proof = File.ReadAllText(Path.Combine(root, "Modules", "Wallets", "Slices", "Withdraw.Avp.Tests.cs"));
         Assert.Contains("namespace Shop.Tests.Modules.Wallets;", proof);
-        Assert.Contains("[AVP(\"idempotency-key-honored\")]", proof);
+        Assert.Contains("[AVP(typeof(Withdraw), \"idempotency-key-honored\")]", proof);
         Assert.Contains("new RequestIdempotency()", proof);
         Assert.Contains("RequestIdempotencySubject", proof);
         Assert.Contains("NotImplementedException", proof);
@@ -125,7 +125,7 @@ public class SliceGeneratorTests
         SliceGenerator.Generate(root, "Orders", "Place", critical: true, verify: ["my-domain-invariant"]);
 
         var proof = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.Avp.Tests.cs"));
-        Assert.Contains("[AVP(\"my-domain-invariant\")]", proof);
+        Assert.Contains("[AVP(typeof(Place), \"my-domain-invariant\")]", proof);
         Assert.Contains("Assert.Fail", proof);   // a proof that cannot fail must never ship
     }
 
@@ -141,6 +141,7 @@ public class SliceGeneratorTests
             Assert.Equal(0, SliceGenerator.Run("Wallets", "Withdraw", ["--critical", "--verify", "idempotency-key-honored"]));
             Assert.True(File.Exists(Path.Combine(root, "Modules", "Wallets", "Wallets.spec.toml")));
 
+            Assert.Equal(1, SliceGenerator.Run("Wallets", "Deposit", []));              // criteria are mandatory
             Assert.Equal(1, SliceGenerator.Run("Wallets", "Deposit", ["--verify"]));      // missing the id list
             Assert.Equal(1, SliceGenerator.Run("Wallets", "Deposit", ["--nonsense"]));    // unknown flag
         }

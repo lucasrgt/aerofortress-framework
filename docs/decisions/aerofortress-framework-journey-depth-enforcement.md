@@ -1,8 +1,9 @@
 # Decision: journey enforcement must grade *depth*, not just *existence*
 
-**Status:** accepted; Tier A1 (`AFFE-JOURNEY-002`, `frontend-sdk/tools/e2e-doctor.mjs`) and Tier B3
-(`AF0020`, `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`) implemented (+ tests). Tier A2
-(`AFFE-E2E-SKIP-IN-GATE-001`) is pending behind the e2e-support harness home; Tier B4
+**Status:** accepted; Tier A1 (`AFFE-JOURNEY-002`, `frontend-sdk/tools/e2e-doctor.mjs`), Tier A2
+(disabled/seed-pending specs fail the full gate), and Tier B3
+(`AF0020`, `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`) implemented (+ tests). A1 now
+requires a terminal on every curated flow and is blocking, as established by the universal verification gate. Tier B4
 (`AFFE-JOURNEY-SEAM-001`) pending its feasibility spike; Tier C (mutation) deferred until a critical
 journey set exists. Self-graded **8.6 — PASS with notes** (see §Grading). Tracked in
 [`docs/PORTBACK-CHECKLIST.md`](../PORTBACK-CHECKLIST.md).
@@ -70,17 +71,16 @@ ceiling. Tier A ships first; B and C are sequenced behind it.
 
 ### Tier A — stop reading "linked" as "covered" (ship first)
 
-1. **A linked flow declares its terminal, and the doctor verifies the spec asserts it.** Extend the
-   `flows.json` schema: a flow with a `backendJourney` must also carry `terminal` — the testID (or
+1. **Every curated flow declares its terminal, and the doctor verifies the spec asserts it.** The
+   `flows.json` schema requires `terminal` — the testID (or
    route) the spec must assert **after** entry. `journey-parity.mjs` (→ AFFE-JOURNEY v2) parses the
    spec and fails when (a) the spec asserts only the entry marker, or (b) the declared `terminal`
-   marker never appears in an assertion. Warn-only first, then hard-exit once parity holds — the
-   promotion path already sketched at `journey-parity.mjs:63`. **New diagnostic:
+   marker never appears in an assertion. The finding is a hard exit. **Diagnostic:
    `AFFE-JOURNEY-002`.** This alone would have failed the hostpoint entry-only spec.
 
-2. **A skip is not a pass in the gate.** `frontend-sdk/tools/e2e-doctor.mjs`, in CI-gate mode (the
-   no-seed critical set), fails when a gate-class flow *skips* — today `requireBackend()` /
-   `requireSeed()` skip silently and the run reads green (`clients/hostpoint-app/e2e/support/backend.ts:11-29`).
+2. **A skip is not a pass in the gate.** `frontend-sdk/tools/e2e-doctor.mjs` fails every curated flow
+   disabled, conditional, or focused with skip/fixme/todo/only syntax, or still dependent on pending seed setup — previously `requireBackend()` /
+   `requireSeed()` could skip silently while the run read green (`clients/hostpoint-app/e2e/support/backend.ts:11-29`).
    The spec's own comment already insists "a skipped spec is NOT a passed spec"; this makes the gate
    honour it. **New diagnostic: `AFFE-E2E-SKIP-IN-GATE-001`.**
 
@@ -122,8 +122,7 @@ A journey's terminal is declared in **exactly one** place per side and the two a
 duplicated: the **backend** journey owns the terminal *state* (the `JourneyPath` outcome it asserts);
 the **frontend** flow owns the terminal *surface* (`flows.json.terminal` = the testID/route). The
 seam rule (B4) is the cross-check between them. There is no third spelling and no "author preference"
-fork — if a flow has a `backendJourney`, `terminal` is required; if it has none (UI-only flow),
-`terminal` is forbidden.
+fork — every curated flow declares one terminal surface, whether or not it has a backend twin.
 
 ## New diagnostics
 
@@ -192,6 +191,6 @@ share a root and rise together.
 
 ## Rollout
 
-Tier A behind the existing warn-only AFFE-JOURNEY posture → promote to hard-exit once the pilot's
-flows declare `terminal`. Tier B after the B4 feasibility spike. Tier C as a separate critical-path
-CI lane, deferred until a `[Critical]` journey set exists to make the mutation score meaningful.
+Tier A is now a hard exit in the full `af gate`: missing/empty manifests, missing terminals, disabled
+specs, and seed-pending specs are all red. Tier B4 remains behind its feasibility spike. Tier C stays
+a separate critical-path CI lane, deferred until a `[Critical]` journey set makes mutation score useful.

@@ -4,11 +4,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 using AeroFortress.Framework.Identity;
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class RegisterWithGoogleTests
 {
+    [AVP(typeof(RegisterWithGoogle), "registers-verified-external-identity")]
     [Unit]
     [Fact]
     public async Task Creates_an_email_verified_user_and_issues_a_session()

@@ -93,8 +93,8 @@ internal static class SpecManifestScaffold
         #
         # The per-module acceptance spec. Each slice's `criteria` array lists the AVP catalog ids it must be
         # PROVEN against; the doctor reads this file (as an AdditionalFile) to close the spec<->code bijection
-        # both ways: AF0031 fails a [Critical] slice not declared here with >=1 criterion, AF0030 fails a
-        # declared criterion that no [AVP("id")] proof verifies. The obligation lives here, not on an inline
+        # both ways: AF0031 fails any [Slice] not declared here with >=1 criterion, AF0030 fails a
+        # declared criterion that no [AVP(typeof(Slice), "id")] proof verifies. The obligation lives here, not on an inline
         # attribute, so the spec is a reviewable file beside the module.
 
         module = "{module}"

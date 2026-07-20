@@ -4,11 +4,13 @@ using MyApp.Api.BuildingBlocks;
 using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class VerifyPhoneTests
 {
+    [AVP(typeof(VerifyPhone), "accepts-valid-code")]
     [Unit]
     [Fact]
     public async Task Verifies_with_the_right_code_and_completes_registration()

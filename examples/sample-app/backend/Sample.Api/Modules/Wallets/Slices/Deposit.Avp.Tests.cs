@@ -30,7 +30,7 @@ public class DepositAvpProof
     private static Assay.Net.VerdictStatus StatusOf(Verdict v, string criterionId) =>
         v.Results.First(r => r.CriterionId == criterionId).Status;
 
-    [AVP("idempotency-key-honored")]
+    [AVP(typeof(Deposit), "idempotency-key-honored")]
     [Integration]
     [Fact]
     public async Task Deposit_honors_the_idempotency_key()
@@ -39,7 +39,7 @@ public class DepositAvpProof
 
         var subject = new RequestIdempotencySubject(
             server.BaseUrl, "/wallets/deposit", new { walletId = server.WalletId, amount = 10m }, IdField: "balance");
-        var verdict = await Runner.Run(AvpCatalog, new RequestIdempotency(), "deposit", subject);
+        var verdict = await Runner.Run(AvpCatalog, new RequestIdempotency(), nameof(Deposit), subject);
 
         var result = verdict.Results.First(r => r.CriterionId == "idempotency-key-honored");
         Assert.True(result.Status == Assay.Net.VerdictStatus.Pass, result.Reason);

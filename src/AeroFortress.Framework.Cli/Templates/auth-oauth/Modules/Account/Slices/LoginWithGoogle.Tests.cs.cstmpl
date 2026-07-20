@@ -4,11 +4,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 using AeroFortress.Framework.Identity;
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class LoginWithGoogleTests
 {
+    [AVP(typeof(LoginWithGoogle), "issues-token-on-valid")]
     [Unit]
     [Fact]
     public async Task Signs_in_an_existing_user()

@@ -1,5 +1,5 @@
 // Frontend generators — the parallel of the backend scaffold. Beyond the typed client (orval), these emit the
-// *structure*: a feature unit (ViewModel + View + test + i18n) from a name, and the assembled i18n resource tree
+// *structure*: a feature unit (ViewModel + View + tests + AVP assay + i18n) from a name, and the assembled i18n resource tree
 // from every feature's catalog. Pure render functions (testable, no I/O); the *.mjs CLIs wrap them with file
 // writes, and the `af` .NET CLI front-door shells out to those CLIs (the way `af doctor` shells out to
 // `npm run lint`). The unit they emit is the blessed sample/items with names substituted — conformant by
@@ -34,7 +34,7 @@ export function ident(ns) {
 }
 
 /**
- * Render a feature unit from a plural feature name (e.g. "bookings"). Returns { filename: contents } for the four
+ * Render a feature unit from a plural feature name (e.g. "bookings"). Returns { filename: contents } for the five
  * co-located files — the canonical unit. Names are derived: ns "bookings", component "Bookings", collection
  * "bookings", entity "Booking", model hook "useBookingsModel", list hook "useListBookings".
  */
@@ -62,6 +62,7 @@ export interface ${Plural}Model {
   state: { ${collection}: AsyncState<${Entity}[]> };
 }
 
+/** @verify count-matches-source */
 export function use${Plural}Model(): ${Plural}Model {
   const query = useList${Plural}();
 
@@ -129,7 +130,6 @@ import { ${Plural}View } from "./${Plural}.view";
 // CANONICAL TESTS — the two co-located tiers the harness enforces:
 //  - AFFE005 (unit): renderHook the ViewModel (the data door) against the real client — wired, not mocked.
 //  - AFFE006 (integration): render the View so it composes with its ViewModel + design system and mounts.
-// Neither asserts behavior beyond "it mounts" — behavior stays per-screen judgment.
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
@@ -146,6 +146,29 @@ describe("${Plural}", () => {
     expect(container).toBeTruthy();
   });
 });
+`;
+
+  const assay = `import { dataHonesty } from "@aerofortress/assay";
+import type { DataHonestySubject } from "@aerofortress/assay/react";
+import { defineVerification } from "@aerofortress/assay/react/vitest";
+
+/** @avp count-matches-source */
+// AVP PROOF — red by design until this subject mounts the real ${Plural}View with its providers and names
+// the generated client's exact list endpoint/response shape. Do not weaken or skip it: the verifier must
+// observe a populated source and prove the rendered count converges with it.
+const subject: DataHonestySubject = {
+  name: "${Plural}",
+  render: () => {
+    throw new Error("bind ${Plural}View + providers to the AVP data-honesty subject");
+  },
+  endpoint: { method: "GET", path: "/replace-with-${lower}-endpoint" },
+  items: { role: "listitem" },
+  emptyResponse: { ${collection}: [] },
+  countResponse: [{ id: "one", name: "One" }, { id: "two", name: "Two" }],
+  fabricationMarkers: [],
+};
+
+defineVerification(dataHonesty, subject, { label: "${Plural} · count-matches-source" });
 `;
 
   const i18n = `// Feature-scoped copy. Three locales with identical keys (AFFE011) — fill in the real strings.
@@ -172,6 +195,7 @@ export const enUS = {
     [`${Plural}.viewModel.ts`]: viewModel,
     [`${Plural}.view.tsx`]: view,
     [`${Plural}.test.tsx`]: test,
+    [`${Plural}.assay.test.tsx`]: assay,
     [`${lower}.i18n.ts`]: i18n,
   };
 }

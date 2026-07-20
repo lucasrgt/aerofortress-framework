@@ -31,7 +31,7 @@ describe("Button", () => {
     render(<Button label="Save" onPress={onPress} loading />);
     const btn = screen.getByRole("button") as HTMLButtonElement;
     fireEvent.click(btn);
-    expect(onPress).not.toHaveBeenCalled();
+    expect(onPress).toHaveBeenCalledTimes(0);
     expect(btn.disabled).toBe(true);
     expect(btn.getAttribute("aria-busy")).toBe("true");
   });
@@ -40,7 +40,7 @@ describe("Button", () => {
     const onPress = vi.fn();
     render(<Button label="Save" onPress={onPress} disabled />);
     fireEvent.click(screen.getByRole("button"));
-    expect(onPress).not.toHaveBeenCalled();
+    expect(onPress).toHaveBeenCalledTimes(0);
   });
 
   it("shows the focusRing treatment on focus and drops it on blur — never outline:none alone", () => {
@@ -103,6 +103,7 @@ describe("Text — typography is one decision", () => {
   });
 
   it("maps tones to semantic color roles", () => {
+    expect.hasAssertions();
     render(<Text tone="muted">m</Text>);
     sameColor(screen.getByText("m").style.color, color.textMuted);
   });

@@ -34,8 +34,15 @@ public class CriticalCriterionAnalyzerTests
     }
 
     [Fact]
-    public Task Non_critical_slice_needs_no_criterion() =>
-        Make(PlainSlice, manifest: null).RunAsync();
+    public Task Plain_slice_with_no_criterion_is_flagged()
+    {
+        var test = Make(PlainSlice, manifest: null);
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult(CriticalCriterionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+                .WithSpan("Deposit.cs", 6, 7, 6, 14)
+                .WithArguments("Deposit", "Wallets.spec.toml"));
+        return test.RunAsync();
+    }
 
     [Fact]
     public Task Strict_policy_requires_a_criterion_on_an_undecided_slice()
@@ -51,9 +58,15 @@ public class CriticalCriterionAnalyzerTests
     }
 
     [Fact]
-    public Task Strict_policy_lets_a_non_critical_slice_skip_the_criterion() =>
-        // [NonCritical] is the explicit opt-out: even under strict it needs no criterion.
-        Make(NonCriticalSlice, manifest: null, criticality: "strict").RunAsync();
+    public Task Non_critical_slice_still_needs_a_criterion()
+    {
+        var test = Make(NonCriticalSlice, manifest: null, criticality: "strict");
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult(CriticalCriterionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+                .WithSpan("Deposit.cs", 7, 7, 7, 14)
+                .WithArguments("Deposit", "Wallets.spec.toml"));
+        return test.RunAsync();
+    }
 
     // A critical [Slice] in a module — the obligation to declare a criterion lives in the module's manifest.
     private const string CriticalSlice = """

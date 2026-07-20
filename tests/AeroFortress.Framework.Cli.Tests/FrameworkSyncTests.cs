@@ -64,7 +64,7 @@ public class FrameworkSyncTests
         var version = Regex.Match(File.ReadAllText(PropsPath()), @"<Version>([^<]+)</Version>");
 
         Assert.True(version.Success, "could not read <Version> from AeroFortress.Framework.Library.props");
-        Assert.Equal(version.Groups[1].Value, FrameworkPackageVersions.Framework);
+        Assert.Equal(FrameworkPackageVersions.Framework, version.Groups[1].Value);
     }
 
     // The scaffold starter ships literal package versions (the generators stamp the constant, but `af new`'s

@@ -20,7 +20,7 @@ internal enum MatrixVerdict
 /// <param name="Module">The declaring module (from its <c>&lt;Module&gt;.spec.toml</c>).</param>
 /// <param name="Slice">The declared slice name.</param>
 /// <param name="CriterionId">The catalog criterion id the slice owes.</param>
-/// <param name="Proofs">Every <c>[AVP]</c> site carrying the id — proofs bind repo-wide, one proof covers all declarers.</param>
+/// <param name="Proofs">Every <c>[AVP]</c> site carrying this exact subject × criterion pair.</param>
 /// <param name="Verdict">The criterion's outcome for this run.</param>
 internal sealed record MatrixRow(
     string Module, string Slice, string CriterionId, IReadOnlyList<AvpProof> Proofs, MatrixVerdict Verdict);
@@ -35,7 +35,7 @@ internal sealed record DeclaredWithoutClass(string Module, string Slice, string 
 /// The verification matrix — the gate's artifact. It joins the four evidence sets the scans collect
 /// (manifest declarations, <c>[AVP]</c> proof sites, <c>[Slice]</c> inventory, test verdicts) into the
 /// traceability the Clockwork gate demands: every declared criterion → a proof → a decided PASS; no orphan
-/// proof (creep), no critical slice declaring nothing, no malformed manifest. Pure — all IO stays in
+/// proof (creep), no slice declaring nothing, no malformed manifest. Pure — all IO stays in
 /// <see cref="GateScan"/> — so every axis is unit-testable.
 /// </summary>
 internal sealed class GateMatrix
@@ -43,13 +43,13 @@ internal sealed class GateMatrix
     private GateMatrix(
         IReadOnlyList<MatrixRow> rows,
         IReadOnlyList<AvpProof> orphanProofs,
-        IReadOnlyList<SliceSite> undeclaredCritical,
+        IReadOnlyList<SliceSite> undeclaredSlices,
         IReadOnlyList<DeclaredWithoutClass> declaredWithoutClass,
         IReadOnlyList<ManifestFile> malformedManifests)
     {
         Rows = rows;
         OrphanProofs = orphanProofs;
-        UndeclaredCritical = undeclaredCritical;
+        UndeclaredSlices = undeclaredSlices;
         DeclaredWithoutClass = declaredWithoutClass;
         MalformedManifests = malformedManifests;
     }
@@ -60,8 +60,8 @@ internal sealed class GateMatrix
     /// <summary>Proof sites whose criterion id no manifest declares — scope creep, per the gate's total-matrix rule.</summary>
     public IReadOnlyList<AvpProof> OrphanProofs { get; }
 
-    /// <summary>Explicitly <c>[Critical]</c> slices with no non-empty declaration — the AF0031 axis, mirrored.</summary>
-    public IReadOnlyList<SliceSite> UndeclaredCritical { get; }
+    /// <summary>Slices with no non-empty declaration — the universal AF0031 axis, mirrored.</summary>
+    public IReadOnlyList<SliceSite> UndeclaredSlices { get; }
 
     /// <summary>Declared slices with no <c>[Slice]</c> class in source (a manifest ahead of its code) — informational.</summary>
     public IReadOnlyList<DeclaredWithoutClass> DeclaredWithoutClass { get; }
@@ -70,18 +70,18 @@ internal sealed class GateMatrix
     public IReadOnlyList<ManifestFile> MalformedManifests { get; }
 
     /// <summary>
-    /// Whether the matrix alone fails the gate: any non-pass verdict, orphan proof, undeclared critical
+    /// Whether the matrix alone fails the gate: any non-pass verdict, orphan proof, undeclared
     /// slice or malformed manifest. (A declared slice with no class stays informational.)
     /// </summary>
     public bool Blocking =>
         Rows.Any(r => r.Verdict != MatrixVerdict.Pass)
         || OrphanProofs.Count > 0
-        || UndeclaredCritical.Count > 0
+        || UndeclaredSlices.Count > 0
         || MalformedManifests.Count > 0;
 
     /// <summary>Join the scanned evidence into the matrix. Pure; order-stable for deterministic reports.</summary>
     /// <param name="manifests">Every discovered <c>*.spec.toml</c> (parsed or malformed).</param>
-    /// <param name="proofs">Every <c>[AVP("id")]</c> site in source.</param>
+    /// <param name="proofs">Every subject-bound or legacy <c>[AVP]</c> site in source.</param>
     /// <param name="slices">Every <c>[Slice]</c> class in source.</param>
     /// <param name="verdicts">Every test outcome from the run's TRX files.</param>
     public static GateMatrix Build(
@@ -91,15 +91,13 @@ internal sealed class GateMatrix
         IReadOnlyList<TestVerdict> verdicts)
     {
         var parsed = manifests.Where(m => m.Manifest is not null).ToList();
-        var proofsById = proofs
-            .GroupBy(p => p.CriterionId, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<AvpProof>)g.ToList(), StringComparer.Ordinal);
-
-        var verdictById = proofsById.ToDictionary(
-            kv => kv.Key, kv => DecideVerdict(kv.Value, verdicts), StringComparer.Ordinal);
+        var proofsByObligation = proofs
+            .Where(p => p.Subject is not null)
+            .GroupBy(p => (p.Module, Subject: p.Subject!, p.CriterionId))
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<AvpProof>)g.ToList());
 
         var rows = new List<MatrixRow>();
-        var declaredIds = new HashSet<string>(StringComparer.Ordinal);
+        var declaredObligations = new HashSet<(string Module, string Subject, string Criterion)>();
         var declaredWithoutClass = new List<DeclaredWithoutClass>();
         foreach (var file in parsed)
         {
@@ -110,17 +108,21 @@ internal sealed class GateMatrix
                     declaredWithoutClass.Add(new DeclaredWithoutClass(manifest.Module, slice, file.Path));
                 foreach (var criterion in criteria)
                 {
-                    declaredIds.Add(criterion);
-                    var sites = proofsById.TryGetValue(criterion, out var found) ? found : [];
-                    var verdict = sites.Count == 0 ? MatrixVerdict.NoProof : verdictById[criterion];
+                    declaredObligations.Add((manifest.Module, slice, criterion));
+                    var sites = proofsByObligation.TryGetValue((manifest.Module, slice, criterion), out var found)
+                        ? found
+                        : [];
+                    var verdict = sites.Count == 0 ? MatrixVerdict.NoProof : DecideVerdict(sites, verdicts);
                     rows.Add(new MatrixRow(manifest.Module, slice, criterion, sites, verdict));
                 }
             }
         }
 
-        var orphans = proofs.Where(p => !declaredIds.Contains(p.CriterionId)).ToList();
-        var undeclaredCritical = slices
-            .Where(s => s.Critical)
+        var orphans = proofs
+            .Where(p => p.Subject is null
+                || !declaredObligations.Contains((p.Module, p.Subject, p.CriterionId)))
+            .ToList();
+        var undeclaredSlices = slices
             .Where(s => !parsed.Any(m =>
                 m.Manifest!.Module == s.Module
                 && m.Manifest.Slices.TryGetValue(s.Name, out var criteria)
@@ -128,25 +130,25 @@ internal sealed class GateMatrix
             .ToList();
 
         return new GateMatrix(
-            rows, orphans, undeclaredCritical, declaredWithoutClass,
+            rows, orphans, undeclaredSlices, declaredWithoutClass,
             manifests.Where(m => m.Manifest is null).ToList());
     }
 
-    // A criterion's verdict from its proof sites and the run's outcomes: any decided failure loses, any
-    // decided pass (with no failure) wins, and a proof that never reached a decision is NOT-RUN — the AVP
-    // stance that a skip never counts as green.
+    // Every proof site must run and pass. One passing duplicate must never hide another proof that was skipped,
+    // failed, or was not discovered by the runner.
     private static MatrixVerdict DecideVerdict(IReadOnlyList<AvpProof> sites, IReadOnlyList<TestVerdict> verdicts)
     {
-        var outcomes = sites
-            .SelectMany(site => verdicts.Where(v => Matches(v, site)))
-            .Select(v => v.Outcome)
+        var outcomesBySite = sites
+            .Select(site => verdicts.Where(v => Matches(v, site)).Select(v => v.Outcome).ToList())
             .ToList();
 
-        if (outcomes.Any(o => o is not ("Passed" or "NotExecuted")))
+        if (outcomesBySite.SelectMany(outcomes => outcomes).Any(o => o is not ("Passed" or "NotExecuted")))
             return MatrixVerdict.Fail;
-        if (outcomes.Contains("Passed"))
-            return MatrixVerdict.Pass;
-        return MatrixVerdict.NotRun;
+        if (outcomesBySite.Any(outcomes => outcomes.Count == 0 || outcomes.Contains("NotExecuted")))
+            return MatrixVerdict.NotRun;
+        return outcomesBySite.All(outcomes => outcomes.Count > 0 && outcomes.All(o => o == "Passed"))
+            ? MatrixVerdict.Pass
+            : MatrixVerdict.NotRun;
     }
 
     // TRX class names are namespace-qualified; proof classes are bare type names from the textual scan.

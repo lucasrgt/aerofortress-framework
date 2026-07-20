@@ -11,10 +11,12 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 |---|---|---|
 | Unit | `AFFE005` (every ViewModel has a co-located `renderHook` test) | eslint, per-file |
 | Integration | `AFFE006` (every View has a co-located `render()` test) | eslint, per-file |
+| AVP | `AFFE033` (every ViewModel declares `@verify`; the exact co-located `*.assay.test.tsx` registers the matching `@avp` verification) | eslint + `npm run test:avp` |
 | **E2E** | **`e2e-doctor.mjs`** (a curated `e2e/flows.json` + every listed flow has a spec + a runner) | this dir, **per-project** |
 
-E2E is flow-level and expensive, so it is **not** enforced per component — `checkE2e(root)` enforces a *curated
-checklist*: humans declare the critical flows in `e2e/flows.json`, the doctor proves each has a spec. See the
+E2E is flow-level, so it is **not** inferred per component — `checkE2e(root)` enforces a mandatory curated
+checklist: humans declare the product flows in `e2e/flows.json`, the doctor proves each has an enabled spec,
+terminal assertion, and real runner. A missing/empty manifest is red. See the
 Hostpoint dogfood's `scripts/affe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
 
 ## The fullstack loop (journey parity)
@@ -43,9 +45,10 @@ npm run scaffold -- <plural-name> [targetDir]
 # e.g.  npm run scaffold -- bookings sample/bookings
 ```
 
-Emits the four co-located files of the canonical unit — `<Feature>.viewModel.ts`, `<Feature>.view.tsx`,
-`<Feature>.test.tsx`, `<feature>.i18n.ts` — with names derived from the feature name. The emitted unit is the
-blessed `sample/items` shape with substitutions, so it **passes every AFFE rule and typechecks by construction**
+Emits the five co-located files of the canonical unit — `<Feature>.viewModel.ts`, `<Feature>.view.tsx`,
+`<Feature>.test.tsx`, `<Feature>.assay.test.tsx`, `<feature>.i18n.ts` — with names derived from the feature name.
+The Assay subject is red by design until it mounts the real View and endpoint; the other four files are the
+blessed `sample/items` shape with substitutions, so their structure **passes every AFFE rule and typechecks by construction**
 (`generate.test.ts` writes a unit to disk and lints it with the real rules to prove the emitter and the harness
 agree). Then refine the entity fields, wire the slice in `@/client.gen`, and fill the copy.
 

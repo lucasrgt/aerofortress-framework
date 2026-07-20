@@ -4,11 +4,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 using AeroFortress.Framework.Mail;
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class RequestEmailVerificationTests
 {
+    [AVP(typeof(RequestEmailVerification), "issues-single-active-token")]
     [Unit]
     [Fact]
     public async Task Creates_a_verification_token_for_the_caller()

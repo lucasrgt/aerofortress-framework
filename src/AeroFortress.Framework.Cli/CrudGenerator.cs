@@ -94,13 +94,17 @@ public static class CrudGenerator
         Directory.CreateDirectory(slicesDir);
 
         var emitted = new List<string>();
-        EmitSlice(ctx, slicesDir, $"List{entity}", emitted);
-        EmitSlice(ctx, slicesDir, $"Lookup{entity}", emitted);
+        var slices = new List<string> { $"List{entity}", $"Lookup{entity}" };
         if (hasUserId)
-            EmitSlice(ctx, slicesDir, $"LookupMy{entity}", emitted);
-        EmitSlice(ctx, slicesDir, $"Create{entity}", emitted);
-        EmitSlice(ctx, slicesDir, $"Update{entity}", emitted);
-        EmitSlice(ctx, slicesDir, $"Delete{entity}", emitted);
+            slices.Add($"LookupMy{entity}");
+        slices.AddRange([$"Create{entity}", $"Update{entity}", $"Delete{entity}"]);
+        foreach (var slice in slices)
+            EmitSlice(ctx, slicesDir, slice, emitted);
+
+        foreach (var slice in slices)
+            SpecManifestScaffold.EnsureDeclared(
+                moduleDir, module, slice, [CrudAcceptance.CriterionFor(slice, entity)]);
+        CrudAcceptance.WireTestProject(root, appName);
 
         // The Lookup/Update/Delete slices return NotFound via a registry constant (AF0018) — ensure it exists.
         ErrorCodeScaffold.EnsureModuleCode(moduleDir, appNamespace, module,
@@ -124,6 +128,7 @@ public static class CrudGenerator
         if (File.Exists(slicePath))
         {
             Console.WriteLine($"skipped {slicePath} (already present)");
+            CrudAcceptance.EnsureProof(testPath, sliceName, CrudAcceptance.CriterionFor(sliceName, ctx.Entity));
             return;
         }
 
@@ -136,7 +141,9 @@ public static class CrudGenerator
             : $"{stem}.Tests.cs.cstmpl";
 
         File.WriteAllText(slicePath, Render(Read(sliceTemplate), ctx));
-        File.WriteAllText(testPath, Render(Read(testTemplate), ctx));
+        var test = CrudAcceptance.BindProof(
+            Render(Read(testTemplate), ctx), sliceName, CrudAcceptance.CriterionFor(sliceName, ctx.Entity));
+        File.WriteAllText(testPath, test);
         Console.WriteLine($"created {slicePath}");
         Console.WriteLine($"created {testPath}");
         emitted.Add(sliceName);

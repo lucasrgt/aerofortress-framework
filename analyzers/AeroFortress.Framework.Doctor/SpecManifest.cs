@@ -12,7 +12,7 @@ namespace AeroFortress.Framework.Doctor;
 /// The shared reading of a module's <b>Clockwork spec manifest</b> — the per-module
 /// <c>&lt;Module&gt;.spec.toml</c> that declares each slice's acceptance obligation. It is the one place
 /// that answers "which criteria does this slice owe?" so <c>AF0030</c> (every declared criterion has an
-/// <c>[AVP]</c> proof) and <c>AF0031</c> (every critical slice is declared with a criterion) read the
+/// <c>[AVP]</c> proof) and <c>AF0031</c> (every slice is declared with a criterion) read the
 /// manifest the one way and can never disagree on what it says.
 ///
 /// The manifest is co-located with the module (e.g. <c>Modules/Wallets/Wallets.spec.toml</c>) and read

@@ -55,12 +55,12 @@ public class VerifyProofAnalyzerTests
 
         class DepositProof
         {
-            [AVP("own-resource-only")]
+            [AVP(typeof(Deposit), "own-resource-only")]
             public void Proves() { }
         }
 
         sealed class SliceAttribute : Attribute { }
-        sealed class AVPAttribute : Attribute { public AVPAttribute(string id) { } }
+        sealed class AVPAttribute : Attribute { public AVPAttribute(Type subject, string id) { } }
         """;
 
     // The module's Clockwork spec manifest declaring the slice's acceptance criterion.
@@ -73,7 +73,9 @@ public class VerifyProofAnalyzerTests
 
     // The AVP proof living in an excluded test file — scanned as an AdditionalFile, never compiled.
     private const string AvpProofFile = """
-        [AVP("own-resource-only")]
+        namespace App.Tests.Modules.Wallets;
+
+        [AVP(typeof(Deposit), "own-resource-only")]
         public void Proves() { }
         """;
 

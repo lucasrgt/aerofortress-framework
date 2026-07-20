@@ -42,26 +42,28 @@ export function checkJourneyParity(backendJourneys, frontendFlows) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const [, , journeysDir, flowsFile, flag] = process.argv;
+  const [, , journeysDir, flowsFile] = process.argv;
   if (!journeysDir || !flowsFile) {
-    console.error("usage: affe-journey-parity <backend-journeys-dir> <flows.json> [--strict]");
+    console.error("usage: affe-journey-parity <backend-journeys-dir> <flows.json>");
     process.exit(2);
   }
-  if (!existsSync(journeysDir) || !existsSync(flowsFile)) {
-    console.log("AFFE-JOURNEY: backend journeys or frontend flows manifest not found — bootstrap, nothing to compare.");
-    process.exit(0);
+  if (!existsSync(flowsFile)) {
+    console.log("AFFE-JOURNEY: frontend flows manifest not found — parity cannot be proven.");
+    process.exit(1);
   }
 
-  const backendJourneys = readdirSync(journeysDir)
-    .filter((file) => file.endsWith(".Tests.cs"))
-    .map((file) => file.replace(/\.Tests\.cs$/, ""));
+  const backendJourneys = existsSync(journeysDir)
+    ? readdirSync(journeysDir)
+        .filter((file) => file.endsWith(".Tests.cs"))
+        .map((file) => file.replace(/\.Tests\.cs$/, ""))
+    : [];
   let frontendFlows;
   try {
     frontendFlows = JSON.parse(readFileSync(flowsFile, "utf8"));
     if (!Array.isArray(frontendFlows)) throw new Error("flows.json must be an array");
   } catch (error) {
     console.log(`AFFE-JOURNEY: flows.json invalid — ${error.message}`);
-    process.exit(flag === "--strict" ? 1 : 0);
+    process.exit(1);
   }
 
   const result = checkJourneyParity(backendJourneys, frontendFlows);
@@ -70,5 +72,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       + `${result.gaps} parity gap(s).`,
   );
   for (const message of result.messages) console.log(`  - ${message}`);
-  process.exit(flag === "--strict" && result.gaps > 0 ? 1 : 0);
+  process.exit(result.gaps > 0 ? 1 : 0);
 }

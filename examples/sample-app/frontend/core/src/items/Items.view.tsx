@@ -46,7 +46,7 @@ function ItemList({ items }: { items: Item[] }) {
         <Text role="title">{t("title")}</Text>
         <Stack gap="sm">
           {items.map((item) => (
-            <Card key={item.id} padding="md">
+            <Card key={item.id} padding="md" listItem>
               <Text>{item.name}</Text>
             </Card>
           ))}

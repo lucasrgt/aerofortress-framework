@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tanstackQuery from "@tanstack/eslint-plugin-query";
@@ -6,10 +7,9 @@ import noSecrets from "eslint-plugin-no-secrets";
 import sonarjs from "eslint-plugin-sonarjs";
 import vitest from "@vitest/eslint-plugin";
 
-// Lint config for the canonical example (examples/sample-app/frontend). The example now lives at the repo root
-// (a sibling of frontend/), so type-aware linting of it runs once aerofortress-framework adopts a root npm workspace (shared
-// node_modules + a project that spans both) — the same monorepo shape the example itself demonstrates. The AFFE
-// rules below are the contract it follows; `npm run lint` verifies the rules via the plugin self-test today.
+// Lint config for the canonical example (examples/sample-app/frontend), executed from the repository root by
+// `npm run lint`. The root location keeps the example inside ESLint's base path while dependencies remain owned
+// by frontend-sdk; the rule self-tests run as a separate leg.
 //
 // Curated community kit alongside the AFFE rules (prior art:
 // pleiades-os / corbanx both standardize on the same kit). Two of those compose cleanly with the AFFE rules:
@@ -30,13 +30,13 @@ export default [
   // react-query correctness (parser comes from the sample block below, which these merge onto).
   ...tanstackQuery.configs["flat/recommended"],
   {
-    files: ["../examples/sample-app/frontend/{core,web}/**/*.{ts,tsx}"],
+    files: ["examples/sample-app/frontend/{core,web}/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 2022,
       sourceType: "module",
       // type-aware lint (projectService) — required by @typescript-eslint/no-floating-promises.
-      parserOptions: { ecmaFeatures: { jsx: true }, projectService: true, tsconfigRootDir: import.meta.dirname },
+      parserOptions: { ecmaFeatures: { jsx: true }, projectService: true, tsconfigRootDir: fileURLToPath(new URL("..", import.meta.url)) },
     },
     plugins: { aerofortress, "no-secrets": noSecrets, sonarjs, "@typescript-eslint": tsPlugin },
     rules: {
@@ -86,8 +86,9 @@ export default [
       // interceptor / the session seam); a second rotation path trips the backend's theft detection.
       "aerofortress/refresh-one-door": "error",
       // The AVP bridge (AFFE033) — the front-side of the backend's AF0030 and the closing leg of Clockwork: a
-      // `@verify <id>` obligation on a View/ViewModel must have a co-located `@avp <id>` proof. Error-tier.
+      // `@verify <id>` obligation on a View/ViewModel must have a co-located executable Assay proof. Error-tier.
       "aerofortress/verify-has-avp-proof": "error",
+      "aerofortress/no-disabled-tests": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",
@@ -100,13 +101,13 @@ export default [
   // aria-role checks DOM elements only (ignoreNonDOM): the kit's `Text role=` is a TextRole (typography), not an
   // ARIA role — components map their props internally; the host-element half of the check stays on.
   {
-    files: ["../examples/sample-app/frontend/web/**/*.{ts,tsx}"],
+    files: ["examples/sample-app/frontend/web/**/*.{ts,tsx}"],
     plugins: { "jsx-a11y": jsxA11y },
     rules: { ...jsxA11y.flatConfigs.recommended.rules, "jsx-a11y/aria-role": ["error", { ignoreNonDOM: true }] },
   },
   // test hygiene — no .only/.skip leaking into the suite (the @vitest recommended set).
   {
-    files: ["../examples/sample-app/frontend/{core,web}/**/*.test.{ts,tsx}"],
+    files: ["examples/sample-app/frontend/{core,web}/**/*.test.{ts,tsx}"],
     plugins: { vitest },
     rules: { ...vitest.configs.recommended.rules },
   },

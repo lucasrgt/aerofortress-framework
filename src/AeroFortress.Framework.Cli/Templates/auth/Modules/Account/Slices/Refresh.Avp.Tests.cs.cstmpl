@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Assay.Net;
 using Assay.Net.Archetypes;
+using MyApp.Api.Modules.Account;
 
 namespace MyApp.Tests.Modules.Account;
 
@@ -10,8 +11,8 @@ public class RefreshAvpProof
 {
     private static readonly ProtocolCatalog Avp = Catalog.LoadDefault();
 
-    [AVP("rotates-on-refresh")]
-    [AVP("replay-burns-family")]
+    [AVP(typeof(Refresh), "rotates-on-refresh")]
+    [AVP(typeof(Refresh), "replay-burns-family")]
     [Integration]
     [Fact]
     public async Task Refresh_rotates_and_a_replay_burns_the_family()
@@ -27,7 +28,7 @@ public class RefreshAvpProof
             Credentials: new { email = "avp-refresh@x.com", password = "password1" },
             RefreshPath: "/account/refresh");
 
-        var verdict = await Runner.Run(Avp, new TokenRotation(), "refresh", subject,
+        var verdict = await Runner.Run(Avp, new TokenRotation(), nameof(Refresh), subject,
             transport: () => app.CreateClient());
 
         AvpAssert.Passes(verdict, "rotates-on-refresh", "replay-burns-family");

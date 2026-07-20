@@ -11,8 +11,8 @@ describe("framework-sync", () => {
       declarations: [{
         path: "clients/app/package.json",
         packages: {
-          "@aerofortress/frontend-sdk": "^0.1.4",
-          "eslint-plugin-aerofortress": "^0.11.0",
+          "@aerofortress/frontend-sdk": "^0.2.0",
+          "eslint-plugin-aerofortress": "^0.12.0",
           "@aerofortress/react": "~0.6.0",
         },
       }],
@@ -52,6 +52,6 @@ describe("framework-sync", () => {
   });
 
   it("extracts the concrete version from a dependency range", () => {
-    expect(declaredVersion("^0.11.0")).toBe("0.11.0");
+    expect(declaredVersion("^0.12.0")).toBe("0.12.0");
   });
 });

@@ -1,6 +1,9 @@
 # Decision: criticality is a *policy dial*, not a blanket — and the strict opt-out is a forced, reviewable marker
 
-**Status:** accepted; implemented in the 0.6.0 wave. New marker `[NonCritical]`
+**Status:** accepted; amended by
+[`aerofortress-framework-universal-verification-gate.md`](aerofortress-framework-universal-verification-gate.md).
+Criticality remains a policy dial for the extra happy/sad journey depth; it no longer controls whether a
+slice declares criteria or carries executable tests. Implemented in the 0.6.0 wave. New marker `[NonCritical]`
 (`src/AeroFortress.Framework.Abstractions/NonCriticalAttribute.cs`), shared helper
 (`analyzers/AeroFortress.Framework.Doctor/CriticalityPolicy.cs`), new rule **`AF0029`**
 (`analyzers/AeroFortress.Framework.Doctor/CriticalityPolicyAnalyzer.cs`), `AF0008`/`AF0010` rewired to the helper, the

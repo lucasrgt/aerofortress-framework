@@ -5,7 +5,8 @@ namespace AeroFortress.Framework.Cli;
 
 /// <summary>
 /// Renders a slice's co-located AVP proof file (<c>&lt;Slice&gt;.Avp.Tests.cs</c>) — the proof half of
-/// correct-by-construction. Each declared criterion gets a test that carries <c>[AVP("id")]</c> (the anchor
+/// correct-by-construction. Each declared criterion gets a test that carries
+/// <c>[AVP(typeof(Slice), "id")]</c> (the anchor
 /// AF0030 scans) and is already wired to <c>Runner.Run</c> with the right archetype; the subject factory
 /// throws until the author boots the real endpoint, so the scaffold is RED BY DESIGN — the obligation and
 /// its proof ship in the same change-set, and green only ever means the behavior actually held.
@@ -14,10 +15,12 @@ internal static class AvpProofScaffold
 {
     /// <summary>Render the proof file for <paramref name="slice"/> covering <paramref name="criteria"/>.</summary>
     /// <param name="testNamespace">The app's test namespace (<c>&lt;App&gt;.Tests</c>).</param>
+    /// <param name="appNamespace">The production app namespace containing the subject type.</param>
     /// <param name="module">The module the slice belongs to.</param>
     /// <param name="slice">The slice name.</param>
     /// <param name="criteria">The criterion ids the manifest declares for the slice.</param>
-    public static string Render(string testNamespace, string module, string slice, IReadOnlyList<string> criteria)
+    public static string Render(
+        string testNamespace, string appNamespace, string module, string slice, IReadOnlyList<string> criteria)
     {
         var bindings = criteria
             .Select(id => (Id: id, Binding: AvpBinding.For(id).FirstOrDefault()))
@@ -25,6 +28,7 @@ internal static class AvpProofScaffold
 
         var file = new StringBuilder();
         file.AppendLine("using Assay.Net;");
+        file.AppendLine($"using {appNamespace}.Modules.{module};");
         if (bindings.Any(b => b.Binding is not null))
             file.AppendLine("using Assay.Net.Archetypes;");
         file.AppendLine();
@@ -60,13 +64,13 @@ internal static class AvpProofScaffold
             : $"\n    // Variant archetype{(variants.Count == 1 ? string.Empty : "s")} for this criterion: {string.Join(", ", variants)}.";
         return $$"""
 
-                [AVP("{{id}}")]{{variantNote}}
+                [AVP(typeof({{slice}}), "{{id}}")]{{variantNote}}
                 [Integration]
                 [Fact]
                 public async Task {{slice}}_holds_{{Safe(id)}}()
                 {
                     var verdict = await Runner.Run(
-                        AvpCatalog, new {{binding.ArchetypeType.Name}}(), "{{slice.ToLowerInvariant()}}", Real{{binding.SubjectType.Name}}());
+                        AvpCatalog, new {{binding.ArchetypeType.Name}}(), "{{slice}}", Real{{binding.SubjectType.Name}}());
 
                     var result = verdict.Results.First(r => r.CriterionId == "{{id}}");
                     Assert.True(result.Status == Assay.Net.VerdictStatus.Pass, result.Reason);
@@ -76,7 +80,7 @@ internal static class AvpProofScaffold
 
     private static string UnboundProof(string slice, string id) => $$"""
 
-            [AVP("{{id}}")]
+            [AVP(typeof({{slice}}), "{{id}}")]
             [Integration]
             [Fact]
             public async Task {{slice}}_holds_{{Safe(id)}}()

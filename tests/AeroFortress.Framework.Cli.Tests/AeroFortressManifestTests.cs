@@ -125,6 +125,25 @@ public class AeroFortressManifestTests
     }
 
     [Fact]
+    public void A_declared_frontend_must_be_an_executable_package_root()
+    {
+        var root = NewDir();
+        Directory.CreateDirectory(Path.Combine(root, "apps", "web"));
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "MyApp"
+
+            [products.app]
+            frontend = "apps/web"
+            """);
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, m => m.Contains("apps/web") && m.Contains("package.json"));
+    }
+
+    [Fact]
     public void A_known_criticality_policy_is_valid()
     {
         var root = NewDir();

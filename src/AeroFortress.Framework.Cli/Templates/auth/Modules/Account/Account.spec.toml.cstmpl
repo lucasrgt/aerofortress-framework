@@ -1,4 +1,4 @@
-# Account — acceptance manifest. Every critical auth slice declares the executable AVP criteria it owes;
+# Account — acceptance manifest. Every auth slice declares the executable AVP criteria it owes;
 # AF0030/AF0031 bind these declarations to the co-located proofs.
 module = "Account"
 
@@ -13,3 +13,18 @@ criteria = ["rotates-on-refresh", "replay-burns-family"]
 # One email identifies one account; a duplicate registration is rejected.
 [slices.Register]
 criteria = ["rejects-duplicate"]
+
+[slices.Me]
+criteria = ["returns-authenticated-principal"]
+
+[slices.Logout]
+criteria = ["revokes-current-session"]
+
+[slices.ListMySessions]
+criteria = ["returns-only-live-sessions"]
+
+[slices.RevokeSession]
+criteria = ["own-resource-only"]
+
+[slices.RevokeOtherSessions]
+criteria = ["preserves-current-session"]

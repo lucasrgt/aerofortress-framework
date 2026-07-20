@@ -42,6 +42,13 @@ public static class SliceGenerator
             }
         }
 
+        if (verify.Count == 0)
+        {
+            Console.Error.WriteLine("af: every slice needs at least one AVP criterion; pass --verify <id,id> "
+                                  + "(use `af criteria suggest <words...>` to choose). ");
+            return 1;
+        }
+
         return Generate(Directory.GetCurrentDirectory(), module, name, critical, verify);
     }
 
@@ -62,6 +69,12 @@ public static class SliceGenerator
         if (csproj is null)
         {
             Console.Error.WriteLine("af: no .csproj here — run this from the application project directory.");
+            return 1;
+        }
+
+        if (verify is not { Count: > 0 })
+        {
+            Console.Error.WriteLine("af: every slice needs at least one AVP criterion; pass --verify <id,id>.");
             return 1;
         }
 
@@ -99,8 +112,7 @@ public static class SliceGenerator
             Console.WriteLine($"created {journeyPath}");
         }
 
-        if (verify is { Count: > 0 })
-            DeclareAndProve(root, directory, testNamespace, module, name, verify);
+        DeclareAndProve(root, directory, testNamespace, appNamespace, module, name, verify);
 
         return 0;
     }
@@ -108,7 +120,8 @@ public static class SliceGenerator
     // The correct-by-construction leg: declare the criteria in the module's spec manifest and scaffold the
     // co-located, red-by-design proof file — obligation and proof in the same change-set, always.
     private static void DeclareAndProve(
-        string root, string sliceDir, string testNamespace, string module, string name, IReadOnlyList<string> verify)
+        string root, string sliceDir, string testNamespace, string appNamespace,
+        string module, string name, IReadOnlyList<string> verify)
     {
         var manifest = SpecManifestScaffold.EnsureDeclared(Path.Combine(root, "Modules", module), module, name, verify);
         Console.WriteLine($"declared {name} ({string.Join(", ", verify)}) in {manifest}");
@@ -120,7 +133,7 @@ public static class SliceGenerator
             return;
         }
 
-        File.WriteAllText(proofPath, AvpProofScaffold.Render(testNamespace, module, name, verify));
+        File.WriteAllText(proofPath, AvpProofScaffold.Render(testNamespace, appNamespace, module, name, verify));
         Console.WriteLine($"created {proofPath} (red by design — bind the real endpoint to turn it green)");
 
         var known = new HashSet<string>(

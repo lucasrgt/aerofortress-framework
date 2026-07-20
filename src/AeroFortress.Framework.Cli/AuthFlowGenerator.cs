@@ -66,6 +66,7 @@ public static class AuthFlowGenerator
         var spec = Spec(flow);
 
         EmitTemplates(spec, root, appName, appLower);
+        DeclareCriteria(root, spec);
         AugmentErrorCodes(root, appNamespace, spec);
         AugmentUser(userFile, spec);
         AugmentAppDb(Path.Combine(root, "AppDb.cs"), spec);
@@ -98,6 +99,16 @@ public static class AuthFlowGenerator
             File.WriteAllText(destination, body);
             Console.WriteLine($"created {destination}");
         }
+    }
+
+    // The flow is born with a reviewable acceptance obligation for every emitted slice. Its real co-located
+    // test carries the matching subject-bound AVP marker, so adding an auth capability can never silently
+    // widen production without widening the verification matrix.
+    private static void DeclareCriteria(string root, FlowSpec spec)
+    {
+        var accountDir = Path.Combine(root, "Modules", "Account");
+        foreach (var (slice, criterion) in spec.Criteria)
+            SpecManifestScaffold.EnsureDeclared(accountDir, "Account", slice, [criterion]);
     }
 
     // Append the flow's error codes to the Account module's registry (AccountErrorCodes), idempotently — the
@@ -411,6 +422,7 @@ public static class AuthFlowGenerator
         IReadOnlyList<(string Property, string Declaration)> DbSets,
         IReadOnlyList<string> Indexes,
         IReadOnlyList<string> MapLines,
+        IReadOnlyList<(string Slice, string Criterion)> Criteria,
         IReadOnlyList<(string Const, string Value, string Summary)> ErrorCodes,
         string Summary);
 
@@ -454,6 +466,11 @@ public static class AuthFlowGenerator
             [
                 "        ResendPhoneCode.Map(account);",
                 "        VerifyPhone.Map(account);",
+            ],
+            Criteria:
+            [
+                ("ResendPhoneCode", "issues-single-active-code"),
+                ("VerifyPhone", "accepts-valid-code"),
             ],
             ErrorCodes:
             [
@@ -500,6 +517,11 @@ public static class AuthFlowGenerator
                 "        RegisterWithGoogle.Map(account);",
                 "        LoginWithGoogle.Map(account);",
             ],
+            Criteria:
+            [
+                ("RegisterWithGoogle", "registers-verified-external-identity"),
+                ("LoginWithGoogle", "issues-token-on-valid"),
+            ],
             ErrorCodes:
             [
                 ("InvalidToken", "auth.invalid_token", "The external identity token is invalid."),
@@ -541,6 +563,13 @@ public static class AuthFlowGenerator
                 "        VerifyEmail.Map(account);",
                 "        RequestPasswordReset.Map(account);",
                 "        ResetPassword.Map(account);",
+            ],
+            Criteria:
+            [
+                ("RequestEmailVerification", "issues-single-active-token"),
+                ("VerifyEmail", "accepts-valid-token"),
+                ("RequestPasswordReset", "does-not-reveal-account-existence"),
+                ("ResetPassword", "invalidates-used-token"),
             ],
             ErrorCodes:
             [

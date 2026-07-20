@@ -5,11 +5,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 //</lz:tenancy>
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class LogoutTests
 {
+    [AVP(typeof(Logout), "revokes-current-session")]
     [Unit]
     [Fact]
     public async Task Revokes_the_session_so_the_refresh_is_dead()

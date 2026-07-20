@@ -26,6 +26,7 @@ export interface DepositModel {
   completed: DepositOutput | null;
 }
 
+/** @verify no-phantom-success — a failed deposit keeps every draft, surfaces the error, and never reports success. */
 export function useDepositModel(): DepositModel {
   const mutation = useDeposit();
 

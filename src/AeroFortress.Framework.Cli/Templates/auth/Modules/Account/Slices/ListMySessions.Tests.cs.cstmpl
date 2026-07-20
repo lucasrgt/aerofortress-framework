@@ -5,11 +5,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 //</lz:tenancy>
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class ListMySessionsTests
 {
+    [AVP(typeof(ListMySessions), "returns-only-live-sessions")]
     [Unit]
     [Fact]
     public async Task Lists_live_sessions_and_flags_the_current_one()

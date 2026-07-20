@@ -2,11 +2,13 @@ using MyApp.Api;
 using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class VerifyEmailTests
 {
+    [AVP(typeof(VerifyEmail), "accepts-valid-token")]
     [Unit]
     [Fact]
     public async Task Marks_the_user_verified_with_a_valid_token()

@@ -4,11 +4,17 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
+      "react": ["../../../frontend-sdk/node_modules/@types/react/index.d.ts"],
+      "react/*": ["../../../frontend-sdk/node_modules/@types/react/*"],
       "@aerofortress/react": ["../../../frontend-sdk/packages/aerofortress-react/src/index.ts"],
+      "@aerofortress/assay": ["../../../frontend-sdk/node_modules/@aerofortress/assay/dist/index.d.ts"],
+      "@aerofortress/assay/react": ["../../../frontend-sdk/node_modules/@aerofortress/assay/dist/react.d.ts"],
+      "@aerofortress/assay/react/vitest": ["../../../frontend-sdk/node_modules/@aerofortress/assay/dist/react/vitest.d.ts"],
       "@/client.gen/*": ["./core/src/client.gen/*"],
       "@/i18n": ["./core/src/i18n.ts"],
       "@/design/tokens": ["./core/src/design/tokens.ts"],
-      "@/ui": ["./web/src/ui/index.ts"]
+      "@/ui": ["./web/src/ui/index.ts"],
+      "*": ["../../../frontend-sdk/node_modules/*"]
     }
   },
   "include": ["core/src", "web/src"]

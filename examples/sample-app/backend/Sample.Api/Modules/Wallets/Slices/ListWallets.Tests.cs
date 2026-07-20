@@ -1,6 +1,7 @@
 using Sample.Api;
 using Microsoft.EntityFrameworkCore;
 using Sample.Api.Modules.Wallets;
+using Assay.Net;
 
 namespace Sample.Tests.Modules.Wallets;
 
@@ -11,6 +12,7 @@ public class ListWalletsTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 
+    [AVP(typeof(ListWallets), "returns-stable-page")]
     [Unit]
     [Fact]
     public async Task A_page_carries_its_slice_and_the_whole_sets_count()

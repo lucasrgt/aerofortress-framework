@@ -5,11 +5,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 //</lz:tenancy>
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class RevokeOtherSessionsTests
 {
+    [AVP(typeof(RevokeOtherSessions), "preserves-current-session")]
     [Unit]
     [Fact]
     public async Task Keeps_the_current_and_drops_the_rest()

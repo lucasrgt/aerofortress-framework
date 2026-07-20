@@ -18,6 +18,11 @@ public class AuthGeneratorTests
         Assert.Equal(new[] { "rejects-invalid-credentials", "issues-token-on-valid" }, manifest.Slices["Login"]);
         Assert.Equal(new[] { "rotates-on-refresh", "replay-burns-family" }, manifest.Slices["Refresh"]);
         Assert.Equal(new[] { "rejects-duplicate" }, manifest.Slices["Register"]);
+        Assert.Equal(new[] { "returns-authenticated-principal" }, manifest.Slices["Me"]);
+        Assert.Equal(new[] { "revokes-current-session" }, manifest.Slices["Logout"]);
+        Assert.Equal(new[] { "returns-only-live-sessions" }, manifest.Slices["ListMySessions"]);
+        Assert.Equal(new[] { "own-resource-only" }, manifest.Slices["RevokeSession"]);
+        Assert.Equal(new[] { "preserves-current-session" }, manifest.Slices["RevokeOtherSessions"]);
 
         AssertProof(account, "Login", "rejects-invalid-credentials");
         AssertProof(account, "Refresh", "replay-burns-family");
@@ -51,7 +56,7 @@ public class AuthGeneratorTests
         var apiProject = File.ReadAllText(Path.Combine(api, "Shop.Api.csproj"));
         Assert.Contains("<AdditionalFiles Include=\"**\\*.spec.toml\" />", apiProject);
         var testProject = File.ReadAllText(Path.Combine(solution, "tests", "Shop.Tests", "Shop.Tests.csproj"));
-        Assert.Contains("PackageReference Include=\"Assay.Net\" Version=\"0.2.0\"", testProject);
+        Assert.Contains("PackageReference Include=\"Assay.Net\" Version=\"0.3.1\"", testProject);
         Assert.Contains("PackageReference Include=\"AeroFortress.Framework.Testing.InMemory\"", testProject);
     }
 
@@ -73,10 +78,31 @@ public class AuthGeneratorTests
         Assert.Equal(1, Count(testProject, "PackageReference Include=\"Assay.Net\""));
     }
 
+    [Theory]
+    [InlineData(AuthFlow.Otp)]
+    [InlineData(AuthFlow.OAuth)]
+    [InlineData(AuthFlow.Email)]
+    public void Every_auth_augment_declares_and_proves_each_slice_it_emits(AuthFlow flow)
+    {
+        var api = NewSolution();
+        Assert.Equal(0, AuthGenerator.Generate(api, skipTenancy: false, skipCookies: true));
+
+        Assert.Equal(0, AuthFlowGenerator.Generate(api, flow));
+
+        var account = Path.Combine(api, "Modules", "Account");
+        var manifest = SpecManifest.Load(Path.Combine(account, "Account.spec.toml"));
+        foreach (var (slice, criterion) in FlowCriteria(flow))
+        {
+            Assert.Equal(new[] { criterion }, manifest.Slices[slice]);
+            var test = File.ReadAllText(Path.Combine(account, "Slices", slice + ".Tests.cs"));
+            Assert.Contains($"[AVP(typeof({slice}), \"{criterion}\")]", test);
+        }
+    }
+
     private static void AssertProof(string account, string slice, string criterion)
     {
         var proof = File.ReadAllText(Path.Combine(account, "Slices", slice + ".Avp.Tests.cs"));
-        Assert.Contains($"[AVP(\"{criterion}\")]", proof);
+        Assert.Contains($"[AVP(typeof({slice}), \"{criterion}\")]", proof);
         Assert.DoesNotContain("NotImplementedException", proof);
         Assert.Contains("transport: () => app.CreateClient()", proof);
     }
@@ -112,4 +138,26 @@ public class AuthGeneratorTests
 
     private static int Count(string text, string value) =>
         text.Split(value, StringSplitOptions.None).Length - 1;
+
+    private static IReadOnlyList<(string Slice, string Criterion)> FlowCriteria(AuthFlow flow) => flow switch
+    {
+        AuthFlow.Otp =>
+        [
+            ("ResendPhoneCode", "issues-single-active-code"),
+            ("VerifyPhone", "accepts-valid-code"),
+        ],
+        AuthFlow.OAuth =>
+        [
+            ("RegisterWithGoogle", "registers-verified-external-identity"),
+            ("LoginWithGoogle", "issues-token-on-valid"),
+        ],
+        AuthFlow.Email =>
+        [
+            ("RequestEmailVerification", "issues-single-active-token"),
+            ("VerifyEmail", "accepts-valid-token"),
+            ("RequestPasswordReset", "does-not-reveal-account-existence"),
+            ("ResetPassword", "invalidates-used-token"),
+        ],
+        _ => throw new ArgumentOutOfRangeException(nameof(flow)),
+    };
 }

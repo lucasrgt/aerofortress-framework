@@ -1695,25 +1695,30 @@ const rules = {
   },
 
   // AFFE033 — a `@verify` obligation has its `@avp` proof. The front-side of the backend's AF0030 (the
-  // [Verify]↔[AVP] bridge), and the closing leg of AeroFortress Clockwork on the frontend: a View/ViewModel that
+  // manifest↔AVP bridge), and the closing leg of AeroFortress Clockwork on the frontend: a View/ViewModel that
   // declares `@verify <criterion-id>` (the AVP acceptance obligation — the JSDoc twin of the backend
-  // [Verify("id")]) must have a co-located test carrying `@avp <criterion-id>` (the twin of [AVP("id")]): the
-  // assay JS verification that the behaviour actually holds, not just that it was claimed. Markers are JSDoc tags,
-  // erased at runtime — doctor-removable like every AFFE rule. Co-located scope mirrors AFFE005/006: the proof for
-  // Foo.view.tsx / Foo.viewModel.ts lives in Foo.test.tsx. (Whether the proof PASSES is the test runner's job —
+  // manifest criterion) must have a co-located `*.assay.test.tsx` carrying `@avp <criterion-id>` and registering a
+  // `defineVerification(...)`: the assay JS verification that the behaviour actually holds, not just that it was
+  // claimed. Markers are JSDoc tags, erased at runtime — doctor-removable like every AFFE rule. Co-location binds
+  // the proof to its subject: Foo.view.tsx / Foo.viewModel.ts is proven only by Foo.assay.test.tsx, never by a marker in
+  // an ordinary component test or another feature's assay. (Whether the proof PASSES is the test runner's job —
   // Doctor 2; this rule, like AF0030, enforces the pairing exists — Doctor 1.)
   "verify-has-avp-proof": {
     meta: {
       type: "problem",
       docs: {
         description:
-          "Every `@verify <id>` on a View/ViewModel has a matching `@avp <id>` proof in its co-located test (the front-side of the backend's AF0030 bridge).",
+          "Every `@verify <id>` on a View/ViewModel has a matching executable `@avp <id>` proof in its co-located *.assay.test.tsx.",
       },
       messages: {
+        undeclared:
+          "AFFE033: this ViewModel declares no `@verify <criterion-id>` acceptance obligation — every feature needs at least one AVP criterion, regardless of criticality.",
         missing:
-          "AFFE033: `@verify {{id}}` declares an AVP obligation with no co-located proof — create {{test}} with an `@avp {{id}}` assay verification that the behaviour holds (the front-side of the backend's AF0030).",
+          "AFFE033: `@verify {{id}}` declares an AVP obligation with no co-located proof — create {{test}} with an `@avp {{id}}` assay verification that proves the behaviour.",
         unproven:
           "AFFE033: `@verify {{id}}` is declared but {{test}} carries no `@avp {{id}}` proof — add the assay JS verification tagged `@avp {{id}}` so the obligation is proven, not just claimed.",
+        inert:
+          "AFFE033: {{test}} carries `@avp {{id}}` but registers no `defineVerification(...)` — a marker without an executable Assay verification is not proof.",
       },
     },
     create(context) {
@@ -1727,24 +1732,79 @@ const rules = {
         while ((m = re.exec(text)) !== null) ids.add(m[1]);
         return ids;
       };
+      const idsInComments = (text, tag) => {
+        const ids = new Set();
+        const comments = text.match(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm) ?? [];
+        for (const comment of comments) for (const id of idsIn(comment, tag)) ids.add(id);
+        return ids;
+      };
       return {
         "Program:exit"(node) {
           const sourceCode = context.sourceCode ?? context.getSourceCode();
           const obligations = new Set();
           for (const c of sourceCode.getAllComments()) for (const id of idsIn(c.value, "verify")) obligations.add(id);
-          if (obligations.size === 0) return;
+          if (obligations.size === 0) {
+            if (isViewModel(f)) context.report({ node, messageId: "undeclared" });
+            return;
+          }
 
           const base = path.basename(context.filename).replace(/\.(view\.tsx|viewModel\.ts)$/, "");
-          const testPath = path.join(path.dirname(context.filename), `${base}.test.tsx`);
+          const testPath = path.join(path.dirname(context.filename), `${base}.assay.test.tsx`);
           const testExists = fs.existsSync(testPath);
           // The proof side is read as TEXT (the file isn't parsed here) — the same plain scan the backend's
           // AF0030 runs over its AdditionalFiles test files.
-          const proven = testExists ? idsIn(fs.readFileSync(testPath, "utf8"), "avp") : new Set();
+          const proofText = testExists ? fs.readFileSync(testPath, "utf8") : "";
+          const proven = idsInComments(proofText, "avp");
+          const executable = /\bdefineVerification\s*\(/.test(proofText.replace(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm, ""));
 
           for (const id of obligations) {
-            if (!testExists) context.report({ node, messageId: "missing", data: { id, test: `${base}.test.tsx` } });
-            else if (!proven.has(id)) context.report({ node, messageId: "unproven", data: { id, test: `${base}.test.tsx` } });
+            if (!testExists) context.report({ node, messageId: "missing", data: { id, test: `${base}.assay.test.tsx` } });
+            else if (!proven.has(id)) context.report({ node, messageId: "unproven", data: { id, test: `${base}.assay.test.tsx` } });
+            else if (!executable) context.report({ node, messageId: "inert", data: { id, test: `${base}.assay.test.tsx` } });
           }
+        },
+      };
+    },
+  },
+
+  // AFFE034 — omitted tests are not evidence. Unit/integration runners commonly exit zero when tests are skipped,
+  // conditional, or excluded by a focused test, so the static doctor rejects those forms before the false green.
+  "no-disabled-tests": {
+    meta: {
+      type: "problem",
+      docs: { description: "Test/spec files contain no skipped, conditional, or focused test declarations." },
+      messages: {
+        disabled:
+          "AFFE034: `{{call}}` disables a required test — implement or repair it; a test that did not run is not proof.",
+        focused:
+          "AFFE034: `{{call}}` focuses the runner on part of the suite — remove it so every required test executes.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(f)) return {};
+      return {
+        CallExpression(node) {
+          const sourceCode = context.sourceCode ?? context.getSourceCode();
+          const call = sourceCode.getText(node.callee).replace(/\s/g, "");
+          const root = (callee) => {
+            if (callee.type === "Identifier") return callee.name;
+            if (callee.type === "MemberExpression" && !callee.computed) return root(callee.object);
+            if (callee.type === "CallExpression") return root(callee.callee);
+            return null;
+          };
+          const finalProperty = node.callee.type === "MemberExpression" && !node.callee.computed
+            && node.callee.property.type === "Identifier"
+            ? node.callee.property.name
+            : null;
+          const disabled = /^(?:skip|fixme|todo|skipIf|runIf)$/.test(finalProperty ?? "")
+            && /^(?:test|it|describe|context)$/.test(root(node.callee) ?? "");
+          const focused = finalProperty === "only"
+            && /^(?:test|it|describe|context)$/.test(root(node.callee) ?? "");
+          if (/^x(?:it|test|describe|context)$/.test(call) || disabled)
+            context.report({ node: node.callee, messageId: "disabled", data: { call } });
+          else if (/^f(?:it|test|describe|context)$/.test(call) || focused)
+            context.report({ node: node.callee, messageId: "focused", data: { call } });
         },
       };
     },
@@ -1752,7 +1812,7 @@ const rules = {
 };
 
 const plugin = {
-  meta: { name: "eslint-plugin-aerofortress", version: "0.11.0" },
+  meta: { name: "eslint-plugin-aerofortress", version: "0.12.0" },
   rules,
   configs: {},
 };

@@ -4,11 +4,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 using AeroFortress.Framework.Sms;
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class ResendPhoneCodeTests
 {
+    [AVP(typeof(ResendPhoneCode), "issues-single-active-code")]
     [Unit]
     [Fact]
     public async Task Creates_an_otp_for_the_caller()

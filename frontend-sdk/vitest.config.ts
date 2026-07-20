@@ -8,13 +8,13 @@ import { defineConfig, configDefaults } from "vitest/config";
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
-  esbuild: { jsx: "automatic" },
   server: { fs: { allow: [r("..")] } }, // allow loading the example (a sibling of frontend/) under the repo root
   test: {
     root: r(".."),
     environment: "jsdom",
-    // __fixtures__ holds eslint RuleTester fixtures named `*.test.tsx` (the AFFE033 rule looks up
-    // `<base>.test.tsx`), not vitest suites — keep them out of the run (+ vitest's own defaults).
+    setupFiles: [r("./vitest.setup.ts")],
+    // __fixtures__ holds textual ESLint RuleTester fixtures (including AFFE033's fake Assay calls),
+    // not runnable suites — keep them out of the run (+ Vitest's own defaults).
     exclude: [...configDefaults.exclude, "**/__fixtures__/**"],
     include: [
       "frontend-sdk/packages/**/*.test.{ts,tsx}",
@@ -26,6 +26,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@aerofortress/react": r("./packages/aerofortress-react/src/index.ts"),
+      "@aerofortress/assay/react/vitest": r("./node_modules/@aerofortress/assay/dist/react/vitest.js"),
+      "@aerofortress/assay/react": r("./node_modules/@aerofortress/assay/dist/react.js"),
+      "@aerofortress/assay": r("./node_modules/@aerofortress/assay/dist/index.js"),
       "@/client.gen/sample": r("../examples/sample-app/frontend/core/src/client.gen/sample.ts"),
       "@/i18n": r("../examples/sample-app/frontend/core/src/i18n.ts"),
       "@/design/tokens": r("../examples/sample-app/frontend/core/src/design/tokens.ts"),

@@ -13,7 +13,7 @@ public class GateScanTests
 
             public class WithdrawAvpProof
             {
-                [AVP("idempotency-key-honored")]
+                [AVP(typeof(Withdraw), "idempotency-key-honored")]
                 [Integration]
                 [Fact]
                 public async Task Withdraw_honors_the_idempotency_key()
@@ -24,8 +24,10 @@ public class GateScanTests
 
         var proof = Assert.Single(GateScan.ScanProofs(root));
 
+        Assert.Equal("Wallets", proof.Module);
+        Assert.Equal("Withdraw", proof.Subject);
         Assert.Equal("idempotency-key-honored", proof.CriterionId);
-        Assert.Equal("WithdrawAvpProof", proof.ClassName);
+        Assert.Equal("Sample.Tests.Modules.Wallets.WithdrawAvpProof", proof.ClassName);
         Assert.Equal("Withdraw_honors_the_idempotency_key", proof.Method);
     }
 
@@ -37,6 +39,32 @@ public class GateScanTests
         Write(Path.Combine(root, "bin", "Debug"), "Out.cs", "[AVP(\"from-build-output\")] class O {}");
 
         Assert.Empty(GateScan.ScanProofs(root));
+    }
+
+    [Fact]
+    public void Attribute_examples_inside_strings_never_mint_proofs_or_slices()
+    {
+        var root = NewDir();
+        Write(root, "Fixture.cs", """"
+            namespace Sample.Tests;
+
+            public static class Fixture
+            {
+                public const string Source = """
+                    namespace Imaginary.Modules.Wallets;
+                    [Slice]
+                    public static class Withdraw { }
+                    public class Proof
+                    {
+                        [AVP(typeof(Withdraw), "idempotency-key-honored")]
+                        public async Task Proves() { }
+                    }
+                    """;
+            }
+            """");
+
+        Assert.Empty(GateScan.ScanProofs(root));
+        Assert.Empty(GateScan.ScanSlices(root));
     }
 
     [Fact]
@@ -116,6 +144,19 @@ public class GateScanTests
         Assert.Equal(new[] { "idempotency-key-honored" }, wallets.Manifest.Slices["Withdraw"]);
         var broken = Assert.Single(manifests, m => m.Manifest is null);
         Assert.NotNull(broken.Error);
+    }
+
+    [Fact]
+    public void DiscoverManifests_ignores_scaffolding_templates()
+    {
+        var root = NewDir();
+        Write(Path.Combine(root, "templates", "starter"), "Health.spec.toml", """
+            module = "Health"
+            [slices.Ping]
+            criteria = ["echoes-input"]
+            """);
+
+        Assert.Empty(GateScan.DiscoverManifests(root));
     }
 
     [Fact]

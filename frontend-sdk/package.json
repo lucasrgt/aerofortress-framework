@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "type": "module",
   "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
   "license": "MIT",
@@ -12,8 +12,17 @@
   },
   "homepage": "https://github.com/lucasrgt/aerofortress-framework#readme",
   "bugs": "https://github.com/lucasrgt/aerofortress-framework/issues",
-  "keywords": ["aerofortress", "frontend", "doctor", "eslint", "scaffolding"],
-  "files": ["tools/*.mjs", "tools/README.md"],
+  "keywords": [
+    "aerofortress",
+    "frontend",
+    "doctor",
+    "eslint",
+    "scaffolding"
+  ],
+  "files": [
+    "tools/*.mjs",
+    "tools/README.md"
+  ],
   "exports": {
     "./doctor": "./tools/doctor.mjs",
     "./e2e-doctor": "./tools/e2e-doctor.mjs",
@@ -39,21 +48,31 @@
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "esbuild": "^0.28.1"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/aerofortress-react/tsconfig.json",
-    "lint": "node packages/eslint-plugin/index.test.cjs",
+    "typecheck": "npm run typecheck:spine && npm run typecheck:sample",
+    "typecheck:spine": "tsc --noEmit -p packages/aerofortress-react/tsconfig.json",
+    "typecheck:sample": "tsc --noEmit -p ../examples/sample-app/frontend/tsconfig.json",
+    "lint": "npm run lint:source && npm run lint:rules",
+    "lint:source": "cd .. && node frontend-sdk/node_modules/eslint/bin/eslint.js examples/sample-app/frontend",
+    "lint:rules": "node packages/eslint-plugin/index.test.cjs",
     "scaffold": "node tools/scaffold-feature.mjs",
     "scaffold:design": "node tools/design-scaffold.mjs",
     "assemble-i18n": "node tools/assemble-i18n.mjs",
-    "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "test": "vitest run --exclude **/*.assay.test.ts --exclude **/*.assay.test.tsx",
+    "test:avp": "assay verify",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run test:avp"
   },
   "devDependencies": {
+    "@aerofortress/assay": "0.3.1",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/eslint-plugin-query": "^5.62.16",
     "@tanstack/react-query": "^5.62.7",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
@@ -62,15 +81,16 @@
     "eslint": "^9.17.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-no-secrets": "^1.1.2",
-    "eslint-plugin-sonarjs": "^3.0.2",
+    "eslint-plugin-sonarjs": "^4.2.0",
     "i18next": "^24.2.0",
     "jsdom": "^25.0.1",
+    "msw": "^2.15.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.78.0",
     "react-i18next": "^15.4.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
+    "vitest": "^4.1.10",
     "zod": "^4.4.3"
   }
 }

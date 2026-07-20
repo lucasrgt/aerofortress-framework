@@ -1,5 +1,6 @@
 using Assay.Net;
 using Assay.Net.Archetypes;
+using MyApp.Api.Modules.Account;
 
 namespace MyApp.Tests.Modules.Account;
 
@@ -9,7 +10,7 @@ public class RegisterAvpProof
 {
     private static readonly ProtocolCatalog Avp = Catalog.LoadDefault();
 
-    [AVP("rejects-duplicate")]
+    [AVP(typeof(Register), "rejects-duplicate")]
     [Integration]
     [Fact]
     public async Task Register_rejects_a_duplicate_email()
@@ -20,7 +21,7 @@ public class RegisterAvpProof
             CreatePath: "/account/register",
             Body: new { email = "avp-duplicate@x.com", password = "password1" });
 
-        var verdict = await Runner.Run(Avp, new ResourceUniqueness(), "register", subject,
+        var verdict = await Runner.Run(Avp, new ResourceUniqueness(), nameof(Register), subject,
             transport: () => app.CreateClient());
 
         AvpAssert.Passes(verdict, "rejects-duplicate");

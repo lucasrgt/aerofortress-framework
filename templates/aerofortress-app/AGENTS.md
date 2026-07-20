@@ -138,7 +138,7 @@ A badly-wired route **fails the build**.
 ## Build & verify — green before you are done
 
 ```
-af doctor      # validates AeroFortress.toml, then runs the backend (AF*) + each client's lint/typecheck/test (AFFE*)
+af gate        # validates AeroFortress.toml, then runs every backend/frontend proof and the traceability matrix
 ```
 
 (Or the explicit commands in `AeroFortress.toml [tasks]`.) Never leave the workspace red. If the doctor is red,

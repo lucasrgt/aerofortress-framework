@@ -764,38 +764,77 @@ ruleTester.run("controller-field-state", plugin.rules["controller-field-state"],
   ],
 });
 
-// AFFE033 — a `@verify` obligation has its `@avp` proof in the co-located test (the front-side of AF0030).
-// fs-based like AFFE005/006: it reads the co-located *.test.tsx. The __fixtures__/affe033 files provide the proof
-// side; a non-existent co-located test (the common RuleTester case) proves the `missing` edge.
+// AFFE033 — a `@verify` obligation has its executable `@avp` proof in the co-located *.assay.test.tsx.
+// An ordinary component test marker is deliberately insufficient: the subject-bound Assay file is the proof.
 const AFFE033_FIX = path.join(__dirname, "__fixtures__", "affe033");
 ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
   valid: [
-    // No obligation declared -> nothing to prove.
+    // A view may leave the feature-level obligation on its ViewModel.
     { filename: "Foo.view.tsx", code: `export const X = () => null;` },
     // Out of scope: not a View/ViewModel (the marker in a plain file is ignored).
     { filename: "Foo.tsx", code: `/** @verify fires-primary-effect */\nexport const X = () => null;` },
-    // The obligation IS proven: the co-located fixture test carries `@avp proven-x`.
+    // The obligation IS proven: the co-located fixture assay carries the marker + defineVerification.
     { filename: path.join(AFFE033_FIX, "Proven.view.tsx"), code: `/** @verify proven-x */\nexport const X = () => null;` },
   ],
   invalid: [
-    // No co-located test on disk -> the obligation has no proof (missing). Unique base avoids a cwd collision.
+    {
+      filename: "Undeclared.viewModel.ts",
+      code: `export const useX = () => null;`,
+      errors: [{ messageId: "undeclared" }],
+    },
+    // No co-located assay on disk -> the obligation has no proof (missing). Unique base avoids a cwd collision.
     {
       filename: "Affe033Probe.view.tsx",
       code: `/** @verify fires-primary-effect */\nexport const X = () => null;`,
       errors: [{ messageId: "missing" }],
     },
-    // A ViewModel obligation with no co-located test -> missing too.
+    // A ViewModel obligation with no co-located assay -> missing too.
     {
       filename: "Affe033Probe.viewModel.ts",
       code: `/** @verify single-flight */\nexport const useX = () => null;`,
       errors: [{ messageId: "missing" }],
     },
-    // The co-located test EXISTS but proves a different criterion -> unproven.
+    // The old suffix is not Vitest-discoverable; it cannot satisfy a runtime obligation.
+    {
+      filename: path.join(AFFE033_FIX, "Legacy.view.tsx"),
+      code: `/** @verify old-file */\nexport const X = () => null;`,
+      errors: [{ messageId: "missing" }],
+    },
+    // The co-located assay EXISTS but proves a different criterion -> unproven.
     {
       filename: path.join(AFFE033_FIX, "Unproven.view.tsx"),
       code: `/** @verify needs-y */\nexport const X = () => null;`,
       errors: [{ messageId: "unproven" }],
     },
+    // A comment marker without an executable Assay registration is test theater.
+    {
+      filename: path.join(AFFE033_FIX, "Inert.view.tsx"),
+      code: `/** @verify inert-z */\nexport const X = () => null;`,
+      errors: [{ messageId: "inert" }],
+    },
+  ],
+});
+
+// AFFE034 — skipped/conditional/focused tests turn runner exit 0 into a false green, so all common
+// Vitest/Jest/Playwright omission forms are rejected statically.
+ruleTester.run("no-disabled-tests", plugin.rules["no-disabled-tests"], {
+  valid: [
+    { filename: "Feature.test.tsx", code: `test("runs", () => {});` },
+    { filename: "Feature.tsx", code: `test.skip("example text outside a test file", () => {});` },
+  ],
+  invalid: [
+    { filename: "Feature.test.tsx", code: `test.skip("later", () => {});`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.spec.ts", code: `test.fixme("broken", () => {});`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.test.ts", code: `it.todo("missing");`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.test.ts", code: `xdescribe("suite", () => {});`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.test.ts", code: `test.concurrent.skip("later", () => {});`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.test.ts", code: `test.each([1]).skip("later", () => {});`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.test.ts", code: `describe.skipIf(process.env.CI)("suite", () => {});`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.test.ts", code: `test.runIf(process.env.CI)("conditional", () => {});`, errors: [{ messageId: "disabled" }] },
+    { filename: "Feature.test.ts", code: `test.concurrent.only("alone", () => {});`, errors: [{ messageId: "focused" }] },
+    { filename: "Feature.test.ts", code: `test.each([1]).only("alone", () => {});`, errors: [{ messageId: "focused" }] },
+    { filename: "Feature.test.ts", code: `fit("alone", () => {});`, errors: [{ messageId: "focused" }] },
+    { filename: "Feature.test.ts", code: `fdescribe("suite", () => {});`, errors: [{ messageId: "focused" }] },
   ],
 });
 

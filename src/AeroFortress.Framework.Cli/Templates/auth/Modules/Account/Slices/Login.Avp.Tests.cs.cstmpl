@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Assay.Net;
 using Assay.Net.Archetypes;
+using MyApp.Api.Modules.Account;
 
 namespace MyApp.Tests.Modules.Account;
 
@@ -10,8 +11,8 @@ public class LoginAvpProof
 {
     private static readonly ProtocolCatalog Avp = Catalog.LoadDefault();
 
-    [AVP("rejects-invalid-credentials")]
-    [AVP("issues-token-on-valid")]
+    [AVP(typeof(Login), "rejects-invalid-credentials")]
+    [AVP(typeof(Login), "issues-token-on-valid")]
     [Integration]
     [Fact]
     public async Task Login_is_the_authority_on_credentials()
@@ -27,7 +28,7 @@ public class LoginAvpProof
             ValidCredentials: new { email = "avp-login@x.com", password = "password1" },
             InvalidCredentials: new { email = "avp-login@x.com", password = "wrong-password" });
 
-        var verdict = await Runner.Run(Avp, new CredentialAuthority(), "login", subject,
+        var verdict = await Runner.Run(Avp, new CredentialAuthority(), nameof(Login), subject,
             transport: () => app.CreateClient());
 
         AvpAssert.Passes(verdict, "rejects-invalid-credentials", "issues-token-on-valid");

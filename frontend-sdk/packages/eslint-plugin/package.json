@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-aerofortress",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "The AeroFortress Framework frontend harness — AFFE* rules that keep React Native + web screens wired, not mocked.",
   "license": "MIT",
   "author": "Lucas Tinoco",

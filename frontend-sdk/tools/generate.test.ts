@@ -39,6 +39,7 @@ const lintConfig = [
       "aerofortress/ui-door": "error",
       "aerofortress/scale-only": "error",
       "aerofortress/semantic-colors": "error",
+      "aerofortress/verify-has-avp-proof": "error",
     },
   },
 ];
@@ -50,10 +51,10 @@ describe("renderFeature", () => {
     expect(singular("categories")).toBe("category");
   });
 
-  it("emits the four co-located files of the unit", () => {
+  it("emits the five co-located files of the unit", () => {
     const files = renderFeature("bookings");
     expect(Object.keys(files).sort()).toEqual(
-      ["Bookings.test.tsx", "Bookings.view.tsx", "Bookings.viewModel.ts", "bookings.i18n.ts"].sort(),
+      ["Bookings.assay.test.tsx", "Bookings.test.tsx", "Bookings.view.tsx", "Bookings.viewModel.ts", "bookings.i18n.ts"].sort(),
     );
   });
 
@@ -65,6 +66,10 @@ describe("renderFeature", () => {
     expect(vm).toContain('i18n.t("bookings:error")');
     expect(files["Bookings.view.tsx"]).toContain("<Resource");
     expect(files["Bookings.test.tsx"]).toContain("renderHook");
+    expect(vm).toContain("@verify count-matches-source");
+    expect(files["Bookings.test.tsx"]).not.toContain("@avp count-matches-source");
+    expect(files["Bookings.assay.test.tsx"]).toContain("@avp count-matches-source");
+    expect(files["Bookings.assay.test.tsx"]).toContain("defineVerification(dataHonesty");
     const i18n = files["bookings.i18n.ts"];
     for (const locale of ["ptBR", "esES", "enUS"]) expect(i18n).toContain(`export const ${locale}`);
   });

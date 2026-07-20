@@ -14,7 +14,8 @@ backend = "src/AeroFortress.Framework.Starter.Api"   # .NET vertical slices — 
 backend = "AeroFortress.Framework.Starter.slnx"      # the framework's AF* Roslyn analyzers run via the solution build
 
 [testing]
-# Criticality policy — how the doctor treats a [Slice] that declares no criticality. The dial:
+# Every slice, at every criticality, owes criteria + subject-bound AVP proofs. This dial controls only
+# the additional happy+sad [Journey] depth for failure paths where money or trust is at stake:
 #   "opt-in"   = default; only a [Critical] slice needs happy+sad journeys. Today's behavior.
 #   "explicit" = every slice must carry [Critical] or [NonCritical], else AF0029 errors. Mirrors AF0022.
 #   "strict"   = an undecided slice is treated as [Critical] and must prove journeys; opt out with [NonCritical].

@@ -9,15 +9,16 @@ on:
 # slice each get a gate. A change to either fails CI on its own terms.
 jobs:
   dotnet:
-    name: backend (dotnet build + test)
+    name: backend (af gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet build AeroFortress.Framework.slnx -c Release
-      - run: dotnet test AeroFortress.Framework.slnx -c Release --no-build
+      # Dogfood the public release gate instead of duplicating its build/test legs. This also exercises the
+      # declarations × subject-bound proofs × TRX verdict matrix on Linux for every framework change.
+      - run: dotnet run --project src/AeroFortress.Framework.Cli/AeroFortress.Framework.Cli.csproj -c Release -- gate AeroFortress.Framework.slnx -c Release
 
   frontend:
     name: frontend-sdk (typecheck + lint + test)

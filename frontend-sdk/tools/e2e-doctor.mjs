@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 // The e2e tier of the frontend doctor (canonical, runner-agnostic + target-aware). E2E is flow-level and
-// expensive, so it is NOT enforced per component (that is the integration tier's job, AFFE006). It is enforced at
-// the PROJECT level via a CURATED checklist: a project declares its journeys in `e2e/flows.json`, and the doctor
-// proves every listed journey has an implementation file AND a runner for its target. Humans own WHICH journeys
-// to curate; the doctor only proves the list is covered — "completeness via checklist".
+// feature-grained, so it is NOT enforced per component (that is the integration tier's job, AFFE006). It is enforced
+// at the PROJECT level via a CURATED checklist: a project declares its journeys in `e2e/flows.json`, and the doctor
+// proves every listed journey has an enabled implementation file, a terminal assertion, and a runner for its target.
+// The manifest itself is mandatory: absence and an empty list are coverage gaps, never bootstrap green.
 //
-// SINGLE TIER, by design: being in `flows.json` IS the bar — there are no priority sub-tiers (no `critical` flag).
-// The hard teeth live on the BACKEND, where a slice marked `[Critical]` MUST have happy + sad journeys or the build
-// fails (AF0008), and journeys exist ONLY for critical slices (AF0012). Criticality is decided ONCE, on the slice;
-// the frontend list mirrors those journeys. So this doctor is the curated-coverage REVEAL: a listed journey with no
-// spec yet is a gap (the e2e roadmap — declare now, implement over time), surfaced, not a second class of flow.
+// SINGLE TIER, by design: being in `flows.json` IS the bar — there are no skipped/ephemeral sub-tiers. Criticality
+// still adds happy + sad backend journey depth (AF0008); it never makes a declared frontend flow optional. A listed
+// flow with no executable spec is a blocking gap, not a backlog item dressed as coverage.
 //
 // The runner is the swappable slot (the "RSpec"): Playwright is the blessed default for WEB, Maestro/Detox for
 // NATIVE. A flow declares its `target` (web|native) and a `spec` path to its implementation (a `.spec.ts` / `.yaml`).
@@ -21,9 +19,9 @@
 // (one with a `backendJourney`) must also declare `terminal`: the marker — a testID or route — its spec asserts
 // AFTER entry to prove the journey reached its end. The doctor reads the spec and flags it when the terminal is
 // undeclared or never referenced. These are reported as `depthGaps` (warn-tier), kept SEPARATE from the hard
-// existence `gaps`, so a consumer can warn while flows adopt `terminal` and promote to a hard gate once they have.
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+// existence `gaps`; both are blocking because a journey that only reaches its door is not an E2E proof.
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Known runners → how to detect each (config file or convention dir). Add a runner here, not in consumers.
@@ -52,6 +50,9 @@ export function classifySpec(root, spec) {
   if (/\.ya?ml$/i.test(spec)) return "native";
   try {
     const source = readFileSync(join(root, spec), "utf8");
+    const executable = stripComments(source);
+    if (hasNonExecutingTest(executable))
+      return "disabled";
     if (/\brequireSeed\s*\(/.test(source)) return "seed-pending";
     if (/\brequireBackend\s*\(/.test(source)) return "ci-gated";
     return "front-only";
@@ -63,27 +64,27 @@ export function classifySpec(root, spec) {
 /**
  * Inspect a project's e2e tier. Returns
  * `{ bootstrap, runners, flows, gaps, depthGaps, execution, seedPending, messages }`:
- *   - bootstrap: true when e2e/flows.json doesn't exist yet (nothing to enforce — the pillar isn't set up)
+ *   - bootstrap: retained for response compatibility and always false; absence is now a blocking gap
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
- *   - depthGaps: warn-tier journey-depth findings (AFFE-JOURNEY-002) — a linked flow with no `terminal`, or a spec
- *     that never asserts its declared `terminal`. Separate from `gaps` so consumers can warn now, gate later.
+ *   - depthGaps: blocking journey-depth findings (AFFE-JOURNEY-002) — a flow with no `terminal`, or a spec
+ *     that never asserts its declared `terminal`.
  * Each flow: `{ name, area?, target?: "web"|"native", spec, backendJourney?, terminal? }` where spec is a path from
  * root to its impl file and `terminal` is the testID/route the spec must assert to prove the journey reached its end.
  * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
  */
 export function checkE2e(root) {
-  const emptyExecution = { "ci-gated": 0, "front-only": 0, "seed-pending": 0, native: 0 };
+  const emptyExecution = { "ci-gated": 0, "front-only": 0, "seed-pending": 0, disabled: 0, native: 0 };
   const flowsFile = join(root, "e2e", "flows.json");
   if (!existsSync(flowsFile)) {
     return {
-      bootstrap: true,
+      bootstrap: false,
       runners: detectRunners(root),
       flows: 0,
-      gaps: 0,
+      gaps: 1,
       depthGaps: 0,
       execution: emptyExecution,
       seedPending: [],
-      messages: ["no e2e/flows.json yet (bootstrap)"],
+      messages: ["no e2e/flows.json — every user-visible feature needs a curated E2E flow"],
     };
   }
 
@@ -117,11 +118,49 @@ export function checkE2e(root) {
     };
   }
 
+  if (flows.length === 0) {
+    messages.push("e2e/flows.json declares no flows — an empty checklist proves nothing");
+    gaps++;
+  }
+
+  const names = new Set();
+  const specs = new Set();
+
   for (const flow of flows) {
+    if (!flow || typeof flow !== "object" || Array.isArray(flow)) {
+      messages.push("journey entry must be an object with name, target, spec, and terminal");
+      gaps++;
+      continue;
+    }
     const name = flow.name ?? "(unnamed)";
     const spec = String(flow.spec ?? "");
-    const specPath = join(root, spec);
-    if (!spec || !existsSync(specPath)) {
+    if (typeof flow.name !== "string" || !flow.name.trim() || names.has(flow.name)) {
+      messages.push(`journey "${name}" has a missing or duplicate name`);
+      gaps++;
+    }
+    if (typeof flow.name === "string" && flow.name.trim()) names.add(flow.name);
+
+    if (flow.target !== "web" && flow.target !== "native") {
+      messages.push(`journey "${name}" must declare target:web or target:native`);
+      gaps++;
+    }
+
+    const specPath = resolve(root, spec);
+    const relativeSpec = relative(resolve(root), specPath);
+    const outside = relativeSpec === ".." || relativeSpec.startsWith(".." + sep) || isAbsolute(relativeSpec);
+    let isFile = false;
+    try {
+      isFile = !outside && existsSync(specPath) && statSync(specPath).isFile();
+    } catch {
+      isFile = false;
+    }
+    const proofKey = outside ? spec : specPath;
+    if (spec && specs.has(proofKey)) {
+      messages.push(`journey "${name}" reuses spec ${spec}; each flow needs an explicit proof`);
+      gaps++;
+    }
+    if (spec) specs.add(proofKey);
+    if (!spec || outside || !isFile) {
       messages.push(`curated journey "${name}" has no spec (${flow.spec ?? "missing"})`);
       gaps++;
       continue;
@@ -136,20 +175,30 @@ export function checkE2e(root) {
 
     const executionClass = classifySpec(root, spec);
     execution[executionClass] = (execution[executionClass] ?? 0) + 1;
-    if (executionClass === "seed-pending") seedPending.push(name);
+    if (executionClass === "seed-pending") {
+      seedPending.push(name);
+      messages.push(`journey "${name}" is seed-pending — deterministic seed data is required before it counts`);
+      gaps++;
+    } else if (executionClass === "disabled") {
+      messages.push(`journey "${name}" contains skipped, conditional, or focused test syntax`);
+      gaps++;
+    } else if (executionClass === "missing") {
+      messages.push(`journey "${name}" spec cannot be read (${spec})`);
+      gaps++;
+      continue;
+    }
 
-    // Depth (AFFE-JOURNEY-002): a linked flow must declare its `terminal`, and any flow that declares one must
-    // actually assert it in the spec — otherwise "covered" only proves the journey STARTS. Warn-tier (depthGaps),
-    // so existence stays the hard gate while terminals are adopted. The assert-check is a string-presence heuristic:
-    // it catches the door-stopper (a spec that never names its end marker) without parsing the runner's AST.
+    // Depth (AFFE-JOURNEY-002): every flow must declare its `terminal` and actually assert it in the spec —
+    // otherwise "covered" only proves the journey starts. The focused assertion heuristic ignores comments and
+    // requires the marker near an assertion API, so merely mentioning a route in prose never manufactures green.
     const terminal = typeof flow.terminal === "string" ? flow.terminal.trim() : "";
-    if (flow.backendJourney && !terminal) {
+    if (!terminal) {
       messages.push(
-        `linked journey "${name}" declares no \`terminal\` — add the marker (testID or route) its spec must assert ` +
-          `after entry to prove the journey reaches its end; without it, "linked" only proves entry`,
+        `journey "${name}" declares no \`terminal\` — add the marker (testID or route) its spec asserts ` +
+          `after entry to prove the journey reaches its end`,
       );
       depthGaps++;
-    } else if (terminal && !readFileSync(specPath, "utf8").includes(terminal)) {
+    } else if (terminal && !assertsTerminal(readFileSync(specPath, "utf8"), terminal)) {
       messages.push(
         `journey "${name}" never asserts its terminal \`${terminal}\` in ${spec} — the spec may stop at entry ` +
           `instead of proving the journey reaches its end`,
@@ -161,27 +210,47 @@ export function checkE2e(root) {
   return { bootstrap: false, runners, flows: flows.length, gaps, depthGaps, execution, seedPending, messages };
 }
 
+function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+}
+
+function hasNonExecutingTest(source) {
+  if (/\b[xf](?:it|test|describe|context)\s*\(/.test(source)) return true;
+
+  // Keep this runner-agnostic: Vitest, Jest and Playwright all expose modifiers through the same call-chain
+  // shape. The chain matcher deliberately crosses parentheses (test.each(...).skip) and members
+  // (test.concurrent.skip), but not statement boundaries, so ordinary later calls are not conflated.
+  return /\b(?:test|it|describe|context)(?:(?:\s*\.\s*[A-Za-z_$][\w$]*)|(?:\s*\([^;\r\n]*?\)))*\s*\.\s*(?:skip|fixme|todo|skipIf|runIf|only)\s*\(/.test(source);
+}
+
+function assertsTerminal(source, terminal) {
+  const executable = stripComments(source);
+  let at = executable.indexOf(terminal);
+  while (at >= 0) {
+    const context = executable.slice(Math.max(0, at - 240), Math.min(executable.length, at + terminal.length + 240));
+    if (/\b(?:expect|assert|toHaveURL|waitForURL|getByTestId|assertVisible)\b/.test(context)) return true;
+    at = executable.indexOf(terminal, at + terminal.length);
+  }
+  return false;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const [, , root, flag] = process.argv;
+  const [, , root] = process.argv;
   if (!root) {
-    console.error("usage: affe-e2e-doctor <frontend-root> [--strict]");
+    console.error("usage: affe-e2e-doctor <frontend-root>");
     process.exit(2);
   }
   const result = checkE2e(root);
-  if (result.bootstrap) {
-    console.log("AFFE-E2E: no e2e/flows.json yet — e2e tier not set up (bootstrap).");
-    process.exit(0);
-  }
   const execution = result.execution;
   console.log(
     `AFFE-E2E: ${result.flows} curated journey(s) `
       + `[real-browser CI gate: ${execution["ci-gated"]}, front-only smoke: ${execution["front-only"]}, `
-      + `seed-pending: ${execution["seed-pending"]}, native: ${execution.native}], `
+      + `seed-pending: ${execution["seed-pending"]}, disabled: ${execution.disabled}, native: ${execution.native}], `
       + `runners=[${result.runners.join(", ") || "none"}], ${result.gaps} roadmap gap(s), `
       + `${result.depthGaps} depth gap(s).`,
   );
   for (const message of result.messages) console.log(`  - ${message}`);
   if (result.seedPending.length)
     console.log(`  - seed-pending: ${result.seedPending.join(", ")}`);
-  process.exit(flag === "--strict" && (result.gaps > 0 || result.depthGaps > 0) ? 1 : 0);
+  process.exit(result.gaps > 0 || result.depthGaps > 0 ? 1 : 0);
 }

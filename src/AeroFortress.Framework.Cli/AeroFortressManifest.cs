@@ -44,10 +44,12 @@ internal static class AeroFortressManifest
         else if (!Regex.IsMatch(text, @"^\s*name\s*=", RegexOptions.Multiline))
             messages.Add($"{FileName}: [workspace] declares no name");
 
-        // Every backend/core path a product declares must resolve on disk, so the manifest can't drift from
-        // the real tree (the topology it claims is the topology that exists). A declared backend (the .NET API)
-        // must also pin its dev environment (see CheckBackendDevEnv).
-        foreach (Match m in Regex.Matches(text, @"^\s*(backend|core)\s*=\s*""([^""]+)""", RegexOptions.Multiline))
+        // Every product path must resolve on disk, so the manifest can't drift from the real tree. Frontend and
+        // website paths name executable package roots; core may name a directory inside its owning package.
+        foreach (Match m in Regex.Matches(
+            text,
+            @"^\s*(backend|core|frontend|website)\s*=\s*""([^""]+)""",
+            RegexOptions.Multiline))
         {
             var kind = m.Groups[1].Value;
             var rel = m.Groups[2].Value;
@@ -60,11 +62,82 @@ internal static class AeroFortressManifest
 
             if (kind == "backend" && Directory.Exists(full))
                 CheckBackendDevEnv(full, rel, messages);
+            if (kind is "frontend" or "website" && !File.Exists(Path.Combine(full, "package.json")))
+                messages.Add($"{FileName}: {kind} path '{rel}' has no package.json");
         }
 
         CheckCriticalityPolicy(text, messages);
 
         return new Outcome(Present: true, Valid: messages.Count == 0, Messages: messages);
+    }
+
+    /// <summary>
+    /// Discover the package roots the frontend harness must gate. An explicit <c>[harness] frontend</c> is the
+    /// coordinator and wins; otherwise product <c>frontend</c>/<c>core</c> paths resolve to their owning package.
+    /// The legacy <c>clients/*</c> scan remains only as a compatibility fallback for manifests that predate those
+    /// declarations, so an unrelated package cannot silently join or an <c>apps/*</c> package silently disappear.
+    /// </summary>
+    public static IReadOnlyList<string> FrontendPackages(string root)
+    {
+        var path = Path.Combine(root, FileName);
+        if (File.Exists(path))
+        {
+            var text = File.ReadAllText(path);
+            var harnessFrontend = ReadStringKey(Section(text, "harness"), "frontend");
+            if (harnessFrontend is not null)
+                return [Path.GetFullPath(Path.Combine(root, harnessFrontend))];
+
+            var declared = Regex.Matches(
+                    text,
+                    @"^\s*(?:frontend|core)\s*=\s*""([^""]+)""",
+                    RegexOptions.Multiline)
+                .Select(match => OwningPackage(root, match.Groups[1].Value))
+                .Where(package => package is not null)
+                .Cast<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (declared.Count > 0)
+                return declared;
+        }
+
+        var clients = Path.Combine(root, "clients");
+        if (!Directory.Exists(clients))
+            return [];
+        return Directory.EnumerateDirectories(clients)
+            .Where(dir => File.Exists(Path.Combine(dir, "package.json")))
+            .ToList();
+    }
+
+    private static string? OwningPackage(string root, string relativePath)
+    {
+        var workspace = Path.GetFullPath(root);
+        var current = Path.GetFullPath(Path.Combine(root, relativePath));
+        while (current.StartsWith(workspace + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(current, workspace, StringComparison.OrdinalIgnoreCase))
+        {
+            if (File.Exists(Path.Combine(current, "package.json")))
+                return current;
+            var parent = Directory.GetParent(current)?.FullName;
+            if (parent is null || string.Equals(parent, current, StringComparison.OrdinalIgnoreCase))
+                break;
+            current = parent;
+        }
+
+        return null;
+    }
+
+    private static string Section(string text, string name)
+    {
+        var match = Regex.Match(
+            text,
+            $@"(?ms)^\s*\[{Regex.Escape(name)}\]\s*(?<body>.*?)(?=^\s*\[|\z)");
+        return match.Success ? match.Groups["body"].Value : string.Empty;
+    }
+
+    private static string? ReadStringKey(string section, string key)
+    {
+        var match = Regex.Match(section, $@"(?m)^\s*{Regex.Escape(key)}\s*=\s*""([^""]+)""");
+        return match.Success ? match.Groups[1].Value : null;
     }
 
     /// <summary>

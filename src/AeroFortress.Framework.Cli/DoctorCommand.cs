@@ -4,7 +4,7 @@ namespace AeroFortress.Framework.Cli;
 /// The doctor — one verdict over both halves of the stack, extracted from <c>Program</c> so composite
 /// commands (<c>af gate</c>) can run the same legs without duplicating them. The backend leg is the
 /// build-time Roslyn analyzers (a clean build = a clean bill of health; an AF#### error fails it). The
-/// frontend leg, for each AeroFortress client (a dir under <c>clients/</c> carrying an eslint flat config), is
+/// frontend leg, for each manifest-selected AeroFortress harness package, is
 /// the TS-world harness: eslint (eslint-plugin-aerofortress, the AFFE* rules) + tsc (the "wired" gate against
 /// the generated client). One command, both sides — so nothing is left loose in either direction.
 /// </summary>
@@ -39,25 +39,17 @@ internal static class DoctorCommand
         foreach (var client in FrontendClients(Directory.GetCurrentDirectory()))
         {
             Console.WriteLine($"af doctor — frontend conventions ({Path.GetFileName(client)}: eslint + tsc)...");
-            code = Math.Max(code, Tooling.Run("npm", ["run", "lint"], client));
-            code = Math.Max(code, Tooling.Run("npm", ["run", "typecheck"], client));
+            code = Math.Max(code, FrontendScriptContract.Run(client, "lint"));
+            code = Math.Max(code, FrontendScriptContract.Run(client, "typecheck"));
         }
 
         Console.WriteLine(code == 0 ? "doctor: conventions pass." : "doctor: violations reported above.");
         return code;
     }
 
-    // An AeroFortress frontend lives under clients/<app>/ with a flat ESLint config (wiring
-    // eslint-plugin-aerofortress). Flat config supports js/mjs/cjs; treating only .js as a client made ESM pilots
-    // silently skip the entire AFFE + typecheck leg.
-    private static IEnumerable<string> FrontendClients(string root)
-    {
-        var clients = Path.Combine(root, "clients");
-        if (!Directory.Exists(clients))
-            return [];
-        return Directory.EnumerateDirectories(clients)
-            .Where(dir => new[] { "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs" }
-                              .Any(config => File.Exists(Path.Combine(dir, config)))
-                       && File.Exists(Path.Combine(dir, "package.json")));
-    }
+    // The manifest names the real harness package; AeroFortressManifest retains a clients/* compatibility fallback.
+    // Requiring an eslint config for discovery made a missing harness file erase the client precisely when the
+    // doctor must fail, so package.json — not a healthy config — remains the executable boundary.
+    internal static IReadOnlyList<string> FrontendClients(string root)
+        => AeroFortressManifest.FrontendPackages(root);
 }

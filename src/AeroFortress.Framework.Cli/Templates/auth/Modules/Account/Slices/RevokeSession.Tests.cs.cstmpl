@@ -5,11 +5,13 @@ using MyApp.Api.Modules.Account;
 using MyApp.Api.Tenancy;
 //</lz:tenancy>
 using Microsoft.EntityFrameworkCore;
+using Assay.Net;
 
 namespace MyApp.Tests.Modules.Account;
 
 public class RevokeSessionTests
 {
+    [AVP(typeof(RevokeSession), "own-resource-only")]
     [Unit]
     [Fact]
     public async Task Revokes_an_owned_session_and_leaves_the_others()

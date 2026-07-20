@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -12,17 +13,18 @@ namespace AeroFortress.Framework.Doctor;
 /// <summary>
 /// AF0030 — a criterion a module's <c>&lt;Module&gt;.spec.toml</c> (the Clockwork spec manifest) declares for
 /// a slice must have a matching AVP proof: somewhere in the compilation or its test files there is an
-/// <c>[AVP("id")]</c> verification for the same criterion id. This couples the static doctor to the runtime
+/// <c>[AVP(typeof(Slice), "id")]</c> verification for the same subject and criterion id. This couples the static doctor to the runtime
 /// verifier (AVP / Assay.Net): the framework refuses to build a slice whose manifest declares an acceptance
 /// criterion it never proves. A declared criterion with no proof is the bridge's <em>gap</em>.
 ///
 /// The acceptance obligation moved off the inline <c>[Verify]</c> attribute onto the manifest (read via
 /// <see cref="SpecManifest"/>); AVP proofs live in test files excluded from the app's compilation, so the
 /// analyzer reads both the manifests and the proofs as <c>AdditionalFiles</c> (and scans the compilation for
-/// in-source <c>[AVP]</c>), matching ids textually — the same trade-off as <c>AF0008</c>. Detection is by
+/// in-source <c>[AVP]</c>), matching subject × criterion textually — the same trade-off as <c>AF0008</c>. Detection is by
 /// attribute name, so the framework takes no dependency on the AVP package and the relation stays one-way
 /// (framework knows AVP, never the reverse). The analyzer enforces only the structural bijection
-/// slice↔manifest↔<c>[AVP]</c>; validating an id against the AVP catalog is the runtime's job, not the
+/// slice↔manifest↔<c>[AVP]</c>. A legacy criterion-only marker deliberately proves nothing for this rule:
+/// one feature must never borrow another feature's proof. Validating an id against the AVP catalog is the runtime's job, not the
 /// doctor's.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -34,19 +36,25 @@ public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
         title: "Manifest criterion must have an AVP proof",
-        messageFormat: "criterion '{0}' is declared for slice '{1}' in {2} but has no [AVP(\"{0}\")] proof; "
+        messageFormat: "criterion '{0}' is declared for slice '{1}' in {2} but has no "
+                     + "[AVP(typeof({1}), \"{0}\")] proof; "
                      + "add an AVP verification for it",
         category: "AeroFortress.Framework.Convention",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "A criterion declared for a slice in its module's <Module>.spec.toml states that the code "
-                   + "must be proven against an AVP acceptance criterion; the build fails until an [AVP(\"id\")] "
-                   + "verification for the same id exists.",
+                   + "must be proven against an AVP acceptance criterion; the build fails until a subject-bound "
+                   + "[AVP(typeof(Slice), \"id\")] verification exists.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
 
-    // Matches [AVP("criterion-id")] / [AVPAttribute("...")] in a test file, optionally namespace-qualified.
+    // Matches [AVP(typeof(Slice), "criterion-id")] in a test file, optionally namespace-qualified.
     private static readonly Regex AvpProofPattern = new(
-        "\\bAVP(?:Attribute)?\\s*\\(\\s*\"(?<id>[^\"]+)\"",
+        "\\bAVP(?:Attribute)?\\s*\\(\\s*typeof\\s*\\(\\s*(?:global::)?(?:\\w+\\.)*(?<subject>\\w+)\\s*\\)"
+        + "\\s*,\\s*\"(?<id>[^\"]+)\"",
+        RegexOptions.Compiled);
+
+    private static readonly Regex ModuleNamespacePattern = new(
+        "namespace\\s+[\\w.]+\\.Modules\\.(?<module>\\w+)",
         RegexOptions.Compiled);
 
     /// <inheritdoc />
@@ -65,7 +73,7 @@ public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
         // Where each (module, slice) class is declared, so a gap can be reported on the slice it belongs to;
         // and the in-source [AVP] proofs, so a proof beside the slice counts as well as one in a test file.
         var sliceLocations = new ConcurrentDictionary<(string Module, string Slice), Location>();
-        var proven = new ConcurrentBag<string>();
+        var proven = new ConcurrentBag<(string Module, string Subject, string Criterion)>();
 
         context.RegisterSyntaxNodeAction(syntax =>
         {
@@ -82,9 +90,11 @@ public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
             var attribute = (AttributeSyntax)syntax.Node;
             if (IsAvp(attribute))
             {
-                var id = StringArgument(attribute);
-                if (id.Length > 0)
-                    proven.Add(id);
+                var proof = SubjectCriterion(attribute);
+                var owner = attribute.FirstAncestorOrSelf<ClassDeclarationSyntax>();
+                var module = owner is null ? null : ModuleNaming.ModuleOf(owner);
+                if (proof is not null && module is not null)
+                    proven.Add((module, proof.Value.Subject, proof.Value.Criterion));
             }
         }, SyntaxKind.Attribute);
 
@@ -94,7 +104,7 @@ public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
             if (manifests.Count == 0)
                 return;
 
-            var provenIds = new HashSet<string>(proven);
+            var provenObligations = new HashSet<(string Module, string Subject, string Criterion)>(proven);
             foreach (var file in end.Options.AdditionalFiles)
             {
                 if (file.Path.EndsWith(SpecManifest.Suffix, System.StringComparison.OrdinalIgnoreCase))
@@ -102,14 +112,17 @@ public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
                 var text = file.GetText(end.CancellationToken)?.ToString();
                 if (text is null)
                     continue;
+                var module = ModuleNamespacePattern.Match(text).Groups["module"].Value;
+                if (module.Length == 0)
+                    continue;
                 foreach (Match match in AvpProofPattern.Matches(text))
-                    provenIds.Add(match.Groups["id"].Value);
+                    provenObligations.Add((module, match.Groups["subject"].Value, match.Groups["id"].Value));
             }
 
             foreach (var manifest in manifests.Values)
                 foreach (var slice in manifest.Slices)
                     foreach (var criterion in manifest.CriteriaFor(slice))
-                        if (!provenIds.Contains(criterion))
+                        if (!provenObligations.Contains((manifest.Module, slice, criterion)))
                             end.ReportDiagnostic(Diagnostic.Create(
                                 Rule,
                                 Location(sliceLocations, manifest.Module, slice),
@@ -133,13 +146,23 @@ public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
             || name.EndsWith(".AVP") || name.EndsWith(".AVPAttribute");
     }
 
-    /// <summary>The first constructor argument as a string literal, or empty when there is none.</summary>
-    private static string StringArgument(AttributeSyntax attribute)
+    /// <summary>The subject type and criterion literal carried by the canonical AVP constructor.</summary>
+    private static (string Subject, string Criterion)? SubjectCriterion(AttributeSyntax attribute)
     {
-        var first = attribute.ArgumentList?.Arguments.Count > 0 ? attribute.ArgumentList.Arguments[0] : null;
-        return first?.Expression is LiteralExpressionSyntax literal
-            && literal.IsKind(SyntaxKind.StringLiteralExpression)
-                ? literal.Token.ValueText
-                : string.Empty;
+        var arguments = attribute.ArgumentList?.Arguments;
+        if (arguments is null || arguments.Value.Count < 2
+            || arguments.Value[0].Expression is not TypeOfExpressionSyntax subject
+            || arguments.Value[1].Expression is not LiteralExpressionSyntax criterion
+            || !criterion.IsKind(SyntaxKind.StringLiteralExpression))
+            return null;
+
+        var name = subject.Type switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            QualifiedNameSyntax qualified => qualified.Right.Identifier.ValueText,
+            AliasQualifiedNameSyntax alias => alias.Name.Identifier.ValueText,
+            _ => subject.Type.ToString().Split('.').Last(),
+        };
+        return (name, criterion.Token.ValueText);
     }
 }

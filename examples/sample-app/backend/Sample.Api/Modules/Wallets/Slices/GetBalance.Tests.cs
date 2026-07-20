@@ -2,6 +2,7 @@ using Sample.Api;
 using Microsoft.EntityFrameworkCore;
 using Sample.Api.BuildingBlocks;
 using Sample.Api.Modules.Wallets;
+using Assay.Net;
 
 namespace Sample.Tests.Modules.Wallets;
 
@@ -12,6 +13,7 @@ public class GetBalanceTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 
+    [AVP(typeof(GetBalance), "returns-current-balance")]
     [Unit]
     [Fact]
     public async Task Returns_the_stored_balance()

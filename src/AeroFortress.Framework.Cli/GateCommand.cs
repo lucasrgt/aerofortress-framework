@@ -29,14 +29,17 @@ internal static class GateCommand
         var results = Path.Combine(Path.GetTempPath(), "af-gate-" + Guid.NewGuid().ToString("N"));
         var tests = Tooling.Dotnet("test", [.. rest, "--logger", "trx", "--results-directory", results]);
         var verdicts = GateScan.ParseTrxDirectory(results);
+        var skippedTests = verdicts.Count(verdict => verdict.Outcome == "NotExecuted");
         TryDelete(results);
+
+        var frontend = FrontendGate.Run(DoctorCommand.FrontendClients(root));
 
         var matrix = GateMatrix.Build(
             GateScan.DiscoverManifests(root),
             GateScan.ScanProofs(root),
             GateScan.ScanSlices(root),
             verdicts);
-        var legs = new GateLegs(doctor, tests);
+        var legs = new GateLegs(doctor, tests, frontend, skippedTests);
 
         GateReport.WriteConsole(matrix, legs, Console.Out);
         File.WriteAllText(Path.Combine(root, MarkdownArtifact), GateReport.Markdown(matrix, legs, DateTimeOffset.Now));
@@ -44,6 +47,10 @@ internal static class GateCommand
         Console.WriteLine($"gate: wrote {MarkdownArtifact} + {JsonArtifact}.");
 
         var code = Math.Max(Math.Max(doctor, tests), matrix.Blocking ? 1 : 0);
+        if (frontend.Any(leg => !leg.Green))
+            code = Math.Max(code, 1);
+        if (skippedTests > 0)
+            code = Math.Max(code, 1);
         Console.WriteLine(code == 0
             ? "gate: GREEN — form, proofs and the matrix all hold."
             : "gate: RED — a leg failed or the matrix has findings (see above).");

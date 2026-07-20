@@ -14,9 +14,9 @@
     <PackageId>aerofortress-framework-cli</PackageId>
 
     <!-- Package metadata (the CLI doesn't import AeroFortress.Framework.Library.props — that turns CS1591 into an error, and a
-         tool isn't a documented library surface). Normally in step with the framework; 0.2.0 is the verification
-         wave (`af gate` + the VERIFICATION matrix artifacts, backed by the neutral Assay.Net catalog/manifest). -->
-    <Version>0.2.4</Version>
+         tool isn't a documented library surface). 0.3.0 makes acceptance verification universal and turns
+         `af gate` into the full backend + frontend release gate. -->
+    <Version>0.3.0</Version>
     <Authors>Lucas Tinoco</Authors>
     <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
     <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>
@@ -41,7 +41,10 @@
        and never knows the framework). It brings the neutral catalog (Catalog.LoadDefault) and the spec-manifest
        reader the gate and the criteria commands share with the runtime verifier. -->
   <ItemGroup>
-    <PackageReference Include="Assay.Net" Version="0.2.0" />
+    <PackageReference Include="Assay.Net" Version="0.3.1" />
+    <!-- The verification matrix must distinguish real attributes from fixture/template strings. Roslyn syntax
+         keeps this collector honest without compiling or semantically binding the consumer workspace. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
   </ItemGroup>
 
   <!-- The CLI's internal scaffolding helpers (e.g. ErrorCodeScaffold) are unit-tested. -->

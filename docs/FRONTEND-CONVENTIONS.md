@@ -611,7 +611,8 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `AFFE030` | **No cast on a navigation target** — no `as never`/`as any`/`as unknown` on the argument of `router.push`/`replace`/`navigate` (or a `useNavigate()` call), nor on the `href`/`to` of `<Redirect>`/`<Navigate>`/`<Link>`. The cast exists to silence typed routes; silenced, a drifted route literal compiles clean and 404s in prod. Pass a typed literal or the `{ pathname, params }` object. **Config pair**: typed routes ON (expo-router `experiments.typedRoutes` / TanStack's route tree) — without it the removed cast merely degrades to `string`. Error-tier, routing family | **shipped** | hostpoint: ~8 call sites cast `router.push(x as never)`; when the backend minted two routes that didn't exist (the sibling convention), the muted router compiled them clean → prod 404 |
 | `AFFE031` | **Submit handles the invalid path** — in a `*.viewModel.ts`, a one-argument `handleSubmit(onValid)` is flagged: a validation failure runs no code (it happens *before* the mutation, so `AFFE013`/`AFFE027` never see it). Use the spine's `submitOrReveal(form.handleSubmit, onValid, { onInvalid })` — it forces the surface and resolves the first invalid field for the shell to navigate to — or pass `onInvalid` by hand. Warn-tier on entry (a single-screen form with visible inline errors is legitimate); promotes with `AFFE032` | **shipped** | hostpoint: a 9-tab property editor's Save went completely mute when a hidden tab's field failed — no mutation, no toast, no error ("não está salvando a propriedade", in prod) |
 | `AFFE032` | **Controller surfaces its fieldState** — a `<Controller>` whose inline `render` never reads `fieldState` (destructured or accessed) leaves that field's validation error with no surface; pass `error={fieldState.error?.message}` to the field component. Near-zero false positives (`error` on an unvalidated field is inert); a deliberately surface-less control eslint-disables with its justification. Warn-tier, promoted together with `AFFE031` — the pair makes "a validation error always shows" hold by construction | **shipped** | hostpoint: the Description input destructured only `{ field }` — its validation failure had no surface at all (same incident as AFFE031) |
-| `AFFE033` | **A `@verify` obligation has its `@avp` proof** — the front-side of the backend's `AF0030` (the `[Verify]`↔`[AVP]` bridge), the closing leg of AeroFortress Clockwork on the frontend. A `*.view.tsx`/`*.viewModel.ts` that declares a JSDoc `@verify <criterion-id>` (the AVP acceptance obligation, the twin of the backend `[Verify("id")]`) must have a co-located `*.test.tsx` carrying `@avp <criterion-id>` (the twin of `[AVP("id")]`) — the assay JS verification that the behaviour holds, not just that it was claimed. Markers are JSDoc, erased at runtime (doctor-removable); co-located scope mirrors `AFFE005`/`AFFE006`. Like `AF0030`, it enforces the pairing EXISTS (Doctor 1); whether the proof passes is the test runner's job (Doctor 2). Error-tier, the AVP bridge | **shipped** | the frontend mirror of `AF0030` — Clockwork's `clockwork-bind` emits `@verify` on a view, this rule makes the missing `@avp` proof a build failure |
+| `AFFE033` | **Every feature declares and executes AVP** — every `*.viewModel.ts` declares at least one JSDoc `@verify <criterion-id>`. A View/ViewModel obligation is satisfied only by its exact co-located `<Feature>.assay.test.tsx` carrying `@avp <criterion-id>` and registering `defineVerification(...)`; the `.test` segment is mandatory so Vitest discovers it. A comment in `<Feature>.test.tsx` or another feature's assay cannot pay the debt. Direct `assay verify` supplies the gate verdict. Error-tier | **shipped** | AVP existed but was optional and a plain/non-discoverable file could impersonate proof; co-location now binds an executable assay to its subject |
+| `AFFE034` | **Every test must execute** — nested `.skip`, `.fixme`, `.todo`, `.skipIf`, `.runIf`, `.only`, and `x*`/`f*` test aliases in `*.test.*` or `*.spec.*` are errors (including `test.each(...).skip` and `test.concurrent.only`). A runner's zero exit while tests were skipped or excluded is not evidence | **shipped** | skip/focus syntax made incomplete frontend and Playwright suites look green |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
@@ -633,24 +634,28 @@ after.
 
 ## E2E journeys — `flows.json` + depth
 
-E2E is flow-level and expensive, so it is enforced at the **project** level, not per component: a
-project curates its journeys in `e2e/flows.json` and `tools/e2e-doctor.mjs` proves the list is
-covered. Each entry is `{ name, target?: "web"|"native", spec, backendJourney?, terminal? }`:
+E2E is flow-level, so it is enforced at the **project** level, not per component: a project curates
+its journeys in `e2e/flows.json` and `tools/e2e-doctor.mjs` proves the list is covered. Absence and an
+empty list are blocking — there is no bootstrap-green state. Each entry is
+`{ name, target: "web"|"native", spec, terminal, backendJourney? }`:
 
 - **Existence** (hard `gaps`): the `spec` file exists and a runner for its `target` is configured
   (Playwright for web, Maestro/Detox for native).
 - **Set parity** (`tools/journey-parity.mjs`, AFFE-JOURNEY): a `backendJourney` (the
   `Journeys/<key>.Tests.cs` twin) links the flow to its backend journey, checked both directions — so
   no critical journey is half-built (tested on the back but never end-to-end on the front, or vice-versa).
-- **Depth** (`depthGaps`, warn-tier, **AFFE-JOURNEY-002**): a spec *existing* is not coverage — it can
-  stop at the door. A **linked** flow must declare `terminal` (the testID or route its spec asserts
+- **Depth** (`depthGaps`, blocking, **AFFE-JOURNEY-002**): a spec *existing* is not coverage — it can
+  stop at the door. Every flow must declare `terminal` (the testID or route its spec asserts
   *after* entry, to prove the journey reaches its end), and the spec must actually reference it; a spec
   that asserts only the entry screen is flagged. *Why this exists:* a pilot's onboarding shipped a
   "complete → back to step 0" bug under a green doctor because the backend journey proved the lifecycle
   reached `Complete` while the frontend spec proved only entry — the bug lived in the **seam** between
-  them. `terminal` forces the traversal across that seam to be asserted. Warn-tier first; promotes to a
-  hard gate once flows declare their terminals. See
+  them. `terminal` forces the traversal across that seam to be asserted. See
   [`docs/decisions/aerofortress-framework-journey-depth-enforcement.md`](decisions/aerofortress-framework-journey-depth-enforcement.md).
+- **Execution** — `af gate` runs, for every manifest-selected frontend harness package, `npm run test`,
+  direct `assay verify`, the E2E doctor, and `npm run test:e2e`. Missing or placeholder scripts,
+  seed-pending specs, disabled/focused specs, and tests that never launch the real runner are failures. All release proofs run;
+  CI may parallelize or shard them, but cannot silently omit them.
 
 ---
 
