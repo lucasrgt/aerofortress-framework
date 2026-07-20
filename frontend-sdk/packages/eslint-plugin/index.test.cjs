@@ -20,6 +20,25 @@ const ruleTester = new RuleTester({
   },
 });
 
+const ASSAY_COLOCATION_FIX = path.join(__dirname, "__fixtures__", "assay-colocation");
+
+// AFFE005 — a canonical Assay suite is executable Vitest and can carry the ViewModel mount proof itself.
+ruleTester.run("test-colocated", plugin.rules["test-colocated"], {
+  valid: [
+    {
+      filename: path.join(ASSAY_COLOCATION_FIX, "Proof.viewModel.ts"),
+      code: `export function useProofModel() { return {}; }`,
+    },
+  ],
+  invalid: [
+    {
+      filename: path.join(ASSAY_COLOCATION_FIX, "Missing.viewModel.ts"),
+      code: `export function useMissingModel() { return {}; }`,
+      errors: [{ messageId: "missing" }],
+    },
+  ],
+});
+
 // AFFE001 — a View (*.view.tsx) imports no data layer (generated client / axios / react-query); it consumes its
 // ViewModel.
 ruleTester.run("view-purity", plugin.rules["view-purity"], {
@@ -198,6 +217,10 @@ ruleTester.run("no-hardcoded-copy", plugin.rules["no-hardcoded-copy"], {
 // gate fires) while a presentational fragment passes (proving the gate skips). A unique base avoids a cwd collision.
 ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
   valid: [
+    {
+      filename: path.join(ASSAY_COLOCATION_FIX, "Proof.view.tsx"),
+      code: `import { useProofModel } from "./Proof.viewModel"; export const ProofView = () => null;`,
+    },
     // a presentational fragment: imports no ViewModel -> not a screen, skipped (covered via its shell).
     { filename: "Affe006Frag.view.tsx", code: `import { View } from "react-native"; export const X = () => <View />;` },
     // out of scope: not a *.view.tsx (even though it names a model hook).

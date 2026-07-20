@@ -7,5 +7,5 @@ namespace AeroFortress.Framework.Cli;
 internal static class FrameworkPackageVersions
 {
     /// <summary>The current AeroFortress.Framework.* release consumed by generated applications.</summary>
-    public const string Framework = "2.2.0";
+    public const string Framework = "2.2.1";
 }

@@ -35,6 +35,16 @@ const isTypeOnly = (node) =>
   node.importKind === "type" ||
   (node.specifiers.length > 0 && node.specifiers.every((s) => s.importKind === "type"));
 
+// Assay's canonical suffix is still a Vitest suite. Colocation rules accept either form so a feature can promote
+// its real integration suite to AVP without duplicating the same test under two filenames.
+function coLocatedTestSources(filename, base) {
+  const names = [`${base}.test.tsx`, `${base}.assay.test.tsx`];
+  const paths = names
+    .map((name) => path.join(path.dirname(filename), name))
+    .filter((candidate) => fs.existsSync(candidate));
+  return { names, sources: paths.map((candidate) => fs.readFileSync(candidate, "utf8")) };
+}
+
 /** Report on any *value* import whose source matches `pattern`. */
 function forbidImport(context, pattern, messageId) {
   return {
@@ -309,16 +319,16 @@ const rules = {
       return {
         Program(node) {
           const base = path.basename(context.filename).replace(/\.viewModel\.ts$/, "");
-          const testPath = path.join(path.dirname(context.filename), `${base}.test.tsx`);
-          if (!fs.existsSync(testPath)) {
-            context.report({ node, messageId: "missing", data: { test: `${base}.test.tsx`, model: `${base}.viewModel` } });
+          const tests = coLocatedTestSources(context.filename, base);
+          if (tests.sources.length === 0) {
+            context.report({ node, messageId: "missing", data: { test: tests.names.join(" or "), model: `${base}.viewModel` } });
             return;
           }
-          const src = fs.readFileSync(testPath, "utf8");
-          const importsViewModel = new RegExp(`["']\\./${base}\\.viewModel["']`).test(src);
-          const usesRenderHook = /\brenderHook\b/.test(src);
-          if (!importsViewModel || !usesRenderHook) {
-            context.report({ node, messageId: "inert", data: { test: `${base}.test.tsx`, base } });
+          const proven = tests.sources.some(
+            (src) => new RegExp(`["']\\./${base}\\.viewModel["']`).test(src) && /\brenderHook\b/.test(src),
+          );
+          if (!proven) {
+            context.report({ node, messageId: "inert", data: { test: tests.names.join(" or "), base } });
           }
         },
       };
@@ -372,17 +382,16 @@ const rules = {
         },
         "Program:exit"(node) {
           if (!consumesViewModel) return;
-          const testPath = path.join(path.dirname(context.filename), `${base}.test.tsx`);
-          if (!fs.existsSync(testPath)) {
-            context.report({ node, messageId: "missing", data: { test: `${base}.test.tsx`, component: `${base}View` } });
+          const tests = coLocatedTestSources(context.filename, base);
+          if (tests.sources.length === 0) {
+            context.report({ node, messageId: "missing", data: { test: tests.names.join(" or "), component: `${base}View` } });
             return;
           }
-          const src = fs.readFileSync(testPath, "utf8");
-          const importsView = new RegExp(`["']\\./${base}\\.view["']`).test(src);
-          // `render(` is the RTL integration call; `\\brender\\s*\\(` does NOT match `renderHook(` (the unit call).
-          const usesRender = /\brender\s*\(/.test(src);
-          if (!importsView || !usesRender) {
-            context.report({ node, messageId: "inert", data: { test: `${base}.test.tsx`, base } });
+          const proven = tests.sources.some(
+            (src) => new RegExp(`["']\\./${base}\\.view["']`).test(src) && /\brender\s*\(/.test(src),
+          );
+          if (!proven) {
+            context.report({ node, messageId: "inert", data: { test: tests.names.join(" or "), base } });
           }
         },
       };
@@ -1812,7 +1821,7 @@ const rules = {
 };
 
 const plugin = {
-  meta: { name: "eslint-plugin-aerofortress", version: "0.12.0" },
+  meta: { name: "eslint-plugin-aerofortress", version: "0.12.1" },
   rules,
   configs: {},
 };

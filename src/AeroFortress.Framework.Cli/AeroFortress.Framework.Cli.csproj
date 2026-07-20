@@ -14,9 +14,9 @@
     <PackageId>aerofortress-framework-cli</PackageId>
 
     <!-- Package metadata (the CLI doesn't import AeroFortress.Framework.Library.props — that turns CS1591 into an error, and a
-         tool isn't a documented library surface). 0.3.0 makes acceptance verification universal and turns
-         `af gate` into the full backend + frontend release gate. -->
-    <Version>0.3.0</Version>
+         tool isn't a documented library surface). 0.3.1 keeps Assay suites first-class across the frontend gate.
+         `af gate` remains the full backend + frontend release gate. -->
+    <Version>0.3.1</Version>
     <Authors>Lucas Tinoco</Authors>
     <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
     <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>
