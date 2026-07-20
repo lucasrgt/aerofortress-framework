@@ -48,6 +48,18 @@ public class GateReportTests
             [new FrontendGateLeg("web", Tests: 0, Avp: 1, E2eShape: 0, E2e: 0)])));
     }
 
+    [Fact]
+    public void Frontend_numbers_are_labeled_as_exit_codes_in_the_human_report()
+    {
+        var markdown = GateReport.Markdown(
+            SampleMatrix(passing: true),
+            new GateLegs(0, 0, [new FrontendGateLeg("web", 0, 0, 0, 0)]),
+            DateTimeOffset.UnixEpoch);
+
+        Assert.Contains("exit codes (`0` = pass)", markdown);
+        Assert.Contains("| Tests exit | AVP exit |", markdown);
+    }
+
     // A one-module matrix carrying one declared criterion and one stray (undeclared) proof, so both the row
     // table and the findings section have content to assert on.
     private static GateMatrix SampleMatrix(bool passing) => GateMatrix.Build(

@@ -14,7 +14,7 @@ internal static class FrontendScriptContract
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>Validate and run one required package script, returning a nonzero gate result on contract drift.</summary>
-    public static int Run(string packageRoot, string script)
+    public static int Run(string packageRoot, string script, params string[] arguments)
     {
         var error = Validate(packageRoot, script);
         if (error is not null)
@@ -23,7 +23,7 @@ internal static class FrontendScriptContract
             return 1;
         }
 
-        return Tooling.Run("npm", ["run", script], packageRoot);
+        return Tooling.Run("npm", ["run", script, .. arguments], packageRoot);
     }
 
     /// <summary>Return a precise contract error, or <see langword="null"/> when the script is executable.</summary>

@@ -27,7 +27,7 @@ internal static class GateCommand
 
         Console.WriteLine("af gate — proofs (dotnet test)...");
         var results = Path.Combine(Path.GetTempPath(), "af-gate-" + Guid.NewGuid().ToString("N"));
-        var tests = Tooling.Dotnet("test", [.. rest, "--logger", "trx", "--results-directory", results]);
+        var tests = Tooling.Dotnet("test", ProofArguments(rest, doctor, results));
         var verdicts = GateScan.ParseTrxDirectory(results);
         var skippedTests = verdicts.Count(verdict => verdict.Outcome == "NotExecuted");
         TryDelete(results);
@@ -55,6 +55,19 @@ internal static class GateCommand
             ? "gate: GREEN — form, proofs and the matrix all hold."
             : "gate: RED — a leg failed or the matrix has findings (see above).");
         return code;
+    }
+
+    /// <summary>Build the proof-run arguments, reusing a doctor build only when it actually passed.</summary>
+    internal static string[] ProofArguments(string[] rest, int doctorExit, string resultsDirectory)
+    {
+        var arguments = new List<string>(rest);
+        if (doctorExit == 0 && !arguments.Contains("--no-build", StringComparer.OrdinalIgnoreCase))
+            arguments.Add("--no-build");
+        arguments.Add("--logger");
+        arguments.Add("trx");
+        arguments.Add("--results-directory");
+        arguments.Add(resultsDirectory);
+        return [.. arguments];
     }
 
     // The TRX scratch dir is disposable; a locked file on Windows must never fail the gate itself.

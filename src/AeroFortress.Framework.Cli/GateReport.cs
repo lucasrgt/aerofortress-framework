@@ -59,8 +59,8 @@ internal static class GateReport
         foreach (var broken in matrix.MalformedManifests)
             writer.WriteLine($"  malformed: {broken.Path} — {broken.Error}");
         foreach (var frontend in legs.FrontendRuns)
-            writer.WriteLine($"  frontend {frontend.Client}: tests={frontend.Tests} avp={frontend.Avp} "
-                           + $"e2e-shape={frontend.E2eShape} e2e={frontend.E2e}");
+            writer.WriteLine($"  frontend {frontend.Client} exits: tests={frontend.Tests} avp={frontend.Avp} "
+                           + $"e2e-shape={frontend.E2eShape} e2e={frontend.E2e} (0 = pass)");
         if (legs.SkippedTests > 0)
             writer.WriteLine($"  skipped: {legs.SkippedTests} .NET test(s) did not execute");
         writer.WriteLine($"  verdict: {(Green(matrix, legs) ? "GREEN" : "RED")}");
@@ -84,7 +84,9 @@ internal static class GateReport
         if (legs.FrontendRuns.Count > 0)
         {
             md.AppendLine();
-            md.AppendLine("| Frontend | Tests | AVP | E2E shape | E2E run |");
+            md.AppendLine("Frontend leg exit codes (`0` = pass):");
+            md.AppendLine();
+            md.AppendLine("| Frontend | Tests exit | AVP exit | E2E shape exit | E2E run exit |");
             md.AppendLine("|---|---:|---:|---:|---:|");
             foreach (var frontend in legs.FrontendRuns)
                 md.AppendLine(CultureInfo.InvariantCulture,

@@ -15,6 +15,8 @@ internal sealed record FrontendGateLeg(string Client, int Tests, int Avp, int E2
 /// <summary>Runs every frontend proof suite. Missing scripts/tools fail naturally; nothing is optional.</summary>
 internal static class FrontendGate
 {
+    private const string AssaySuiteGlob = "**/*.assay.test.*";
+
     /// <summary>Run unit/integration tests, Assay, the E2E doctor, and the real E2E suite for every client.</summary>
     public static IReadOnlyList<FrontendGateLeg> Run(IEnumerable<string> clients)
     {
@@ -22,8 +24,11 @@ internal static class FrontendGate
         foreach (var client in clients)
         {
             var name = Path.GetFileName(client);
-            Console.WriteLine($"af gate — frontend tests ({name})...");
-            var tests = FrontendScriptContract.Run(client, "test");
+            Console.WriteLine($"af gate — frontend tests ({name}, non-Assay partition)...");
+            // Assay suites are ordinary Vitest files, so an unfiltered test run followed by `assay verify`
+            // executes them twice. Partition by filename: every non-Assay test runs here, while every Assay
+            // proof runs exactly once through the acceptance verifier below.
+            var tests = FrontendScriptContract.Run(client, "test", "--", $"--exclude={AssaySuiteGlob}");
 
             Console.WriteLine($"af gate — frontend AVP ({name})...");
             // Invoke Assay directly: a package script is allowed to compose work, but must not be able to replace
