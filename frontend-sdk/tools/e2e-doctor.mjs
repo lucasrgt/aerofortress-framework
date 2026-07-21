@@ -430,21 +430,21 @@ function hasBackendObservation(source) {
 function extractBackendProof(source) {
   const executable = stripComments(source);
   const observation = executable.match(
-    /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+observeBackend\s*\(\s*page\s*,\s*(["'])([^"']+)\2\s*\)/,
+    /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+observeBackend\s*\(\s*([A-Za-z_$][\w$]*)\s*,\s*(["'])([^"']+)\3\s*\)/,
   );
   if (!observation) return null;
   const variable = escapeRegex(observation[1]);
   const assertion = executable.match(new RegExp(
     `\\b(?:expect|waitFor)BackendSlices\\s*\\(\\s*${variable}\\s*,\\s*\\[([^\\]]*)\\]\\s*,`
       + `\\s*\\{\\s*status\\s*:\\s*(["'])(success|error)\\2\\s*,?\\s*`
-      + `(?:(?:timeoutMs|intervalMs)\\s*:\\s*\\d+(?:\\.\\d+)?\\s*,?\\s*)*\\}\\s*\\)`,
+      + `(?:(?:timeoutMs|intervalMs)\\s*:\\s*\\d+(?:\\.\\d+)?\\s*,?\\s*)*\\}\\s*,?\\s*\\)`,
   ));
   if (!assertion) return null;
   const rawSlices = assertion[1];
   const slices = [...rawSlices.matchAll(/(["'])([^"']+)\1/g)].map((match) => match[2]);
   const residue = rawSlices.replace(/(["'])[^"']+\1/g, "").replace(/[\s,]/g, "");
   if (slices.length === 0 || residue) return null;
-  return { contract: observation[3], slices, status: assertion[3] };
+  return { contract: observation[4], slices, status: assertion[3] };
 }
 
 function readBackendContract(root, value) {

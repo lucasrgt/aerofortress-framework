@@ -365,6 +365,40 @@ describe("checkE2e", () => {
     }
   });
 
+  it("accepts canonical proof on a named page with multiline trailing commas", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["Login"]);
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "login-happy", name: "login", path: "happy", target: "web", terminal: "/home",
+        spec: "e2e/login.spec.ts", case: "signs in", backendSlices: ["Login"],
+        backendContract: "contract/api.json",
+      }]));
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'import { observeBackend, waitForBackendSlices } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'test("signs in", async ({ browser }) => {',
+        '  const traveler = await browser.newPage();',
+        '  const backend = await observeBackend(traveler, "contract/api.json");',
+        '  await expect(traveler).toHaveURL("/home");',
+        '  await waitForBackendSlices(',
+        '    backend,',
+        '    ["Login"],',
+        '    { status: "success" },',
+        '  );',
+        '});',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(0);
+      expect(result.execution["ci-gated"]).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("allows a sad business state to prove a successful backend response explicitly", () => {
     const dir = tmp();
     try {
