@@ -124,7 +124,7 @@ Gate: ≥ 8.5 weighted **and** no criterion < 7 → PASS; any < 6 → BLOCK; bou
 | 1 | Cold-read legibility of the resulting convention | 9.0 | the rung table draws the exact line; "marks are the on-ramp" frames it in one sentence | an author must learn *why* a DTO is fine but an entity member isn't — answered by the rung table, not obvious without it |
 | 2 | Scope / boundary discipline (80/20, no runtime invasion) | 9.5 | reuses the framework's own marks + DbContext; pure analyzer, doctor-removable | Detector B leans on the by-id convention — correct *here*, would mislead a codebase that allows EF navigations (which this framework forbids, so in-boundary) |
 | 3 | Determinism — one signal per detector | 9.0 | DbSet (A) and entity-member-type (B) are each a single structural fact, no author fork | "one collection layer / one nullable layer" of unwrap is a bounded choice; a `List<List<Address>>` would slip (no real case) |
-| 4 | Doctor enforcement named + severity path | 8.5 | `AF0021`, `Error`, implemented + 5 green tests | severity not yet mapped across `production`/`strict`/`prototype` profiles |
+| 4 | Doctor enforcement named + severity path | 9.0 | `AF0021`, `Error`, implemented + green rule tests | one unconditional severity keeps the contract legible |
 | 5 | Diagnostic-ID truthfulness (rubric C8.5) | 9.5 | `AF0021` is genuinely net-new; the id collision check (AF0020 taken) is in the code comment | none material |
 | 6 | Testability | 9.0 | five cases: valid, DbSet-unmarked, member-unmarked, nullable-unwrap, the full allowed-state regression | no test yet for `[Keyless]` opt-out or `[NotMapped]` skip (both coded, both unexercised) |
 | 7 | Anti-theater honesty — does it catch the bug it claims? | 8.5 | Detector A catches the exact `User` bug; Detector B the exact `Address`-on-entity bug; the orphan is honestly declared out-of-scope | it does **not** catch the orphan the reviewer first pointed at — defensible (dead code), but must be said plainly, not hidden |
@@ -136,12 +136,10 @@ Weighted ≈ **8.7**. No criterion < 7 → **PASS.**
 refuse to ask "is this a domain concept?"* and instead ask "is this a table?" / "is this entity state?" —
 both of which have a syntax. The day someone asks AF0021 to also flag the orphan `Address`, or any
 "looks-domainish" class, it becomes a heuristic, earns suppressions, and dies. Keep it at rungs 2–3. The one
-soft floor is C6: the `[Keyless]` and `[NotMapped]` opt-outs are coded but untested — add those two cases
-before the next profile-severity pass.
+soft floor is C6: the `[Keyless]` and `[NotMapped]` opt-outs are coded but untested — add those two cases.
 
 ### Tracked cuts (PASS)
 
-- Map `AF0021` to `production`/`strict`/`prototype` severities (it is `Error` by default today).
 - Add test cases for the `[Keyless]` (Detector A) and `[NotMapped]` (Detector B) opt-outs.
 - Port-side follow-through (not this rule): finish `User` as `[Entity]`, consolidate the five `Address`
   types to one shared `[ValueObject]`, delete the orphan.

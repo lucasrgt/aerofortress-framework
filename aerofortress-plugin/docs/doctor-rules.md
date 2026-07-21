@@ -11,9 +11,9 @@ Never suppress. A firing rule means the shape is wrong; fix the shape.
 - AF0005 ctx.md fresh: backticked citations resolve in source (not mtime)
 - AF0006 no IRepository / unit-of-work in slices
 - AF0007 file ≤ 500 LOC (Migrations/ exempt)
-- AF0008 [Critical] has happy AND sad [Journey]
+- AF0008 every shape-derived write has happy AND sad [Journey] proofs; ambiguity fails closed
 - AF0009 write-ownership: module writes only its own entities (reads/joins free; Tests exempt)
-- AF0010 a [Journey] must cover a [Critical] slice (journey on non-critical flagged)
+- AF0010 a [Journey] must cover a shape-derived write slice
 - AF0011 tests live in src/ (tests/<App>.Tests is infra only)
 - AF0012 Map calls `.WithName("<SliceName>")` (operationId = frontend hook name)
 - AF0013 [ValueObject] always-valid (immutable, smart constructor Result<T>)
@@ -23,13 +23,17 @@ Never suppress. A firing rule means the shape is wrong; fix the shape.
 - AF0017 Program.cs is an index (AddAeroFortress/AddPlatform/AddModules + Use/Map only)
 - AF0018 error code is a registry constant on *ErrorCodes (never literal)
 - AF0019 every *ErrorCodes constant is used (no orphans)
-- AF0020 a [Journey] asserts a post-condition (warning tier)
+- AF0020 a [Journey] asserts its terminal post-condition; sad also proves unchanged state
 - AF0021 unmarked domain types: DbSet<T> unmarked → [Entity]; complex member of [Entity] unmarked → [ValueObject]
 - AF0022 every endpoint declares authorization (.RequireAuthorization or .AllowAnonymous)
 - AF0023 injected ICurrentUser must be consulted
 - AF0024 raw SQL never absorbs runtime values as text (FromSql/ExecuteSql parameterized)
 - AF0025 held Result<T> checked before .Value/.Error
-- AF0026 write-side [Critical] declares concurrency posture (warning tier)
+- AF0026 every persisted write declares concurrency posture (warning tier)
+- AF0030 every declared criterion has an exact subject-bound [AVP] proof
+- AF0031 every slice declares at least one criterion in its module spec manifest
+- AF0032 backend tests cannot be skipped, conditional, explicit, or not executed
+- AF0033 every write journey is an isolated executable E2E Fact/Theory in *Journey.Tests.cs
 
 Self-harness (framework dev only): AFSELF001 ≤500 lines · AFSELF002 no TODO/FIXME/HACK ·
 CS1591 public members documented.
@@ -65,7 +69,15 @@ CS1591 public members documented.
 - AFFE027 QueryClient carries mutation defaults (invalidate + feedback; meta.silent/expectedFailure opt-outs)
 - AFFE028 (warn) no onSuccess refetch ritual (defaults already invalidate)
 - AFFE029 refresh one-door (only lib/aerofortress-client, lib/session)
+- AFFE030 no cast on navigation targets
+- AFFE031 submit handles the invalid form path
+- AFFE032 Controller surfaces fieldState validation errors
+- AFFE033 every ViewModel declares `@verify` and has an exact co-located executable Assay proof
+- AFFE034 frontend tests cannot be skipped, focused, todo, or conditionally excluded
+- AFFE035 every ViewModel links distinct subject-bound happy and sad E2E flows
 
 E2E/journey: AFFE-JOURNEY (back↔front flow parity) · AFFE-JOURNEY-002 (flow declares terminal
 in flows.json and spec asserts it) · AFFE-E2E-SKIP-IN-GATE-001 (skipped gate-class flow fails CI
-gate) · AFFE-JOURNEY-SEAM-001 (planned: lifecycle-advancing [Critical] needs frontend flow).
+gate). A web flow naming backendSlices uses the canonical `requireBackend` import and a successful
+`PW_API_URL` global-setup probe; its spec cannot intercept network requests or invoke API mocks.
+Mocked UI smoke cases live in separate front-only specs.

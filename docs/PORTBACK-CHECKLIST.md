@@ -54,9 +54,11 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   shipped infinite-navigation bug) is absent from the framework plugin, and its ID collides with a
   *planned, different* AFFE015 ("no orphan placeholder") at `docs/FRONTEND-CONVENTIONS.md:275`.
   _FRAMEWORK-GAP._
-- [ ] **e2e harness has no framework home.** `requireBackend`/`requireSeed`/`global-setup`/
-  `playwright.config` are generic, yet absent from the framework — even though `e2e-doctor.mjs:67`
-  *reads* those function names. _FRAMEWORK-GAP._ (`hostpoint/clients/hostpoint-app/e2e/support/*`)
+- [x] **Real-backend E2E guard has a framework home.**
+  `@aerofortress/frontend-sdk/playwright-backend` ships `requireBackend`, `probeBackend`, and
+  `createBackendGlobalSetup`. The doctor accepts only that canonical import, verifies the exact case,
+  rejects request interception/mock support in a backend-bound spec, and the runtime guard requires a
+  successful `PW_API_URL` preflight. Seed contents and Playwright process orchestration remain app-owned.
 
 ## P2 — generic mechanism carried by the pilot, should graduate
 
@@ -139,12 +141,12 @@ app adopting the spine unions themselves (blocked on `@aerofortress/react` publi
 
 ### Frontend
 
-- [x] **The session seam has no framework home.** `onAuthenticated` / `bootstrapSession` /
+- [x] **The session seam has no framework home.** `signIn` / `bootstrapSession` /
   `clearSession` + the `useSession` boot hook + the `refresh-token.ts`/`.web.ts` platform-seam pair
   (`hostpoint/clients/app-core/src/lib/session/*`) are the generic mechanics AFFE016/017 *steer
   toward*, yet the spine ships only the read-side (`SessionState`). The write-side trio (token write
-  paired with `me`-cache reset by construction) belongs in `@aerofortress/react` (storage injected as a
-  port). _FRAMEWORK-GAP — the harness polices a seam the framework doesn't ship._
+  paired with the correct identity/rotation cache reset by construction) belongs in
+  `@aerofortress/react` (storage injected as a port). _CLOSED — the spine now ships the seam._
 - [x] **`apiErrorCopy()` — the error-code→copy bridge.**
   (`hostpoint/clients/app-core/src/lib/api-error.ts`) Reads `ErrorBody.code` off an axios error, looks
   up the `api-errors` i18n namespace, falls back to a generic key. It is the runtime half of the
@@ -229,6 +231,6 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
 2. Truthfulness: AFFE008 tool + AFFE015 port — stop the framework lying about what it ships.
 3. Contained analyzers: AF0006, AF0007, the journey-body AF0020.
 4. Tenancy scaffold hardening + OrderedLifecycle helper.
-5. e2e harness templates + skip-in-gate.
+5. e2e real-backend guard + skip-in-gate.
 6. Foundation: `AeroFortress.toml` scaffold + manifest reader; `af gen client`.
 7. `@aerofortress/react` publish-readiness; then rewrite the pilot's 5 scripts as thin SDK CLIs.

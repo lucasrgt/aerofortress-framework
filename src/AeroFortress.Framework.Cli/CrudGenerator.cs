@@ -407,7 +407,7 @@ public static class CrudGenerator
         }
 
         var what = emitted.Count == 0 ? "nothing new (all slices already present)" : string.Join(", ", emitted);
-        Console.WriteLine($"crud generated for {ctx.Module}/{ctx.Entity} — {what}. Run `af doctor` then `af test`.");
+        Console.WriteLine($"crud generated for {ctx.Module}/{ctx.Entity} — {what}. Complete the generated proofs, then run `af gate`.");
     }
 
     // ---- type helpers -----------------------------------------------------------------------------

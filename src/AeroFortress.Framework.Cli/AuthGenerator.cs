@@ -279,5 +279,5 @@ public static class AuthGenerator
         + (tenancy ? "multi-tenant" : "single-tenant")
         + ", "
         + (cookies ? "web-cookie + body delivery" : "body-only delivery")
-        + ". Run `af doctor` then `af test`.";
+        + ". Complete the generated proofs, then run `af gate`.";
 }

@@ -12,13 +12,13 @@ framework way — generators first, hand-writing only what generators don't cove
 - `af new [name]` — full project: `AeroFortress.toml`, `src/<App>.Api/`, `Program.cs` (thin index),
   sample module, `Modules.cs` registry.
 - `af g module <Name>` — `Modules/<Name>/<Name>Module.cs` + `<Name>.ctx.md` + entities placeholder.
-- `af g slice <Module> <Name> [--critical] [--verify <id,id>]` — `Modules/<Module>/Slices/<Name>.cs`
-  (Slice/Input/Output/Handle/Map) + co-located `<Name>.Tests.cs`; `--critical` adds the marker +
-  happy/sad journeys. **`--verify` makes the slice born-closed on the AVP bridge**: it declares the
+- `af g slice <Module> <Name> --verify <id,id>` — `Modules/<Module>/Slices/<Name>.cs`
+  (Slice/Input/Output/Handle/Map) + co-located `<Name>.Tests.cs` + complete write-journey scaffold.
+  `--verify` is mandatory and makes every slice born-closed on the AVP bridge: it declares the
   criterion ids in `Modules/<M>/<M>.spec.toml` (creates or surgically merges — human edits survive)
   and scaffolds the co-located `<Name>.Avp.Tests.cs`, one `[AVP("id")]` proof per criterion already
   wired to the right Assay.Net archetype, red by design until the subject factory boots the real
-  endpoint. Prefer `--verify` for every critical slice — obligation and proof in one change-set.
+  endpoint. There is no risk-class flag or optional verification mode.
 - `af criteria list` — the AVP catalog menu (archetype → criteria, statement, seenIn), marking what
   the referenced Assay.Net can actually RUN vs definition-only.
 - `af criteria suggest <SliceName>` — ranked archetype families for a slice's words (the Clockwork
@@ -27,7 +27,8 @@ framework way — generators first, hand-writing only what generators don't cove
   session seam.
 - `af g hub <Module> <Name>` — SignalR hub at `Modules/<Module>/Realtime/<Name>Hub.cs`.
   Hub is wire only: it calls the matching slice and fans the result out.
-- `af g view <Slice>` — frontend triple (ViewModel hook + View + test) typed from the contract.
+- `af g view <Slice>` — frontend triple typed from the contract. Complete the generated
+  ViewModel's co-located Assay proof and exact happy/sad E2E flow links before closing the feature.
 - `af gen client` — orval (react-query) over the OpenAPI spec → `client.gen/` typed hooks +
   mutator. Run after backend endpoint changes.
 - `af doctor` — run after scaffolding; everything you generate must pass it.
@@ -48,5 +49,5 @@ framework way — generators first, hand-writing only what generators don't cove
 
 ## After scaffolding
 
-1. Run `af doctor` and report its output.
+1. Run `af gate` and report its verdict. Use `af doctor` only to diagnose a structural failure.
 2. Hand the implementation work to aerofortress-backend (domain) or aerofortress-frontend (triple behavior).

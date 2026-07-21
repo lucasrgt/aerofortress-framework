@@ -212,8 +212,10 @@ describe("checkE2e", () => {
     const dir = tmp();
     try {
       mkdirSync(join(dir, "e2e"));
-      writeFileSync(join(dir, "e2e", "backend.spec.ts"), "requireBackend();\n");
-      writeFileSync(join(dir, "e2e", "seed.spec.ts"), "requireBackend(); requireSeed();\n");
+      writeFileSync(join(dir, "e2e", "backend.spec.ts"),
+        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";\nrequireBackend();\n');
+      writeFileSync(join(dir, "e2e", "seed.spec.ts"),
+        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";\nrequireBackend(); requireSeed();\n');
       writeFileSync(join(dir, "e2e", "smoke.spec.ts"), "test('renders', () => {});\n");
       writeFileSync(join(dir, "e2e", "disabled.spec.ts"), "test.skip('later', () => {});\n");
       writeFileSync(join(dir, "e2e", "nested-disabled.spec.ts"), "test.each([1]).skip('later', () => {});\n");
@@ -251,6 +253,7 @@ describe("checkE2e", () => {
         },
       ]));
       writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
         'test("real login", async ({ page }) => { requireBackend(); await expect(page).toHaveURL("/home"); });',
         'test("mocked profile", async ({ page }) => { await expect(page).toHaveURL("/profile"); });',
       ].join("\n"));
@@ -261,6 +264,84 @@ describe("checkE2e", () => {
       expect(result.execution["ci-gated"]).toBe(1);
       expect(result.execution["front-only"]).toBe(1);
       expect(result.messages.join(" ")).toContain("profile smoke");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects network mocks from a backend-bound spec even when the named case calls requireBackend", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        {
+          id: "login-happy", name: "login uses API", path: "happy", target: "web",
+          terminal: "/home", spec: "e2e/login.spec.ts", case: "signs in", backendSlices: ["Login"],
+        },
+      ]));
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'async function accountApi(page) { await page.route("**/account/**", route => route.fulfill({ status: 200 })); }',
+        'test("signs in", async ({ page }) => { requireBackend(); await accountApi(page); await expect(page).toHaveURL("/home"); });',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.execution["ci-gated"]).toBe(1);
+      expect(result.gaps).toBe(1);
+      expect(result.messages.join(" ")).toContain("network mock");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a local no-op requireBackend impersonator", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        {
+          id: "login-happy", name: "login uses API", path: "happy", target: "web",
+          terminal: "/home", spec: "e2e/login.spec.ts", case: "signs in", backendSlices: ["Login"],
+        },
+      ]));
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        "function requireBackend() {}",
+        'test("signs in", async ({ page }) => { requireBackend(); await expect(page).toHaveURL("/home"); });',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.execution["front-only"]).toBe(1);
+      expect(result.gaps).toBe(1);
+      expect(result.messages.join(" ")).toContain("@aerofortress/frontend-sdk/playwright-backend");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("allows network mocks in a separate front-only spec that names no backend slices", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        {
+          id: "offline-sad", name: "offline error", path: "sad", target: "web",
+          terminal: "try again", spec: "e2e/offline.spec.ts", case: "shows retry",
+        },
+      ]));
+      writeFileSync(
+        join(dir, "e2e", "offline.spec.ts"),
+        'test("shows retry", async ({ page }) => { await page.route("**/api/**", route => route.abort()); await expect(page.getByText("try again")).toBeVisible(); });\n',
+      );
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(0);
+      expect(result.depthGaps).toBe(0);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -25,8 +25,9 @@ shape is wrong; fix the shape.
   citations resolve to real identifiers.
 - AF0006: inline the repository back into the handler — AppDb direct.
 - AF0007 / AFSELF001: split the file (≤500 LOC). Slices split by feature, not by layer.
-- AF0008/AF0010/AF0020: add the missing happy/sad `[Journey]`; make the journey assert a
-  post-condition (sad: failure AND state unchanged).
+- AF0008/AF0010/AF0020/AF0033: for a shape-derived write, add isolated happy/sad
+  `*Journey.Tests.cs` `[E2E]` cases and assert terminal post-conditions (sad: rejection AND
+  unchanged state). Never add a classification annotation.
 - AF0009 (write-ownership): move the write into the owning module's slice/service; keep the
   read; reference by id.
 - AF0012: add `.WithName("<SliceName>")` to Map.
@@ -39,8 +40,17 @@ shape is wrong; fix the shape.
   injected ICurrentUser or remove it.
 - AF0024: replace interpolated raw SQL with parameterized FromSql/ExecuteSql.
 - AF0025: check `IsSuccess`/pattern-match before `.Value`/`.Error`.
-- AF0026: add `[Timestamp] byte[]? RowVersion` (or `[ConcurrencyCheck]`) to the entity written
-  by the critical slice.
+- AF0026: make the persisted write's concurrency posture visible with
+  `[Timestamp] byte[]? RowVersion` or `[ConcurrencyCheck]`.
+- AF0030/AF0031: declare at least one criterion for every slice in `<Module>.spec.toml` and add
+  its exact subject-bound `[AVP(typeof(Slice), "criterion")]` executable proof.
+- AF0032/AFFE034: remove skip, conditional, explicit, todo, or focus syntax; incomplete proof is
+  red, never excluded.
+- AFFE033: add `@verify` to the ViewModel and satisfy it only in its exact co-located
+  `*.assay.test.*` using `defineVerification(...)`.
+- AFFE035/AFFE-JOURNEY: bind every ViewModel to distinct happy/sad `flows.json` entries and list
+  every consumed generated backend hook. Backend-bound web cases call `requireBackend()` and do
+  not intercept requests or use API mocks.
 - AFFE001/002: move data access from View into the ViewModel; only VMs import client.gen.
 - AFFE009: replace react-native/expo imports in VMs with injected ports.
 - AFFE010: route loading/error/empty through `<Resource>`. AFFE013/027/028: wire mutation

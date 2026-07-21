@@ -8,10 +8,16 @@
 
 - **Journey depth enforcement**: Tier A — linked flows declare `terminal` in flows.json and the
   spec asserts it after entry (entry-only flagged); skipped gate-class flows fail the CI gate.
-  Tier B — `[Journey]` bodies must assert post-conditions (AF0020, heuristic warning).
-  Tier B4 (spike) — lifecycle-advancing `[Critical]` slices need a frontend flow proving
-  post-transition navigation. Tier C (runtime) — mutation score on critical journeys only.
-  Honest ceiling: semantic adequacy of an assertion is undecidable by analyzer.
+  Tier B — every write's `[Journey]` bodies must assert post-conditions (AF0020), while every
+  visible feature independently links exact happy/sad browser flows and every consumed backend
+  slice. Backend-bound web cases run against the real API without request interception. Runtime
+  mutation depth may be layered later, but never replaces the release gate. Honest ceiling:
+  semantic adequacy of an assertion is undecidable by analyzer.
+
+- **No application-selected proof class**: all slices owe acceptance verification; code shape
+  derives whether the stronger write journey pair applies, and ambiguity fails closed as write.
+  Classification attributes and manifest modes were removed because they let an implementing agent
+  choose the smaller obligation. Proof requirements now arise from inventories the gate computes.
 
 - **Unmarked domain type (AF0021)**: catch the UNMARKED entity/VO, not just police the marked —
   `DbSet<T>` with unmarked T requires `[Entity]`; complex members of entities require

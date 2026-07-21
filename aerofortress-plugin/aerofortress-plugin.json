@@ -1,6 +1,6 @@
 {
   "name": "aerofortress-framework",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The AeroFortress .NET framework kit: scaffolding, domain conventions, frontend MVVM harness and the doctor (AF*/AFFE*) — specialists, docs and workflows for building AeroFortress apps.",
   "knowledgeHome": "aerofortress-framework"
 }

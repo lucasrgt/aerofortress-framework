@@ -60,7 +60,7 @@ function classifySource(spec, source) {
   const executable = stripComments(source);
   if (hasNonExecutingTest(executable)) return "disabled";
   if (/\brequireSeed\s*\(/.test(source)) return "seed-pending";
-  if (/\brequireBackend\s*\(/.test(source)) return "ci-gated";
+  if (/\brequireBackend\s*\(/.test(source) && importsCanonicalBackendGuard(source)) return "ci-gated";
   return "front-only";
 }
 
@@ -203,7 +203,8 @@ export function checkE2e(root) {
 
     // Classification belongs to the named case, not its whole file. One real-backend test in a shared spec
     // must never lend its execution tier to neighboring front-only cases.
-    const executionClass = classifySource(spec, caseSource ?? specSource);
+    const proofSource = caseSource ?? specSource;
+    const executionClass = classifySource(spec, `${canonicalBackendImport(specSource)}\n${proofSource}`);
     execution[executionClass] = (execution[executionClass] ?? 0) + 1;
     if (executionClass === "seed-pending") {
       seedPending.push(name);
@@ -220,7 +221,15 @@ export function checkE2e(root) {
     if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && executionClass !== "ci-gated") {
       messages.push(
         `journey "${name}" names backendSlices but its own case is ${executionClass}; `
-          + "call requireBackend() and exercise the real API instead of borrowing a mocked/browser-only proof",
+          + "import requireBackend from @aerofortress/frontend-sdk/playwright-backend, call it in the exact case, "
+          + "and exercise the real API instead of borrowing a mocked/browser-only proof",
+      );
+      gaps++;
+    }
+    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && usesNetworkMock(specSource)) {
+      messages.push(
+        `journey "${name}" names backendSlices but ${spec} installs a network mock; `
+          + "move mocked smoke cases to a separate spec and prove backend-bound cases against the real API",
       );
       gaps++;
     }
@@ -258,6 +267,32 @@ function hasNonExecutingTest(source) {
   // shape. The chain matcher deliberately crosses parentheses (test.each(...).skip) and members
   // (test.concurrent.skip), but not statement boundaries, so ordinary later calls are not conflated.
   return /\b(?:test|it|describe|context)(?:(?:\s*\.\s*[A-Za-z_$][\w$]*)|(?:\s*\([^;\r\n]*?\)))*\s*\.\s*(?:skip|fixme|todo|skipIf|runIf|only)\s*\(/.test(source);
+}
+
+// A backend-bound browser proof cannot share a spec with request interception. Checking the whole file is
+// deliberate: a helper declared above the named case can install the mock while the case itself contains only a
+// harmless-looking helper call. Separate front-only smoke specs remain welcome; they simply cannot manufacture
+// real-backend evidence for a flow that names backend slices.
+function usesNetworkMock(source) {
+  const executable = stripComments(source);
+  return /\b(?:page|context|browserContext)\s*\.\s*route\s*\(/.test(executable)
+    || /\b(?:page|context|browserContext)\s*\.\s*routeFromHAR\s*\(/.test(executable)
+    || /\broute\s*\.\s*(?:fulfill|abort)\s*\(/.test(executable)
+    || /\bmock[A-Za-z0-9_$]*Api\s*\(/.test(executable)
+    || /\bfrom\s*["'][^"']*(?:mock|msw|stub|fake[-_]?api)[^"']*["']/.test(executable)
+    || /\b(?:setupServer|setupWorker|rest\.(?:get|post|put|patch|delete)|http\.(?:get|post|put|patch|delete)|graphql\.(?:query|mutation))\s*\(/.test(executable);
+}
+
+function canonicalBackendImport(source) {
+  const executable = stripComments(source);
+  const match = executable.match(
+    /\bimport\s*\{\s*requireBackend\s*\}\s*from\s*["']@aerofortress\/frontend-sdk\/playwright-backend["']\s*;?/,
+  );
+  return match?.[0] ?? "";
+}
+
+function importsCanonicalBackendGuard(source) {
+  return canonicalBackendImport(source).length > 0;
 }
 
 function testCaseSource(source, title) {

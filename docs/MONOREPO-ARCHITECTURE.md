@@ -173,7 +173,7 @@ Concrete layer assignment + counts (hostpoint `clients/hostpoint-app/src`):
 - **→ `@hostpoint/app-core`** (agnostic): `client.gen/` (507 files, incl. `model/` = the orval schemas) +
   `lib/aerofortress-client.ts` (the mutator). The 33 `*.viewModel.ts` (+ their co-located `*.test.tsx`) follow — they
   import `client.gen` via `@/client.gen/*` (give app-core its own `@/`→`src` alias so these stay unchanged).
-- **→ `@hostpoint/kernel`** (auth/session): `lib/session/session.ts` (`onAuthenticated`/`bootstrapSession`/
+- **→ `@hostpoint/kernel`** (auth/session): `lib/session/session.ts` (`signIn`/`bootstrapSession`/
   `clearSession`) + `lib/session/useSession.ts`. Its platform seam `lib/session/refresh-token.ts` +
   `refresh-token.web.ts` is **already a port** (file-extension resolution, web-cookie vs native secure-store) — keep
   that `.web` split; the RN impl rides in `mobile`, the web impl in `web`.

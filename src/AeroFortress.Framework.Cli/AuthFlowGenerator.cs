@@ -479,7 +479,7 @@ public static class AuthFlowGenerator
                 ("TooManyAttempts", "auth.too_many_attempts", "The OTP code was guessed wrong too many times and is now locked."),
             ],
             Summary: "auth:otp generated — phone verification by SMS code (ConsoleSmsSender in dev). "
-                + "Run `af doctor` then `af test`."),
+                + "Complete the generated proofs, then run `af gate`."),
 
         AuthFlow.OAuth => new FlowSpec(
             Folder: "auth-oauth",
@@ -528,7 +528,7 @@ public static class AuthFlowGenerator
                 ("NoAccount", "auth.no_account", "No account exists for this external identity."),
             ],
             Summary: "auth:oauth generated — Google sign-up/sign-in (FakeExternalIdentity in dev). "
-                + "Run `af doctor` then `af test`."),
+                + "Complete the generated proofs, then run `af gate`."),
 
         AuthFlow.Email => new FlowSpec(
             Folder: "auth-email",
@@ -577,7 +577,7 @@ public static class AuthFlowGenerator
                 ("ResetTokenInvalid", "auth.invalid_reset_token", "The password-reset token is invalid or expired."),
             ],
             Summary: "auth:email generated — email verification + password reset by emailed token "
-                + "(ConsoleEmailSender in dev). Run `af doctor` then `af test`."),
+                + "(ConsoleEmailSender in dev). Complete the generated proofs, then run `af gate`."),
 
         _ => throw new ArgumentOutOfRangeException(nameof(flow)),
     };

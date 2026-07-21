@@ -20,22 +20,22 @@ describe("createSessionSeam", () => {
     return store;
   };
 
-  it("onAuthenticated pairs the token write with the cache reset by construction", async () => {
+  it("signIn pairs the token write with the identity cache reset by construction", async () => {
     const setAccessToken = vi.fn();
-    const onSessionChanged = vi.fn();
-    const seam = createSessionSeam({ setAccessToken, onSessionChanged, refresh: async () => null });
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({ setAccessToken, onIdentityChanged, refresh: async () => null });
 
-    await seam.onAuthenticated({ accessToken: "jwt" });
+    await seam.signIn({ accessToken: "jwt" });
 
     expect(setAccessToken).toHaveBeenCalledWith("jwt");
-    expect(onSessionChanged).toHaveBeenCalledOnce();
+    expect(onIdentityChanged).toHaveBeenCalledOnce();
   });
 
   it("bootstrap restores the session from the stored refresh and re-saves the rotated one", async () => {
     const store = memoryStore();
     store.token = "old-refresh";
     const refresh = vi.fn(async () => ({ accessToken: "jwt", refreshToken: "new-refresh" }));
-    const seam = createSessionSeam({ setAccessToken: vi.fn(), refresh, store });
+    const seam = createSessionSeam({ setAccessToken: vi.fn(), onIdentityChanged: vi.fn(), refresh, store });
 
     const restored = await seam.bootstrapSession();
 
@@ -47,6 +47,7 @@ describe("createSessionSeam", () => {
   it("a failed bootstrap reports anonymous instead of throwing — no session is a state, not an error", async () => {
     const seam = createSessionSeam({
       setAccessToken: vi.fn(),
+      onIdentityChanged: vi.fn(),
       refresh: async () => {
         throw new Error("401");
       },
@@ -59,18 +60,22 @@ describe("createSessionSeam", () => {
     const store = memoryStore();
     store.token = "refresh";
     const setAccessToken = vi.fn();
-    const onSessionChanged = vi.fn();
-    const seam = createSessionSeam({ setAccessToken, onSessionChanged, refresh: async () => null, store });
+    const onIdentityChanged = vi.fn();
+    const seam = createSessionSeam({ setAccessToken, onIdentityChanged, refresh: async () => null, store });
 
     await seam.clearSession();
 
     expect(setAccessToken).toHaveBeenCalledWith(null);
     expect(store.token).toBe("");
-    expect(onSessionChanged).toHaveBeenCalledOnce();
+    expect(onIdentityChanged).toHaveBeenCalledOnce();
   });
 
   it("omitting the store is the web posture — nothing persisted, nothing thrown", async () => {
-    const seam = createSessionSeam({ setAccessToken: vi.fn(), refresh: async () => ({ accessToken: "jwt" }) });
+    const seam = createSessionSeam({
+      setAccessToken: vi.fn(),
+      onIdentityChanged: vi.fn(),
+      refresh: async () => ({ accessToken: "jwt" }),
+    });
 
     expect(await seam.bootstrapSession()).toBe(true);
   });
@@ -125,26 +130,6 @@ describe("createSessionSeam", () => {
     expect(onSessionChanged).not.toHaveBeenCalled();
   });
 
-  it("omitting onIdentityChanged falls back to onSessionChanged — retrocompat, no crash", async () => {
-    const onSessionChanged = vi.fn();
-    const seam = createSessionSeam({ setAccessToken: vi.fn(), refresh: async () => null, onSessionChanged });
-
-    await seam.signIn({ accessToken: "jwt" });
-
-    expect(onSessionChanged).toHaveBeenCalledOnce(); // identity path falls back to the only reset wired
-  });
-
-  it("onAuthenticated stays a working alias of signIn (deprecated, identity semantics)", async () => {
-    const onIdentityChanged = vi.fn();
-    const setAccessToken = vi.fn();
-    const seam = createSessionSeam({ setAccessToken, refresh: async () => null, onIdentityChanged });
-
-    await seam.onAuthenticated({ accessToken: "jwt" });
-
-    expect(setAccessToken).toHaveBeenCalledWith("jwt");
-    expect(onIdentityChanged).toHaveBeenCalledOnce();
-  });
-
   // A cold start that double-invokes the boot effect (StrictMode), or a bootstrap racing the client's 401
   // interceptor, must not fire TWO refresh rotations — the backend's theft detection burns the family on the
   // replayed token (AFFE029 at boot). bootstrapSession is single-flighted.
@@ -154,7 +139,7 @@ describe("createSessionSeam", () => {
       release = resolve;
     });
     const refresh = vi.fn(() => gate.then(() => ({ accessToken: "jwt" })));
-    const seam = createSessionSeam({ setAccessToken: vi.fn(), refresh });
+    const seam = createSessionSeam({ setAccessToken: vi.fn(), onIdentityChanged: vi.fn(), refresh });
 
     const a = seam.bootstrapSession();
     const b = seam.bootstrapSession();

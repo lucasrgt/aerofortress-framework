@@ -51,11 +51,15 @@ backplane + Redis at the composition root. Caller identity from `Context.User` v
 ## Testing
 
 Co-located next to the slice (`Deposit.Tests.cs` beside `Deposit.cs`), categorized
-[Unit]/[Integration]/[E2E]. Host: `AeroFortressWebTest<TProgram>` boots the real app;
+[Unit]/[Integration]/[E2E]. Every slice declares at least one criterion in its module
+`*.spec.toml` and carries an exact subject-bound executable `[AVP]` proof. Host:
+`AeroFortressWebTest<TProgram>` boots the real app;
 `SwapStores(IServiceCollection)` reconfigures stores for tests — in-memory
 (`UseIsolatedInMemory<Db>()`) or real Postgres (`AeroFortress.Framework.Testing.Postgres`, Testcontainers
-template clone per test, pooled). [Critical] proves both paths: happy + sad journeys, sad
-asserting failure AND state unchanged.
+template clone per test, pooled). Every shape-derived write proves both paths with isolated
+`*Journey.Tests.cs` E2E cases: happy reaches its terminal state; sad proves rejection AND unchanged
+state. Read/write is derived from ordinary code and ambiguity receives the write bar. No marker,
+manifest mode, skip, or agent judgment can weaken the obligation; `af gate` must execute every proof.
 
 ## ctx.md (per module — the business "why")
 

@@ -12,6 +12,8 @@ the single source for workspace/turbo topology (doctor validates drift).
   render-agnostic AND platform-agnostic (no react-native/expo imports — capabilities arrive as
   injected ports: storage, navigator, push, file picker, linking, maps).
 - Test co-located: VM via `renderHook()` (Vitest jsdom), View through the Providers harness.
+- Acceptance proof co-located: every ViewModel `@verify` criterion resolves only to its exact
+  `<Feature>.assay.test.tsx`, which registers executable `defineVerification(...)` proof.
 - i18n per feature: `<feat>.i18n.ts` exports per-locale objects; assembled in
   `src/i18n/resources.ts`; shared copy in the `common` namespace; Views read
   `useTranslation("<feat>")`.
@@ -60,6 +62,17 @@ Tokens only: no inline hex, spacing/typography from the scale, semantic colors o
 A11y: jsx-a11y (web) / react-native-a11y (mobile), warn-first promoted to error on canonical
 screens; the design layer holds the floor (label wiring, role="alert", aria-busy, focus ring,
 44px+ targets).
+
+## Visible E2E
+
+Every ViewModel declares distinct `@e2e` ids for happy and sad behavior. Executable surfaces bind
+those ids in `e2e/flows.json` with `features: ["ExactFeatureBasename"]`, an enabled exact case, a
+terminal assertion, and every consumed generated hook in `backendSlices`. A web backend-bound case
+imports `requireBackend` from `@aerofortress/frontend-sdk/playwright-backend`; global setup probes
+`PW_API_URL` with the canonical helper. A spec containing request interception, HAR routing, MSW, or
+mock/stub helpers cannot prove it. Mocked UI smoke coverage stays in a separate front-only
+spec. `af gate` runs the Assay and E2E inventories and fails missing, skipped, focused,
+seed-pending, not-executed, or syntactically manufactured evidence.
 
 ## Comments
 

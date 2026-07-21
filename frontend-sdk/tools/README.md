@@ -18,11 +18,30 @@ E2E remains flow-level, but coverage is now enforced in both directions. Every V
 `@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
 requires each generated slice hook consumed by that ViewModel (or by session/guard infrastructure) to appear in
 the flow's `backendSlices`. Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
-`happy` and `sad` flows. A web flow naming backend slices must run its own case against the real backend;
-another case's `requireBackend()` cannot upgrade a mocked smoke. `checkE2e(root)` then
+`happy` and `sad` flows. A web flow naming backend slices imports `requireBackend` from
+`@aerofortress/frontend-sdk/playwright-backend` and calls it in its own exact case. A Playwright global setup
+calls `probeBackend()` or `createBackendGlobalSetup()` from the same export against `PW_API_URL`; only a
+successful HTTP response sets `PW_API_READY=1`. A local namesake cannot impersonate the guard, another case
+cannot lend it, and a backend-bound spec cannot install request interception or import mock/stub support.
+`checkE2e(root)` then
 proves every declared flow has an enabled spec/case, terminal assertion, and real runner. A missing/empty manifest
 is red. See the
 Hostpoint dogfood's `scripts/affe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
+
+Minimal real-backend setup:
+
+```ts
+// e2e/global-setup.ts
+import { createBackendGlobalSetup } from "@aerofortress/frontend-sdk/playwright-backend";
+export default createBackendGlobalSetup({ path: "/health" });
+
+// e2e/account.spec.ts
+import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";
+test("signs in", async ({ page }) => {
+  requireBackend();
+  // Drive the visible UI; configure the app's API base URL to PW_API_URL without interception.
+});
+```
 
 ## The fullstack loop (journey parity)
 

@@ -8,7 +8,8 @@ Route through the kit's specialists:
   generates. Call it BEFORE hand-writing boilerplate.
 - **aerofortress-backend**: domain modeling and slice implementation — entities ([Entity]),
   value objects ([ValueObject]), Result<T>/error registries, module boundaries
-  (write-ownership), [Critical]+[Journey] testing. The authority on backend conventions.
+  (write-ownership), universal AVP and shape-derived write journeys. The authority on backend
+  conventions.
 - **aerofortress-frontend**: the MVVM triple (view/viewModel/test + i18n), data doors, generated
   client wiring, session rotation, mandatory loading/error/empty states, design tokens.
 - **aerofortress-doctor**: interpreting and fixing `af doctor` output — any AF00xx or AFFExxx
@@ -20,7 +21,14 @@ Hard rules the orchestrator must respect:
 - One feature = one slice file with Input/Output/Handle/Map. Tests co-located in src/.
 - A module writes only its own entities; cross-module references by id, never EF FK.
 - Frontend: Views never touch data (AFFE001); only ViewModels import the generated client.
+- Every slice declares an acceptance criterion and carries its exact executable `[AVP]` proof.
+- Every shape-derived write carries isolated happy and sad `[Journey]` E2E proofs; there is no
+  application-selected risk class or lighter test tier.
+- Every ViewModel carries its co-located Assay proof and exact happy/sad frontend E2E links. A
+  browser flow naming backend slices runs against the real API without request interception.
 - Error codes are registry constants, copy lives in i18n — never literals.
+- A feature is done only when `af gate` is green; `af doctor` or a filtered test command alone is
+  diagnostic, never release evidence.
 
 Deep reference (annotations, CLI, all doctor rules, conventions, decisions) lives in this
 plugin's docs — query the network (slug `aerofortress-framework`) before assuming.

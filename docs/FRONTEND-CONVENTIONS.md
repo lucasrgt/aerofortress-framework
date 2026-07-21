@@ -392,11 +392,9 @@ await session.bootstrapSession();  // rotation door → onSessionChanged (same u
 await session.clearSession();      // identity door → onIdentityChanged
 ```
 
-`onAuthenticated` is **deprecated** (since `@aerofortress/react` 0.4.0): it read as a neutral "the session
-changed" and was called for *both* login and bootstrap — the conflation itself. It survives as an alias
-of `signIn` (identity semantics) for the migration; move call sites to `signIn`. `onIdentityChanged`
-omitted falls back to `onSessionChanged` (retrocompat) — but then a sign-in does only the light reset and
-leaks the prior user's cache, so wire it.
+`signIn` is the only authentication entry. `onIdentityChanged` is required: substituting or falling
+back to the light `onSessionChanged` reset would recreate the cross-user cache leak. The framework
+keeps no compatibility alias or weaker fallback for this security boundary.
 
 ---
 
@@ -647,7 +645,13 @@ there is no bootstrap-green state. Each entry is
   has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>`
   hook consumed by that ViewModel must be named in a linked flow's `backendSlices`; the same applies to generated
   client calls in shared infrastructure. A web flow naming `backendSlices` must be a real-backend case
-  (`requireBackend()`); mocked/front-only rendering remains useful smoke coverage but cannot prove an endpoint.
+  through the canonical `requireBackend()` import from
+  `@aerofortress/frontend-sdk/playwright-backend`. Playwright `globalSetup` must call the package's
+  `probeBackend()` (or `createBackendGlobalSetup()`) against `PW_API_URL`, which alone sets
+  `PW_API_READY=1` after a successful HTTP response. A local namesake/no-op does not count. The spec file may
+  not install request interception (`page.route`, `route.fulfill`, HAR routing, MSW, mock/stub imports, or
+  API-mock helpers). Mocked/front-only rendering remains useful smoke coverage in a separate spec, but cannot
+  prove an endpoint.
   A slice with no frontend consumer remains backend-only.
   Once the UI consumes it, the linked executable journey is mandatory. A shared `core` resolves against all
   product surfaces rather than owning a fake browser.

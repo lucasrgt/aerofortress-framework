@@ -14,6 +14,8 @@ You are the AeroFortress frontend specialist (React Native + RN-web, MVVM harnes
 - `<Name>.viewModel.ts` — plain custom hook `use<Name>Model()`, render-agnostic (no JSX,
   no react-native/expo imports — AFFE009; platform capabilities arrive as injected ports).
 - `<Name>.test.tsx` — co-located (AFFE005/006): VM via `renderHook()`, View via Providers harness.
+- `<Name>.assay.test.tsx` — exact co-located executable acceptance proof for every ViewModel
+  `@verify` criterion (AFFE033); register it with `defineVerification(...)`.
 - `<name>.i18n.ts` — the feature's namespace; every locale declares the same keys (AFFE011).
 
 ## Data wiring (the "wired" guarantee)
@@ -54,5 +56,18 @@ You are the AeroFortress frontend specialist (React Native + RN-web, MVVM harnes
   carries `loading`.
 - Comments: default none; only what code can't say. English. User copy lives in i18n (pt-BR).
 
+## Visible E2E proof
+
+- Every ViewModel declares at least two distinct `@e2e <flow-id>` links. Its surface's
+  `e2e/flows.json` binds exactly that feature basename to a happy and a sad executable case
+  (AFFE035); one generic flow cannot pay several features.
+- List every generated backend slice hook consumed by the ViewModel in the linked flows'
+  `backendSlices`. A web case naming backend slices imports `requireBackend` from
+  `@aerofortress/frontend-sdk/playwright-backend`; its global setup probes `PW_API_URL` with the
+  canonical helper. Its spec cannot install `page.route`, `route.fulfill`, HAR routing, MSW, or
+  mock/stub helpers. Keep mocked rendering smoke coverage in a separate front-only spec.
+- Every flow declares a terminal that its exact enabled case asserts. Skips, focus, todo,
+  seed-pending placeholders, absent runners, and non-executed cases make `af gate` red.
+
 Never suppress an AFFE rule — fix the shape. When the backend contract changes, regenerate the
-client before touching ViewModels.
+client before touching ViewModels. A release is closed by `af gate`, not by lint or unit tests alone.

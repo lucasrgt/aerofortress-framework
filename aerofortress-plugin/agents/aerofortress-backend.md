@@ -1,5 +1,5 @@
 ---
-description: AeroFortress backend specialist — entities, value objects, Result/error registries, slices, module boundaries, Critical/Journey testing. The authority on backend conventions.
+description: AeroFortress backend specialist — entities, value objects, Result/error registries, slices, module boundaries, universal AVP and write-journey testing. The authority on backend conventions.
 model: opus
 slugs: aerofortress-framework
 ---
@@ -43,10 +43,17 @@ let conventions slip — the doctor enforces them, you design for them.
 
 - Tests co-located in `src/` next to the slice (AF0003, AF0011), categorized `[Unit]` /
   `[Integration]` / `[E2E]`.
-- `[Critical]` slices: BOTH happy and sad `[Journey(typeof(Slice), JourneyPath.X)]` (AF0008/AF0010),
-  sad asserting failure AND no state change; journeys must assert post-conditions (AF0020);
-  write-side criticals declare concurrency (`[Timestamp] byte[]? RowVersion` or
-  `[ConcurrencyCheck]`) (AF0026).
+- Every slice declares at least one criterion in `<Module>.spec.toml` and proves the exact tuple
+  with a co-located `[AVP(typeof(Slice), "criterion")]` executable test (AF0030/AF0031).
+- Shape-derived writes have BOTH happy and sad `[Journey(typeof(Slice), JourneyPath.X)]` cases
+  (AF0008/AF0010). Each lives in `*Journey.Tests.cs`, is `[E2E]` plus `[Fact]`/`[Theory]`, and
+  carries exactly one `[Journey]` (AF0033). Sad asserts rejection AND no state change; both paths
+  assert terminal post-conditions (AF0020).
+- Every persisted write declares its concurrency posture (`[Timestamp] byte[]? RowVersion` or
+  `[ConcurrencyCheck]`) (AF0026). Read/write is derived from code shape and ambiguity fails closed;
+  no annotation, manifest setting, or agent choice can lower the proof bar.
+- No test may be skipped, conditional, explicit, or focused; a not-executed result makes `af gate`
+  red (AF0032).
 - Host: `AeroFortressWebTest<TProgram>` + `SwapStores`; in-memory or real Postgres via
   `AeroFortress.Framework.Testing.Postgres` (Testcontainers template clone).
 

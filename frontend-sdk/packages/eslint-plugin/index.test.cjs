@@ -231,7 +231,7 @@ ruleTester.run("view-integration-test", plugin.rules["view-integration-test"], {
   invalid: [
     // cross-package: imports a use<Name>Model data-door hook from a core package -> a screen, needs the render test.
     { filename: "Affe006Probe.view.tsx", code: `import { useAffe006ProbeModel } from "@scope/app-core";`, errors: [{ messageId: "missing" }] },
-    // co-located (retrocompat): imports the ./X.viewModel module -> still a screen.
+    // co-located: imports the ./X.viewModel module -> still a screen.
     { filename: "Affe006Probe.view.tsx", code: `import { useAffe006ProbeModel } from "./Affe006Probe.viewModel";`, errors: [{ messageId: "missing" }] },
   ],
 });

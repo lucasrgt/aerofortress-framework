@@ -33,10 +33,9 @@ export interface SessionSeamPorts {
    * authenticated on this client) or a sign-out. Wipe the whole cache (e.g. `queryClient.clear()`) so the prior
    * user's data can never bleed into the next session — the hostpoint bug that a sign-out→sign-in on one client
    * leaked user A's cache to user B, "fixed" there by splitting the app in two. Runs on {@link SessionSeam.signIn}
-   * and {@link SessionSeam.clearSession}. Omitted ⇒ falls back to {@link onSessionChanged} for retrocompat — but
-   * then a sign-in does only the light reset and leaks the prior user's cache, the very bug this split kills, so
-   * provide it. */
-  onIdentityChanged?: () => void;
+   * and {@link SessionSeam.clearSession}. Required because substituting the light rotation reset recreates the
+   * cross-identity cache leak this split exists to prevent. */
+  onIdentityChanged: () => void;
   /** The platform token store; omitted = the web posture (httpOnly cookie, nothing stored in JS). */
   store?: RefreshTokenStore;
 }
@@ -48,19 +47,14 @@ export interface AuthTokens {
 }
 
 /** The seam's surface — the only ways the app may move the session. The two authenticating doors are split on
- * purpose: an explicit {@link signIn} is an IDENTITY change (total wipe), {@link bootstrapSession} is a ROTATION
- * (light reset). Conflating them — one `onAuthenticated` for both — IS the cache-leak bug. */
+ * purpose: an explicit {@link signIn} is an IDENTITY change (total wipe), while
+ * {@link bootstrapSession} is a ROTATION (light reset). */
 export interface SessionSeam {
   /** Persist a session from an explicit SIGN-IN / sign-up response: bearer to the sink, rotated refresh to the
    * store, then the IDENTITY reset (total wipe) — a different user may have authenticated on this client, so the
    * prior user's cache is dropped entirely before the fresh `me` refetches. This is the identity door; the app
    * literally cannot authenticate a user without the wipe. */
   signIn: (result: unknown) => Promise<void>;
-  /** @deprecated since 0.4.0 — call {@link signIn}. An authenticating response is an identity entry, but the old
-   * name read like a neutral "the session changed" and was also used for rotation, conflating the two (the leak
-   * bug). Kept as an alias for {@link signIn} (identity semantics, total wipe) to ease the migration; remove your
-   * call sites in favour of `signIn`. */
-  onAuthenticated: (result: unknown) => Promise<void>;
   /** Re-mint the access token from the persisted refresh (cookie on web, stored body on native) — a ROTATION of
    * the SAME identity, so only the light reset runs and the screen stays warm. Returns whether a session was
    * restored. Safe on every app start — the API rotates the refresh token and the seam re-saves it, so the next
@@ -94,9 +88,6 @@ const noStore: RefreshTokenStore = {
  */
 export function createSessionSeam(ports: SessionSeamPorts): SessionSeam {
   const store = ports.store ?? noStore;
-  // Identity reset falls back to the rotation reset when the app hasn't wired the total wipe — old code keeps
-  // its prior behaviour (no worse than before), new code opts into the leak-proof wipe by providing the port.
-  const onIdentityChanged = ports.onIdentityChanged ?? ports.onSessionChanged;
 
   const persistTokens = async (result: unknown): Promise<void> => {
     const tokens = (result ?? undefined) as AuthTokens | undefined;
@@ -106,7 +97,7 @@ export function createSessionSeam(ports: SessionSeamPorts): SessionSeam {
 
   const signIn = async (result: unknown): Promise<void> => {
     await persistTokens(result);
-    onIdentityChanged?.(); // a (possibly) new identity — wipe the prior user's cache entirely
+    ports.onIdentityChanged(); // a (possibly) new identity — wipe the prior user's cache entirely
   };
 
   // Single-flighted: a cold start that double-invokes the boot effect (React StrictMode in dev) or a bootstrap
@@ -126,12 +117,11 @@ export function createSessionSeam(ports: SessionSeamPorts): SessionSeam {
 
   return {
     signIn,
-    onAuthenticated: signIn, // deprecated alias — same identity semantics
     bootstrapSession,
     async clearSession() {
       ports.setAccessToken(null);
       await store.clear();
-      onIdentityChanged?.(); // the identity is gone — wipe so the next user starts clean
+      ports.onIdentityChanged(); // the identity is gone — wipe so the next user starts clean
     },
   };
 }
