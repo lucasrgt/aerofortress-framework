@@ -67,7 +67,7 @@ export function extractCriticalSlices(sources, strict = false) {
 export function sliceHooks(source, slices) {
   const imports = new Set();
   const declarations = source.matchAll(
-    /\bimport\s+(?!type\b)\{([\s\S]*?)\}\s+from\s+["'][^"']*client\.gen(?:\/[^"']*)?["']/g,
+    /\bimport\s+(?!type\b)\{([^}]*)\}\s+from\s+["'][^"']*client\.gen(?:\/[^"']*)?["']/g,
   );
   for (const declaration of declarations) {
     for (const raw of declaration[1].split(",")) {

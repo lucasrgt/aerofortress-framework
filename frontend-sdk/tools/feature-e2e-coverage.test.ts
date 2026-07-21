@@ -36,6 +36,11 @@ describe("feature E2E coverage", () => {
       .toEqual(["Login"]);
     expect(criticalHooks("// useLogin is prose, not a generated import", ["Login"]))
       .toEqual([]);
+    expect(criticalHooks([
+      'import { useLogin } from "@/lib/local-login";',
+      'import { usePing } from "@/client.gen/api";',
+    ].join("\n"), ["Login", "Pay"]))
+      .toEqual([]);
   });
 
   it("requires every ViewModel to link an existing flow", () => {
