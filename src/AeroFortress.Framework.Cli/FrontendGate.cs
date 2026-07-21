@@ -1,15 +1,23 @@
 namespace AeroFortress.Framework.Cli;
 
-/// <summary>The four executable verification legs for one frontend client.</summary>
+/// <summary>The executable verification legs for one frontend package.</summary>
 /// <param name="Client">The client directory name.</param>
+/// <param name="Role">The manifest role that decides whether E2E applies.</param>
 /// <param name="Tests">The unit/integration test script exit code.</param>
 /// <param name="Avp">The Assay/AVP verification script exit code.</param>
-/// <param name="E2eShape">The E2E manifest/spec/runner doctor exit code.</param>
-/// <param name="E2e">The real E2E runner script exit code.</param>
-internal sealed record FrontendGateLeg(string Client, int Tests, int Avp, int E2eShape, int E2e)
+/// <param name="E2eShape">The E2E contract exit code, or null for a shared core.</param>
+/// <param name="E2e">The real E2E runner exit code, or null for a shared core.</param>
+internal sealed record FrontendGateLeg(
+    string Client,
+    FrontendPackageRole Role,
+    int Tests,
+    int Avp,
+    int? E2eShape,
+    int? E2e)
 {
     /// <summary>Whether every frontend verification leg ran successfully.</summary>
-    public bool Green => Tests == 0 && Avp == 0 && E2eShape == 0 && E2e == 0;
+    public bool Green => Tests == 0 && Avp == 0
+        && (Role == FrontendPackageRole.Core || (E2eShape == 0 && E2e == 0));
 }
 
 /// <summary>Runs every frontend proof suite. Missing scripts/tools fail naturally; nothing is optional.</summary>
@@ -17,12 +25,13 @@ internal static class FrontendGate
 {
     private const string AssaySuiteGlob = "**/*.assay.test.*";
 
-    /// <summary>Run unit/integration tests, Assay, the E2E doctor, and the real E2E suite for every client.</summary>
-    public static IReadOnlyList<FrontendGateLeg> Run(IEnumerable<string> clients)
+    /// <summary>Run tests + Assay for every package and the two E2E legs for executable surfaces.</summary>
+    public static IReadOnlyList<FrontendGateLeg> Run(IEnumerable<FrontendPackage> clients)
     {
         var legs = new List<FrontendGateLeg>();
-        foreach (var client in clients)
+        foreach (var target in clients)
         {
+            var client = target.Path;
             var name = Path.GetFileName(client);
             Console.WriteLine($"af gate — frontend tests ({name}, non-Assay partition)...");
             // Assay suites are ordinary Vitest files, so an unfiltered test run followed by `assay verify`
@@ -35,12 +44,18 @@ internal static class FrontendGate
             // the acceptance verifier with a placeholder that exits zero.
             var avp = Tooling.Run("npx", ["--no-install", "assay", "verify"], client);
 
-            Console.WriteLine($"af gate — frontend E2E contract ({name})...");
-            var e2eShape = Tooling.Run("npx", ["--no-install", "affe-e2e-doctor", "."], client);
+            int? e2eShape = null;
+            int? e2e = null;
+            if (target.Role == FrontendPackageRole.Surface)
+            {
+                Console.WriteLine($"af gate — frontend E2E contract ({name})...");
+                e2eShape = Tooling.Run("npx", ["--no-install", "affe-e2e-doctor", "."], client);
 
-            Console.WriteLine($"af gate — frontend E2E execution ({name})...");
-            var e2e = FrontendScriptContract.Run(client, "test:e2e");
-            legs.Add(new FrontendGateLeg(name, tests, avp, e2eShape, e2e));
+                Console.WriteLine($"af gate — frontend E2E execution ({name})...");
+                e2e = FrontendScriptContract.Run(client, "test:e2e");
+            }
+
+            legs.Add(new FrontendGateLeg(name, target.Role, tests, avp, e2eShape, e2e));
         }
 
         return legs;

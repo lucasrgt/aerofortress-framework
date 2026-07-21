@@ -59,8 +59,9 @@ internal static class GateReport
         foreach (var broken in matrix.MalformedManifests)
             writer.WriteLine($"  malformed: {broken.Path} — {broken.Error}");
         foreach (var frontend in legs.FrontendRuns)
-            writer.WriteLine($"  frontend {frontend.Client} exits: tests={frontend.Tests} avp={frontend.Avp} "
-                           + $"e2e-shape={frontend.E2eShape} e2e={frontend.E2e} (0 = pass)");
+            writer.WriteLine($"  frontend {frontend.Client} ({Role(frontend)}) exits: tests={frontend.Tests} "
+                           + $"avp={frontend.Avp} e2e-shape={Exit(frontend.E2eShape)} "
+                           + $"e2e={Exit(frontend.E2e)} (0 = pass)");
         if (legs.SkippedTests > 0)
             writer.WriteLine($"  skipped: {legs.SkippedTests} .NET test(s) did not execute");
         writer.WriteLine($"  verdict: {(Green(matrix, legs) ? "GREEN" : "RED")}");
@@ -86,11 +87,12 @@ internal static class GateReport
             md.AppendLine();
             md.AppendLine("Frontend leg exit codes (`0` = pass):");
             md.AppendLine();
-            md.AppendLine("| Frontend | Tests exit | AVP exit | E2E shape exit | E2E run exit |");
-            md.AppendLine("|---|---:|---:|---:|---:|");
+            md.AppendLine("| Frontend | Role | Tests exit | AVP exit | E2E shape exit | E2E run exit |");
+            md.AppendLine("|---|---|---:|---:|---:|---:|");
             foreach (var frontend in legs.FrontendRuns)
                 md.AppendLine(CultureInfo.InvariantCulture,
-                    $"| {frontend.Client} | {frontend.Tests} | {frontend.Avp} | {frontend.E2eShape} | {frontend.E2e} |");
+                    $"| {frontend.Client} | {Role(frontend)} | {frontend.Tests} | {frontend.Avp} | "
+                  + $"{Exit(frontend.E2eShape)} | {Exit(frontend.E2e)} |");
         }
 
         foreach (var module in matrix.Rows.GroupBy(r => r.Module))
@@ -174,6 +176,11 @@ internal static class GateReport
         MatrixVerdict.NotRun => "NOT-RUN",
         _ => "NO-PROOF",
     };
+
+    private static string Role(FrontendGateLeg frontend) =>
+        frontend.Role == FrontendPackageRole.Core ? "core" : "surface";
+
+    private static string Exit(int? exitCode) => exitCode?.ToString(CultureInfo.InvariantCulture) ?? "n/a";
 
     private static string ProofCell(MatrixRow row) => row.Proofs.Count switch
     {

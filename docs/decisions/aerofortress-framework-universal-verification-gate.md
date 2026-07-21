@@ -24,8 +24,9 @@ Every feature carries executable evidence, regardless of criticality:
    `<Feature>.assay.test.tsx` carries `@avp <criterion>` and an executable `defineVerification(...)` (`AFFE033`);
    the `.test` segment is part of the convention because the host Vitest runner must discover the proof.
 4. Disabled, conditional, or focused tests are errors (`AF0032`, `AFFE034`), and the gate rejects runtime `NotExecuted` results.
-5. `af gate` always runs backend tests plus every manifest-selected frontend harness's unit/integration,
-   direct Assay/AVP, E2E-shape, and real E2E scripts. Missing/placeholder scripts are contract failures.
+5. `af gate` always runs backend tests plus every manifest-selected frontend package's unit/integration and
+   direct Assay/AVP proofs. Product `frontend` surfaces additionally owe E2E-shape and real E2E scripts; product
+   `core` packages do not own browser/device journeys. Missing/placeholder scripts are contract failures.
    There is no `[Ephemeral]` tier. Runtime is managed by ordinary CI parallelism and
    sharding, never by silently removing proof from the release gate.
 

@@ -14,9 +14,9 @@
     <PackageId>aerofortress-framework-cli</PackageId>
 
     <!-- Package metadata (the CLI doesn't import AeroFortress.Framework.Library.props — that turns CS1591 into an error, and a
-         tool isn't a documented library surface). 0.3.2 partitions ordinary Vitest and Assay suites so every
-         frontend proof runs once, and reuses a successful doctor build for the backend proof leg. -->
-    <Version>0.3.2</Version>
+         tool isn't a documented library surface). 0.3.3 keeps shared frontend cores inside the mandatory
+         test/Assay gate without pretending they own browser E2E; executable surfaces still owe every leg. -->
+    <Version>0.3.3</Version>
     <Authors>Lucas Tinoco</Authors>
     <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
     <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>

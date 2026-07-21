@@ -4,6 +4,21 @@ using System.Text.RegularExpressions;
 
 namespace AeroFortress.Framework.Cli;
 
+/// <summary>The proof depth a manifest-declared frontend package owes at the release gate.</summary>
+internal enum FrontendPackageRole
+{
+    /// <summary>A shared application core owes executable unit/integration and Assay proofs.</summary>
+    Core,
+
+    /// <summary>An executable user surface also owes the E2E contract and real browser/device execution.</summary>
+    Surface,
+}
+
+/// <summary>A frontend package selected from the workspace manifest and the proof depth it owes.</summary>
+/// <param name="Path">The absolute package root.</param>
+/// <param name="Role">Whether the package is a shared core or an executable surface.</param>
+internal sealed record FrontendPackage(string Path, FrontendPackageRole Role);
+
 /// <summary>
 /// Reads + validates the workspace manifest, <c>AeroFortress.toml</c> — the single source of truth for an app's
 /// topology (which dirs are the backend, the frontend core, the platform apps; which harness gates the
@@ -73,11 +88,12 @@ internal static class AeroFortressManifest
 
     /// <summary>
     /// Discover the package roots the frontend harness must gate. An explicit <c>[harness] frontend</c> is the
-    /// coordinator and wins; otherwise product <c>frontend</c>/<c>core</c> paths resolve to their owning package.
+    /// legacy surface coordinator and wins; otherwise product <c>frontend</c>/<c>core</c> paths resolve to their
+    /// owning package while retaining their proof depth. A core runs tests + Assay; a surface additionally runs E2E.
     /// The legacy <c>clients/*</c> scan remains only as a compatibility fallback for manifests that predate those
     /// declarations, so an unrelated package cannot silently join or an <c>apps/*</c> package silently disappear.
     /// </summary>
-    public static IReadOnlyList<string> FrontendPackages(string root)
+    public static IReadOnlyList<FrontendPackage> FrontendPackages(string root)
     {
         var path = Path.Combine(root, FileName);
         if (File.Exists(path))
@@ -85,16 +101,28 @@ internal static class AeroFortressManifest
             var text = File.ReadAllText(path);
             var harnessFrontend = ReadStringKey(Section(text, "harness"), "frontend");
             if (harnessFrontend is not null)
-                return [Path.GetFullPath(Path.Combine(root, harnessFrontend))];
+                return [new FrontendPackage(
+                    Path.GetFullPath(Path.Combine(root, harnessFrontend)),
+                    FrontendPackageRole.Surface)];
 
             var declared = Regex.Matches(
                     text,
-                    @"^\s*(?:frontend|core)\s*=\s*""([^""]+)""",
+                    @"^\s*(frontend|core)\s*=\s*""([^""]+)""",
                     RegexOptions.Multiline)
-                .Select(match => OwningPackage(root, match.Groups[1].Value))
-                .Where(package => package is not null)
-                .Cast<string>()
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(match => new
+                {
+                    Path = OwningPackage(root, match.Groups[2].Value),
+                    Role = match.Groups[1].Value == "frontend"
+                        ? FrontendPackageRole.Surface
+                        : FrontendPackageRole.Core,
+                })
+                .Where(package => package.Path is not null)
+                .GroupBy(package => package.Path!, StringComparer.OrdinalIgnoreCase)
+                .Select(group => new FrontendPackage(
+                    group.Key,
+                    group.Any(package => package.Role == FrontendPackageRole.Surface)
+                        ? FrontendPackageRole.Surface
+                        : FrontendPackageRole.Core))
                 .ToList();
             if (declared.Count > 0)
                 return declared;
@@ -105,6 +133,7 @@ internal static class AeroFortressManifest
             return [];
         return Directory.EnumerateDirectories(clients)
             .Where(dir => File.Exists(Path.Combine(dir, "package.json")))
+            .Select(dir => new FrontendPackage(dir, FrontendPackageRole.Surface))
             .ToList();
     }
 

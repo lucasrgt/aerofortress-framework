@@ -77,4 +77,64 @@ public class DoctorCommandTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public void Product_cores_and_surfaces_retain_their_distinct_gate_depth()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "af-doctor-roles-" + Guid.NewGuid().ToString("N"));
+        var core = Path.Combine(root, "clients", "core");
+        var web = Path.Combine(root, "clients", "web");
+        Directory.CreateDirectory(core);
+        Directory.CreateDirectory(web);
+        File.WriteAllText(Path.Combine(core, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(web, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "App"
+
+            [products.app]
+            core = "clients/core"
+            frontend = "clients/web"
+            """);
+
+        try
+        {
+            var targets = DoctorCommand.FrontendTargets(root);
+
+            Assert.Contains(targets, target => target.Path == core && target.Role == FrontendPackageRole.Core);
+            Assert.Contains(targets, target => target.Path == web && target.Role == FrontendPackageRole.Surface);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_package_declared_as_both_core_and_frontend_owes_surface_depth_once()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "af-doctor-role-merge-" + Guid.NewGuid().ToString("N"));
+        var app = Path.Combine(root, "clients", "app");
+        Directory.CreateDirectory(app);
+        File.WriteAllText(Path.Combine(app, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "App"
+
+            [products.app]
+            core = "clients/app"
+            frontend = "clients/app"
+            """);
+
+        try
+        {
+            var target = Assert.Single(DoctorCommand.FrontendTargets(root));
+
+            Assert.Equal(FrontendPackageRole.Surface, target.Role);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }

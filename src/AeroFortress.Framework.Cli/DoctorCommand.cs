@@ -36,11 +36,11 @@ internal static class DoctorCommand
         if (sync.Gating && !sync.InSync)
             code = Math.Max(code, 1);
 
-        foreach (var client in FrontendClients(Directory.GetCurrentDirectory()))
+        foreach (var client in FrontendTargets(Directory.GetCurrentDirectory()))
         {
-            Console.WriteLine($"af doctor — frontend conventions ({Path.GetFileName(client)}: eslint + tsc)...");
-            code = Math.Max(code, FrontendScriptContract.Run(client, "lint"));
-            code = Math.Max(code, FrontendScriptContract.Run(client, "typecheck"));
+            Console.WriteLine($"af doctor — frontend conventions ({Path.GetFileName(client.Path)}: eslint + tsc)...");
+            code = Math.Max(code, FrontendScriptContract.Run(client.Path, "lint"));
+            code = Math.Max(code, FrontendScriptContract.Run(client.Path, "typecheck"));
         }
 
         Console.WriteLine(code == 0 ? "doctor: conventions pass." : "doctor: violations reported above.");
@@ -51,5 +51,9 @@ internal static class DoctorCommand
     // Requiring an eslint config for discovery made a missing harness file erase the client precisely when the
     // doctor must fail, so package.json — not a healthy config — remains the executable boundary.
     internal static IReadOnlyList<string> FrontendClients(string root)
+        => FrontendTargets(root).Select(package => package.Path).ToList();
+
+    /// <summary>Return every manifest-selected frontend package with the proof depth its role owes.</summary>
+    internal static IReadOnlyList<FrontendPackage> FrontendTargets(string root)
         => AeroFortressManifest.FrontendPackages(root);
 }

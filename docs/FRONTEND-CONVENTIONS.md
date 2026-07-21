@@ -652,9 +652,10 @@ empty list are blocking — there is no bootstrap-green state. Each entry is
   reached `Complete` while the frontend spec proved only entry — the bug lived in the **seam** between
   them. `terminal` forces the traversal across that seam to be asserted. See
   [`docs/decisions/aerofortress-framework-journey-depth-enforcement.md`](decisions/aerofortress-framework-journey-depth-enforcement.md).
-- **Execution** — `af gate` runs, for every manifest-selected frontend harness package, the non-Assay
-  `npm run test` partition, direct `assay verify` over `*.assay.test.*`, the E2E doctor, and
-  `npm run test:e2e`. This partitions the Vitest inventory by filename, so every proof executes exactly once.
+- **Execution** — `af gate` runs the non-Assay `npm run test` partition and direct `assay verify` over
+  `*.assay.test.*` for every manifest-declared product `core` and `frontend`. Executable `frontend` surfaces
+  additionally run the E2E doctor and `npm run test:e2e`; a shared `core` does not pretend to own a browser
+  journey. This partitions the Vitest inventory by filename, so every proof executes exactly once.
   Missing or placeholder scripts,
   seed-pending specs, disabled/focused specs, and tests that never launch the real runner are failures. All release proofs run;
   CI may parallelize or shard them, but cannot silently omit them.

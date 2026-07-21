@@ -528,10 +528,11 @@ The doctor answers "is the form right?"; the AVP proofs answer "does the behavio
    including the AF0030/AF0031 bridge) and each manifest-selected frontend harness's lint + typecheck.
 2. **Backend proof leg** — `dotnet test` over the workspace, which executes every test and every
    `[AVP]` verification; any skipped/not-executed result makes the gate red.
-3. **Frontend proof legs, for every manifest-selected harness package** — `npm run test` over the
-   non-Assay partition, direct `assay verify` over `*.assay.test.*`, the strict `affe-e2e-doctor`, and
-   `npm run test:e2e`. The filename partition makes every test execute exactly once: AVP is a real gate leg,
-   not a duplicate second Vitest pass. A missing or placeholder script,
+3. **Frontend proof legs, with depth selected by manifest role** — every product `core` runs `npm run test`
+   over the non-Assay partition plus direct `assay verify` over `*.assay.test.*`; every executable `frontend`
+   runs those same legs plus the strict `affe-e2e-doctor` and `npm run test:e2e`. A legacy explicit
+   `[harness] frontend` remains an executable surface. The filename partition makes every test execute exactly
+   once: AVP is a real gate leg, not a duplicate second Vitest pass. A missing or placeholder script,
    manifest, runner, terminal assertion, seed, or real execution is a failure; there is no ephemeral/skip tier.
 4. **The matrix** — declarations (`*.spec.toml`) × proof sites
    (`[AVP(typeof(Slice), "id")]`) × test verdicts,
