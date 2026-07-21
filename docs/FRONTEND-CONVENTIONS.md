@@ -638,7 +638,7 @@ E2E is flow-level, but completeness is enforced in **both directions**. Every Vi
 of the product's executable surfaces. Each surface curates its journeys in `e2e/flows.json`, and
 `tools/e2e-doctor.mjs` proves every declared journey is executable. Absence and an empty list are blocking —
 there is no bootstrap-green state. Each entry is
-`{ id, name, features: ["FeatureBasename"], path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendContract?, backendJourney? }`:
+`{ id, name, features: ["FeatureBasename"], path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendContract? }`:
 
 - **Feature and endpoint coverage** (hard gap): each ViewModel id resolves to subject-bound flows whose
   `features` array contains exactly that one basename; one flow cannot pay multiple ViewModels. Every visible feature
@@ -668,11 +668,12 @@ there is no bootstrap-green state. Each entry is
 - **Existence** (hard `gaps`): the `spec` file exists and a runner for its `target` is configured
   (Playwright for web, Maestro/Detox for native). Multiple flow proofs may share a spec only when each names a
   distinct enabled `case` title, preventing one generic file from impersonating several journeys.
-- **Set parity** (`tools/journey-parity.mjs`, AFFE-JOURNEY): when a flow covers a write, `backendJourney` (the
-  `Journeys/<key>.Tests.cs` twin) links the flow to its backend journey, checked both directions — so
-  no write journey is half-built (tested on the back but never end-to-end on the front, or vice-versa).
-  A backend shared by multiple executable surfaces passes all of their independently-gated `flows.json`
-  manifests to the parity command; the union is checked without assigning one surface another's journey.
+- **Derived parity** (`tools/journey-parity.mjs`, AFFE-JOURNEY): backend write shape and the co-located
+  `[Journey(typeof(Slice), Happy|Sad)]` inventory are compared with frontend `backendSlices`. Every UI-bound write
+  needs both backend paths; a write absent from every frontend manifest is explicitly backend-only and remains
+  valid. The removed `backendJourney` file-name link is rejected rather than retained as a bypass. A backend
+  shared by multiple executable surfaces passes all independently-gated manifests; their union determines the
+  UI-bound write set.
 - **Depth** (`depthGaps`, blocking, **AFFE-JOURNEY-002**): a spec *existing* is not coverage — it can
   stop at the door. Every flow must declare `terminal` (the testID or route its spec asserts
   *after* entry, to prove the journey reaches its end), and the spec must actually reference it; a spec

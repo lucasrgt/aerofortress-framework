@@ -121,7 +121,7 @@ describe("checkE2e", () => {
       mkdirSync(join(dir, "e2e"));
       writeFileSync(
         join(dir, "e2e", "flows.json"),
-        JSON.stringify([{ id: "onboarding", name: "onboarding", path: "happy", target: "web", backendJourney: "OnboardingFlow", spec: "e2e/onboarding.spec.ts" }]),
+        JSON.stringify([{ id: "onboarding", name: "onboarding", path: "happy", target: "web", spec: "e2e/onboarding.spec.ts" }]),
       );
       writeFileSync(join(dir, "e2e", "onboarding.spec.ts"), 'await expect(page).toHaveURL(/\\/onboarding/);\n');
       const r = checkE2e(dir);
@@ -141,7 +141,7 @@ describe("checkE2e", () => {
       writeFileSync(
         join(dir, "e2e", "flows.json"),
         JSON.stringify([
-          { id: "onboarding", name: "onboarding", path: "happy", target: "web", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
+          { id: "onboarding", name: "onboarding", path: "happy", target: "web", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
         ]),
       );
       // The entry-only spec — asserts the wizard URL and stops; never references the /dashboard terminal.
@@ -163,7 +163,7 @@ describe("checkE2e", () => {
       writeFileSync(
         join(dir, "e2e", "flows.json"),
         JSON.stringify([
-          { id: "onboarding", name: "onboarding", path: "happy", target: "web", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
+          { id: "onboarding", name: "onboarding", path: "happy", target: "web", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
         ]),
       );
       writeFileSync(
@@ -410,6 +410,26 @@ describe("checkE2e", () => {
 
       expect(result.gaps).toBe(0);
       expect(result.depthGaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects the removed backendJourney file-name link", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "legacy", name: "legacy", path: "happy", target: "web", terminal: "/done",
+        spec: "e2e/legacy.spec.ts", backendJourney: "OldAggregateFile",
+      }]));
+      writeFileSync(join(dir, "e2e", "legacy.spec.ts"), 'test("done", async ({ page }) => expect(page).toHaveURL("/done"));\n');
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(1);
+      expect(result.messages.join(" ")).toContain("removed backendJourney");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

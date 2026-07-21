@@ -1,53 +1,72 @@
 #!/usr/bin/env node
-// Journey parity — the fullstack-loop doctor. The backend declares its write journeys as Journeys/*.Tests.cs;
-// the frontend declares its e2e journeys in e2e/flows.json. This proves the two SETS agree, so no write journey
-// is half-built (tested on the back but never end-to-end on the front, or vice-versa). It closes the loop at the
-// JOURNEY grain — the endpoint grain is already closed elsewhere (tsc for front->back, AFFE008 for back->front).
-//
-// Matching is EXPLICIT, never fuzzy: a frontend flow links to a backend journey via a `backendJourney` field
-// holding the journey's key (its Journeys filename minus `.Tests.cs`, e.g. "HostOnboardingFlow"). A flow with no
-// `backendJourney` is a UI-only journey (allowed — not every front journey has a backend twin). `checkJourneyParity`
-// is pure (no I/O); a consumer reads the backend dir + flows.json and feeds it the two lists.
-//
-// Reports both directions:
-//   - uncovered: a backend journey with no frontend flow linking to it
-//   - orphans:   a frontend flow whose `backendJourney` names a journey the backend doesn't have
-// A shared backend may serve multiple executable frontend surfaces. The CLI therefore accepts one or more
-// flows manifests and checks the union; each surface remains independently accountable to e2e-doctor.
-
+// Journey parity derives both sides from inventories. Backend write shape identifies which slices owe happy+sad
+// journeys; frontend flows identify which of those writes have a UI surface through backendSlices. A backend-only
+// write stays backend-only. A UI-bound write must have both backend paths, with no file-name link for an agent to
+// omit or redirect.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * @param {string[]} backendJourneys - journey keys (Journeys/<key>.Tests.cs)
- * @param {{ name?: string, backendJourney?: string }[]} frontendFlows - the flows.json entries
- */
-export function checkJourneyParity(backendJourneys, frontendFlows) {
-  const backend = new Set(backendJourneys);
-  const linked = new Set();
-  const orphans = [];
+const IGNORED_DIRECTORIES = new Set([".git", ".aerofortress", "bin", "node_modules", "obj", "output", "tmp"]);
 
-  for (const f of frontendFlows) {
-    if (!f.backendJourney) continue; // UI-only flow — allowed, not an orphan
-    if (backend.has(f.backendJourney)) linked.add(f.backendJourney);
-    else orphans.push({ flow: f.name ?? "(unnamed)", backendJourney: f.backendJourney });
+/** Derive write slices and their executable journey paths from ordinary C# sources. */
+export function extractBackendJourneyInventory(sources) {
+  const writes = new Set();
+  const paths = new Map();
+  for (const source of sources) {
+    const declarations = [...source.matchAll(
+      /((?:^\s*\[[^\]\r\n]+\]\s*(?:\/\/[^\r\n]*)?\r?\n)+)\s*public\s+static\s+class\s+([A-Za-z_]\w*)/gm,
+    )].filter((match) => /\bSlice(?:Attribute)?\b/.test(match[1]));
+    for (let index = 0; index < declarations.length; index++) {
+      const declaration = declarations[index];
+      const body = source.slice(declaration.index, declarations[index + 1]?.index ?? source.length);
+      if (/\bMap(?:Post|Put|Patch|Delete)\s*\(/.test(body)) writes.add(declaration[2]);
+    }
+
+    for (const match of source.matchAll(
+      /\bJourney\s*\(\s*typeof\s*\(\s*([A-Za-z_]\w*)\s*\)\s*,\s*JourneyPath\.(Happy|Sad)\s*\)/g,
+    )) {
+      const slicePaths = paths.get(match[1]) ?? new Set();
+      slicePaths.add(match[2].toLowerCase());
+      paths.set(match[1], slicePaths);
+    }
   }
-
-  const uncovered = backendJourneys.filter((j) => !linked.has(j));
-  const messages = [
-    ...uncovered.map((j) => `backend journey "${j}" has no frontend flow (uncovered)`),
-    ...orphans.map((o) => `frontend flow "${o.flow}" links backend journey "${o.backendJourney}" which doesn't exist`),
-  ];
-
-  return { uncovered, orphans, linked: [...linked], gaps: uncovered.length + orphans.length, messages };
+  return { writes: [...writes].sort(), paths };
 }
 
 /**
- * Parse and combine independently-gated surface manifests for one shared backend.
- * @param {{ path: string, content: string }[]} manifests
- * @returns {{ name?: string, backendJourney?: string }[]}
+ * Check the derived full-stack seam. Backend-only writes are reported but valid; UI-bound writes require both
+ * backend paths. Frontend execution of each backendSlices entry is owned by e2e-doctor.
  */
+export function checkJourneyParity(inventory, frontendFlows) {
+  const writes = new Set(inventory.writes);
+  const uiBound = new Set();
+  for (const flow of frontendFlows) {
+    for (const slice of flow.backendSlices ?? []) {
+      if (writes.has(slice)) uiBound.add(slice);
+    }
+  }
+
+  const missing = [];
+  for (const slice of [...uiBound].sort()) {
+    const proven = inventory.paths.get(slice) ?? new Set();
+    const missingPaths = ["happy", "sad"].filter((path) => !proven.has(path));
+    if (missingPaths.length > 0) missing.push({ slice, paths: missingPaths });
+  }
+  const backendOnly = inventory.writes.filter((slice) => !uiBound.has(slice));
+  const messages = missing.map(
+    ({ slice, paths }) => `UI-bound write slice "${slice}" lacks backend ${paths.join("+")} journey proof`,
+  );
+  return {
+    uiBound: [...uiBound].sort(),
+    backendOnly,
+    missing,
+    gaps: missing.length,
+    messages,
+  };
+}
+
+/** Parse and combine independently-gated surface manifests for one shared backend. */
 export function parseFlowManifests(manifests) {
   return manifests.flatMap(({ path, content }) => {
     const flows = JSON.parse(content);
@@ -56,10 +75,25 @@ export function parseFlowManifests(manifests) {
   });
 }
 
+function walk(root) {
+  let entries;
+  try {
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries.flatMap((entry) => {
+    if (entry.isDirectory() && IGNORED_DIRECTORIES.has(entry.name)) return [];
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) return walk(path);
+    return entry.isFile() && path.endsWith(".cs") ? [path] : [];
+  });
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const [, , journeysDir, ...flowsFiles] = process.argv;
-  if (!journeysDir || flowsFiles.length === 0) {
-    console.error("usage: affe-journey-parity <backend-journeys-dir> <flows.json> [...more-flows.json]");
+  const [, , backendRoot, ...flowsFiles] = process.argv;
+  if (!backendRoot || flowsFiles.length === 0) {
+    console.error("usage: affe-journey-parity <backend-root> <flows.json> [...more-flows.json]");
     process.exit(2);
   }
   const missingFiles = flowsFiles.filter((flowsFile) => !existsSync(flowsFile));
@@ -68,11 +102,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  const backendJourneys = existsSync(journeysDir)
-    ? readdirSync(journeysDir)
-        .filter((file) => file.endsWith(".Tests.cs"))
-        .map((file) => file.replace(/\.Tests\.cs$/, ""))
-    : [];
   let frontendFlows;
   try {
     frontendFlows = parseFlowManifests(
@@ -83,11 +112,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  const result = checkJourneyParity(backendJourneys, frontendFlows);
+  const inventory = extractBackendJourneyInventory(walk(backendRoot).map((file) => readFileSync(file, "utf8")));
+  const result = checkJourneyParity(inventory, frontendFlows);
   console.log(
-    `AFFE-JOURNEY: ${backendJourneys.length} backend journey(s), ${result.linked.length} linked across `
-      + `${flowsFiles.length} frontend surface(s), `
-      + `${result.gaps} parity gap(s).`,
+    `AFFE-JOURNEY: ${inventory.writes.length} backend write slice(s), ${result.uiBound.length} UI-bound, `
+      + `${result.backendOnly.length} backend-only, ${result.gaps} parity gap(s).`,
   );
   for (const message of result.messages) console.log(`  - ${message}`);
   process.exit(result.gaps > 0 ? 1 : 0);

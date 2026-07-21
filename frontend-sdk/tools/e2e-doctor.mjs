@@ -15,7 +15,7 @@
 // DEPTH, not just existence (AFFE-JOURNEY-002). A spec existing does NOT mean the journey is covered — a spec can
 // stop at the door (assert the entry screen and return), punting the rest to the backend twin. That is the exact
 // shape that let a pilot's onboarding ship a "complete -> back to step 0" bug under a green doctor. So a LINKED flow
-// (one with a `backendJourney`) must also declare `terminal`: the marker — a testID or route — its spec asserts
+// flow must also declare `terminal`: the marker — a testID or route — its spec asserts
 // AFTER entry to prove the journey reached its end. The doctor reads the spec and flags it when the terminal is
 // undeclared or never referenced. These are reported as `depthGaps` (warn-tier), kept SEPARATE from the hard
 // existence `gaps`; both are blocking because a journey that only reaches its door is not an E2E proof.
@@ -70,7 +70,7 @@ function classifySource(spec, source) {
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
  *   - depthGaps: blocking journey-depth findings (AFFE-JOURNEY-002) — a flow with no `terminal`, or a spec
  *     that never asserts its declared `terminal`.
- * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendContract?, backendJourney?, terminal }` where `id` is the stable
+ * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendContract?, terminal }` where `id` is the stable
  * ViewModel linkage key, `path` is happy|sad, `spec` is relative to root, and optional `case` names one test in a
  * shared spec. `terminal` is the testID/route the proof asserts after entry.
  * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
@@ -163,6 +163,13 @@ export function checkE2e(root) {
     if ((flow.backendSlices?.length ?? 0) > 0
         && (typeof flow.backendContract !== "string" || !flow.backendContract.trim())) {
       messages.push(`journey "${name}" names backendSlices but has no backendContract`);
+      gaps++;
+    }
+    if (Object.hasOwn(flow, "backendJourney")) {
+      messages.push(
+        `journey "${name}" uses removed backendJourney metadata; backend write parity is derived from `
+          + "backendSlices and [Journey] inventories",
+      );
       gaps++;
     }
 

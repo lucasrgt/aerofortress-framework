@@ -53,11 +53,11 @@ test("signs in", async ({ page }) => {
 ## The fullstack loop (journey parity)
 
 `journey-parity.mjs` (`checkJourneyParity`) closes the loop at the **journey grain**: the backend declares write
-journeys (its `Journeys/*.Tests.cs`), the frontend declares them in `flows.json` (linked explicitly via a
-`backendJourney` field) — and the doctor proves the two sets agree (no backend journey uncovered on the front, no
-front flow pointing at a journey the back lacks). The *endpoint* grain is already closed: `tsc` for front→back (you
-can't call a missing endpoint) and **AFFE008** for back→front (every endpoint is consumed by a ViewModel). So:
-endpoints by type + coverage, journeys by parity — the same write path proven on both sides.
+journeys through co-located `[Journey(typeof(Slice), Happy|Sad)]` tests, while frontend `backendSlices` derives
+which writes actually have a UI surface. The doctor requires both backend paths for every UI-bound write and
+reports unreferenced writes as valid backend-only behavior. There is no optional file-name link for an agent to
+omit or redirect. The *endpoint* grain is already closed by generated types, endpoint coverage, and the observed
+browser ledger.
 
 When those endpoints are shared by multiple frontend surfaces, endpoint coverage also consumes the union of their
 source roots:
@@ -70,7 +70,7 @@ When one backend serves multiple executable surfaces, pass every independently-g
 over their union without pretending operator or partner journeys belong to the consumer app:
 
 ```
-affe-journey-parity ../api/Journeys app/e2e/flows.json operator/e2e/flows.json partner/e2e/flows.json
+affe-journey-parity ../api app/e2e/flows.json operator/e2e/flows.json partner/e2e/flows.json
 ```
 
 ## One report — the unified doctor

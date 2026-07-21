@@ -1,66 +1,59 @@
-import { describe, it, expect } from "vitest";
-import { checkJourneyParity, parseFlowManifests } from "./journey-parity.mjs";
+import { describe, expect, it } from "vitest";
+import {
+  checkJourneyParity,
+  extractBackendJourneyInventory,
+  parseFlowManifests,
+} from "./journey-parity.mjs";
 
-// Parity closes the fullstack loop at the journey grain: every backend journey has a frontend flow, and no flow
-// links a journey the backend doesn't have. Pin both directions + the UI-only escape.
-describe("checkJourneyParity", () => {
-  it("is clean when every backend journey is linked by a flow", () => {
-    const r = checkJourneyParity(
-      ["HostOnboardingFlow", "AuthJourney"],
-      [
-        { name: "host onboarding", backendJourney: "HostOnboardingFlow" },
-        { name: "auth", backendJourney: "AuthJourney" },
-      ],
-    );
-    expect(r.gaps).toBe(0);
-    expect(r.linked.sort()).toEqual(["AuthJourney", "HostOnboardingFlow"]);
-  });
+function slice(name: string, verb: "Get" | "Post", journeys: string[] = []) {
+  return [
+    "[Slice]",
+    `public static class ${name}`,
+    "{",
+    `  public static void Map(IEndpointRouteBuilder app) => app.Map${verb}(\"/${name.toLowerCase()}\", () => null);`,
+    "}",
+    ...journeys.map((path) => `[Journey(typeof(${name}), JourneyPath.${path})]`),
+  ].join("\n");
+}
 
-  it("flags an uncovered backend journey (no frontend flow)", () => {
-    const r = checkJourneyParity(
-      ["HostOnboardingFlow", "MercadoPagoChargeJourney"],
-      [{ name: "host onboarding", backendJourney: "HostOnboardingFlow" }],
-    );
-    expect(r.uncovered).toEqual(["MercadoPagoChargeJourney"]);
-    expect(r.gaps).toBe(1);
-    expect(r.messages.join(" ")).toContain("MercadoPagoChargeJourney");
-  });
-
-  it("flags an orphan frontend flow (links a journey the backend lacks)", () => {
-    const r = checkJourneyParity(
-      ["AuthJourney"],
-      [
-        { name: "auth", backendJourney: "AuthJourney" },
-        { name: "ghost", backendJourney: "DeletedJourney" },
-      ],
-    );
-    expect(r.orphans).toEqual([{ flow: "ghost", backendJourney: "DeletedJourney" }]);
-    expect(r.gaps).toBe(1);
-  });
-
-  it("allows a UI-only flow (no backendJourney) without flagging it", () => {
-    const r = checkJourneyParity(["AuthJourney"], [
-      { name: "auth", backendJourney: "AuthJourney" },
-      { name: "boot smoke" }, // no backendJourney
+describe("journey parity", () => {
+  it("derives write shape and subject-bound journey paths from C#", () => {
+    const inventory = extractBackendJourneyInventory([
+      slice("CreateOrder", "Post", ["Happy", "Sad"]),
+      slice("ListOrders", "Get"),
     ]);
-    expect(r.gaps).toBe(0);
-  });
-});
 
-describe("parseFlowManifests", () => {
-  it("combines the independently-owned flows of every surface sharing a backend", () => {
+    expect(inventory.writes).toEqual(["CreateOrder"]);
+    expect([...inventory.paths.get("CreateOrder")!]).toEqual(["happy", "sad"]);
+  });
+
+  it("requires both backend paths for a UI-bound write", () => {
+    const inventory = extractBackendJourneyInventory([slice("CreateOrder", "Post", ["Happy"])]);
+    const result = checkJourneyParity(inventory, [{ backendSlices: ["CreateOrder"] }]);
+
+    expect(result.gaps).toBe(1);
+    expect(result.missing).toEqual([{ slice: "CreateOrder", paths: ["sad"] }]);
+  });
+
+  it("allows a write with no frontend surface to remain backend-only", () => {
+    const inventory = extractBackendJourneyInventory([slice("InternalSweep", "Post")]);
+    const result = checkJourneyParity(inventory, [{ backendSlices: ["ListOrders"] }]);
+
+    expect(result.gaps).toBe(0);
+    expect(result.backendOnly).toEqual(["InternalSweep"]);
+  });
+
+  it("combines independently-owned frontend surfaces without file-name links", () => {
     const flows = parseFlowManifests([
-      {
-        path: "app/e2e/flows.json",
-        content: JSON.stringify([{ name: "account", backendJourney: "AccountJourney" }]),
-      },
-      {
-        path: "operator/e2e/flows.json",
-        content: JSON.stringify([{ name: "moderation", backendJourney: "ModerationJourney" }]),
-      },
+      { path: "app/e2e/flows.json", content: JSON.stringify([{ backendSlices: ["CreateOrder"] }]) },
+      { path: "operator/e2e/flows.json", content: JSON.stringify([{ backendSlices: ["ApproveOrder"] }]) },
+    ]);
+    const inventory = extractBackendJourneyInventory([
+      slice("CreateOrder", "Post", ["Happy", "Sad"]),
+      slice("ApproveOrder", "Post", ["Happy", "Sad"]),
     ]);
 
-    expect(checkJourneyParity(["AccountJourney", "ModerationJourney"], flows).gaps).toBe(0);
+    expect(checkJourneyParity(inventory, flows).gaps).toBe(0);
   });
 
   it("identifies which surface supplied an invalid manifest", () => {
