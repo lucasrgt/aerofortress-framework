@@ -193,6 +193,22 @@ describe("feature E2E coverage", () => {
     expect(complete.gaps).toBe(0);
   });
 
+  it("covers every multi-step infrastructure endpoint without inventing an unreachable sad response per step", () => {
+    const infrastructure = [{
+      path: "src/lib/upload.ts",
+      source: [
+        'import { useRequestUpload, useConfirmUpload } from "@/client.gen/api";',
+        "useRequestUpload(); useConfirmUpload();",
+      ].join("\n"),
+    }];
+    const result = checkFeatureE2e([], [
+      { id: "upload-happy", path: "happy", backendSlices: ["RequestUpload", "ConfirmUpload"] },
+      { id: "upload-sad", path: "sad", backendSlices: ["RequestUpload"] },
+    ], ["RequestUpload", "ConfirmUpload"], infrastructure);
+
+    expect(result.gaps).toBe(0);
+  });
+
   it("requires raw infrastructure calls to declare and prove their backend slice", () => {
     const missingDeclaration = checkFeatureE2e([], [], ["Refresh"], [{
       path: "src/lib/client.ts",

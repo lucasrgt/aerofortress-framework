@@ -220,19 +220,23 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
       .filter((declaration) => slices.includes(declaration.slice)
         && calls.some((call) => call.method === declaration.method && call.path === declaration.path))
       .map((declaration) => declaration.slice);
-    for (const hook of new Set([...sliceHooks(dataDoor.source, slices), ...directSlices])) {
+    const dataDoorSlices = new Set([...sliceHooks(dataDoor.source, slices), ...directSlices]);
+    const dataDoorProofs = [];
+    for (const hook of dataDoorSlices) {
       const proofs = flows.filter((flow) => flow.backendSlices?.includes(hook));
       if (proofs.length === 0) {
         messages.push(`${dataDoor.path}: use${hook} is UI infrastructure with no E2E flow declaring that backend slice`);
         gaps += 1;
         continue;
       }
-      const paths = new Set(proofs.map((flow) => flow.path));
-      for (const required of ["happy", "sad"]) {
-        if (paths.has(required)) continue;
-        messages.push(`${dataDoor.path}: infrastructure use${hook} requires an E2E flow with path:${required}`);
-        gaps += 1;
-      }
+      dataDoorProofs.push(...proofs);
+    }
+    if (dataDoorProofs.length === 0) continue;
+    const paths = new Set(dataDoorProofs.map((flow) => flow.path));
+    for (const required of ["happy", "sad"]) {
+      if (dataDoorSlices.size === 0 || paths.has(required)) continue;
+      messages.push(`${dataDoor.path}: infrastructure data door requires an E2E flow with path:${required}`);
+      gaps += 1;
     }
   }
 
