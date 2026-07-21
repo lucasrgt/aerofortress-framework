@@ -1,10 +1,8 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
-using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.Text;
 
 namespace AeroFortress.Framework.Doctor;
 
@@ -39,10 +37,16 @@ public sealed class JourneyAssertionAnalyzer : DiagnosticAnalyzer
                    + "an observable-effect assertion; sad needs assertions for rejection and unchanged state.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
 
-    // [Journey(typeof(Slice), JourneyPath.Happy|Sad)] — mirrors AF0008's grammar; captures the slice for the message.
-    private static readonly Regex JourneyPattern = new(
-        @"\[\s*Journey\s*\(\s*(?:covers\s*:\s*)?typeof\s*\(\s*(?<slice>[\w.]+)\s*\)\s*,\s*(?:\w+\s*\.\s*)?(?<path>Happy|Sad)\b[^\]]*\]",
-        RegexOptions.Compiled);
+    private static readonly DiagnosticDescriptor ShapeRule = new(
+        id: "AF0033",
+        title: "Journey proof must be an isolated executable E2E test",
+        messageFormat: "Journey proof for '{0}' is not valid evidence — {1}",
+        category: "AeroFortress.Framework.Convention",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Each journey obligation is paid by one runner-discoverable [E2E] test method in a "
+                   + "*Journey.Tests.cs file. Unit tests, stacked subjects and unexecuted methods are not evidence.",
+        customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     // An assertion token: xUnit Assert.*, FluentAssertions .Should(), a Verify/Expect helper, or an Ensure*
     // call (EnsureSuccessStatusCode throws on failure — a real assertion). Boundary on the left only, so helper
@@ -50,7 +54,7 @@ public sealed class JourneyAssertionAnalyzer : DiagnosticAnalyzer
     private static readonly Regex AssertionPattern = new(@"\b(Assert|Should|Verify|Expect|Ensure)", RegexOptions.Compiled);
 
     /// <inheritdoc />
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule, ShapeRule);
 
     /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
@@ -62,56 +66,29 @@ public sealed class JourneyAssertionAnalyzer : DiagnosticAnalyzer
 
     private static void Analyze(CompilationAnalysisContext context)
     {
-        foreach (var file in context.Options.AdditionalFiles)
+        foreach (var method in JourneyProofPolicy.Read(context.Options.AdditionalFiles, context.CancellationToken))
         {
-            var source = file.GetText(context.CancellationToken);
-            var text = source?.ToString();
-            if (text is null)
+            var journey = method.Journeys[0];
+            if (method.InvalidReason is not null)
+            {
+                var span = journey.Attribute.Span;
+                var location = Location.Create(
+                    method.FilePath, span, method.Source.Lines.GetLinePositionSpan(span));
+                context.ReportDiagnostic(Diagnostic.Create(
+                    ShapeRule, location, journey.Subject, method.InvalidReason));
+                continue;
+            }
+
+            var body = method.Method.Body?.ToString() ?? method.Method.ExpressionBody?.ToString() ?? "";
+            var requiredAssertions = journey.Path == "Sad" ? 2 : 1;
+            if (AssertionPattern.Matches(body).Count >= requiredAssertions)
                 continue;
 
-            // A method may stack happy + sad journeys; report its empty body once (keyed by the body's start).
-            var reported = new HashSet<int>();
-            foreach (Match match in JourneyPattern.Matches(text))
-            {
-                var bodyOpen = text.IndexOf('{', match.Index + match.Length);
-                if (bodyOpen < 0)
-                    continue;
-                var bodyClose = MatchBrace(text, bodyOpen);
-                if (bodyClose < 0 || !reported.Add(bodyOpen))
-                    continue;
-
-                var body = text.Substring(bodyOpen, bodyClose - bodyOpen + 1);
-                var path = match.Groups["path"].Value;
-                var requiredAssertions = path == "Sad" ? 2 : 1;
-                if (AssertionPattern.Matches(body).Count >= requiredAssertions)
-                    continue;
-
-                var slice = LastSegment(match.Groups["slice"].Value);
-                var span = new TextSpan(match.Index, match.Length);
-                var location = Location.Create(file.Path, span, source!.Lines.GetLinePositionSpan(span));
-                context.ReportDiagnostic(Diagnostic.Create(Rule, location, slice, path));
-            }
+            var assertionSpan = journey.Attribute.Span;
+            var assertionLocation = Location.Create(
+                method.FilePath, assertionSpan, method.Source.Lines.GetLinePositionSpan(assertionSpan));
+            context.ReportDiagnostic(Diagnostic.Create(
+                Rule, assertionLocation, journey.Subject, journey.Path));
         }
-    }
-
-    // Index of the '}' that closes the '{' at <open>, or -1. Brace-counted; good enough for a test method body
-    // (a stray brace inside a string literal is the known, accepted limit of the textual approach).
-    private static int MatchBrace(string s, int open)
-    {
-        var depth = 0;
-        for (var i = open; i < s.Length; i++)
-        {
-            if (s[i] == '{')
-                depth++;
-            else if (s[i] == '}' && --depth == 0)
-                return i;
-        }
-        return -1;
-    }
-
-    private static string LastSegment(string qualified)
-    {
-        var dot = qualified.LastIndexOf('.');
-        return dot >= 0 ? qualified.Substring(dot + 1) : qualified;
     }
 }

@@ -11,7 +11,7 @@ public enum JourneyPath
 }
 
 /// <summary>
-/// Declares that an <c>[E2E]</c> test is the journey proving a write slice on a given
+/// Declares that one executable <c>[E2E]</c> test method is the journey proving one write slice on a given
 /// <see cref="Path"/>. The relation is enforced both ways: <c>AF0008</c> requires every write slice to
 /// have both a <see cref="JourneyPath.Happy"/> and a <see cref="JourneyPath.Sad"/> journey, and
 /// <c>AF0010</c> requires every journey to cover a write slice. So a journey is exactly the proof of a
@@ -25,7 +25,7 @@ public enum JourneyPath
 /// post-write rule); a fail-fast guard (validation, not-found) is lower impact because there is no
 /// partial state to leave.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public sealed class JourneyAttribute : Attribute
 {
     /// <summary>Declare the write slice this journey proves and which path it covers.</summary>

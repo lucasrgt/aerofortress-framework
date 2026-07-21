@@ -642,8 +642,9 @@ of the product's executable surfaces. Each surface curates its journeys in `e2e/
 there is no bootstrap-green state. Each entry is
 `{ id, name, features: ["FeatureBasename"], path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendJourney? }`:
 
-- **Feature and endpoint coverage** (hard gap): each ViewModel id resolves to subject-bound flows naming its
-  exact basename in `features`, and every visible feature has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>`
+- **Feature and endpoint coverage** (hard gap): each ViewModel id resolves to subject-bound flows whose
+  `features` array contains exactly that one basename; one flow cannot pay multiple ViewModels. Every visible feature
+  has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>`
   hook consumed by that ViewModel must be named in a linked flow's `backendSlices`; the same applies to generated
   hooks consumed by the blessed session/guard data doors. A slice with no frontend consumer remains backend-only.
   Once the UI consumes it, the linked executable journey is mandatory. A shared `core` resolves against all

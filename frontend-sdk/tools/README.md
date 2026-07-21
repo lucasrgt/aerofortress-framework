@@ -17,7 +17,8 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 E2E remains flow-level, but coverage is now enforced in both directions. Every ViewModel declares one or more
 `@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
 requires each generated slice hook consumed by that ViewModel (or by session/guard infrastructure) to appear in
-the flow's `backendSlices`. Every ViewModel needs subject-bound `happy` and `sad` flows. `checkE2e(root)` then
+the flow's `backendSlices`. Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
+`happy` and `sad` flows. `checkE2e(root)` then
 proves every declared flow has an enabled spec/case, terminal assertion, and real runner. A missing/empty manifest
 is red. See the
 Hostpoint dogfood's `scripts/affe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.

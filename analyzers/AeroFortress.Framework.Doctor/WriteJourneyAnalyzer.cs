@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -37,12 +36,6 @@ public sealed class WriteJourneyAnalyzer : DiagnosticAnalyzer
                    + "path; the sad journey asserts the failure status and that no state changed. The operation "
                    + "shape determines the obligation, so application code cannot opt out.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
-
-    // Matches [Journey(typeof(Slice), JourneyPath.Happy)] — covers: prefix and the enum qualifier are
-    // both optional, and the slice may be written qualified (the last segment is the type name).
-    private static readonly Regex JourneyPattern = new(
-        @"Journey\s*\(\s*(?:covers\s*:\s*)?typeof\s*\(\s*(?<slice>[\w.]+)\s*\)\s*,\s*(?:\w+\s*\.\s*)?(?<path>Happy|Sad)\b",
-        RegexOptions.Compiled);
 
     /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
@@ -85,20 +78,12 @@ public sealed class WriteJourneyAnalyzer : DiagnosticAnalyzer
     private static HashSet<(string, string)> CoveredJourneys(ImmutableArray<AdditionalText> files, CancellationToken ct)
     {
         var covered = new HashSet<(string, string)>();
-        foreach (var file in files)
+        foreach (var method in JourneyProofPolicy.Read(files, ct))
         {
-            var text = file.GetText(ct)?.ToString();
-            if (text is null)
+            if (method.InvalidReason is not null)
                 continue;
-
-            foreach (Match match in JourneyPattern.Matches(text))
-            {
-                var slice = match.Groups["slice"].Value;
-                var dot = slice.LastIndexOf('.');
-                if (dot >= 0)
-                    slice = slice.Substring(dot + 1);
-                covered.Add((slice, match.Groups["path"].Value));
-            }
+            var journey = method.Journeys[0];
+            covered.Add((journey.Subject, journey.Path));
         }
 
         return covered;

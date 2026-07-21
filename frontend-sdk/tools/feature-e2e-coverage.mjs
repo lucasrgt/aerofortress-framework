@@ -98,8 +98,9 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
     }
     byId.set(id, flow);
     if (flow.features !== undefined && (!Array.isArray(flow.features)
+      || flow.features.length !== 1
       || flow.features.some((feature) => typeof feature !== "string" || !feature.trim()))) {
-      messages.push(`flow id "${id}" has malformed features; use an array of ViewModel feature names`);
+      messages.push(`flow id "${id}" must own exactly one ViewModel through features:["FeatureName"]`);
       gaps += 1;
     }
     for (const feature of flow.features ?? []) {

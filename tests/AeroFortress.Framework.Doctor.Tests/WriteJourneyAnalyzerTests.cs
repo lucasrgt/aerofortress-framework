@@ -9,14 +9,26 @@ public class WriteJourneyAnalyzerTests
     [Fact]
     public Task Write_slice_with_both_journeys_reports_nothing() =>
         Make(WriteSlice, """
+            [E2E]
             [Journey(typeof(Deposit), JourneyPath.Happy)]
+            [Fact]
+            public void Happy_path() { Assert.True(true); }
+
+            [E2E]
             [Journey(typeof(Deposit), JourneyPath.Sad)]
+            [Fact]
+            public void Sad_path() { Assert.True(true); Assert.False(false); }
             """).RunAsync();
 
     [Fact]
     public Task Write_slice_missing_the_sad_journey_is_flagged()
     {
-        var test = Make(WriteSlice, "[Journey(typeof(Deposit), JourneyPath.Happy)]");
+        var test = Make(WriteSlice, """
+            [E2E]
+            [Journey(typeof(Deposit), JourneyPath.Happy)]
+            [Fact]
+            public void Happy_path() { Assert.True(true); }
+            """);
         test.TestState.ExpectedDiagnostics.Add(
             new DiagnosticResult(WriteJourneyAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
                 .WithSpan("Deposit.cs", 4, 14, 4, 21)
@@ -31,7 +43,12 @@ public class WriteJourneyAnalyzerTests
     [Fact]
     public Task A_save_makes_even_a_get_mapped_slice_a_write()
     {
-        var test = Make(SavingGetSlice, "[Journey(typeof(Deposit), JourneyPath.Sad)]");
+        var test = Make(SavingGetSlice, """
+            [E2E]
+            [Journey(typeof(Deposit), JourneyPath.Sad)]
+            [Fact]
+            public void Sad_path() { Assert.True(true); Assert.False(false); }
+            """);
         test.TestState.ExpectedDiagnostics.Add(
             new DiagnosticResult(WriteJourneyAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
                 .WithSpan("Deposit.cs", 4, 14, 4, 21)
@@ -117,7 +134,7 @@ public class WriteJourneyAnalyzerTests
                         """),
                     ("Deposit.cs", source),
                 },
-                AdditionalFiles = { ("WalletJourney.Tests.cs", journeys) },
+                AdditionalFiles = { ("WalletJourney.Tests.cs", "class WalletJourney\n{\n" + journeys + "\n}") },
             },
         };
 }

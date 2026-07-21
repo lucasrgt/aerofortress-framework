@@ -82,7 +82,7 @@ describe("feature E2E coverage", () => {
     expect(complete.linked).toBe(1);
   });
 
-  it("allows one executable flow to cover multiple collaborating ViewModels", () => {
+  it("rejects a shared flow that lets multiple ViewModels borrow one proof", () => {
     const result = checkFeatureE2e([
       { path: "src/Cart.viewModel.ts", source: "/** @e2e checkout-happy\n * @e2e checkout-sad */" },
       { path: "src/Payment.viewModel.ts", source: "/** @e2e checkout-happy\n * @e2e checkout-sad */" },
@@ -90,8 +90,8 @@ describe("feature E2E coverage", () => {
       { id: "checkout-happy", path: "happy", features: ["Cart", "Payment"] },
       { id: "checkout-sad", path: "sad", features: ["Cart", "Payment"] },
     ], []);
-    expect(result.gaps).toBe(0);
-    expect(result.linked).toBe(2);
+    expect(result.gaps).toBeGreaterThan(0);
+    expect(result.messages.join(" ")).toContain("exactly one ViewModel");
   });
 
   it("rejects duplicate flow ids across surfaces", () => {
