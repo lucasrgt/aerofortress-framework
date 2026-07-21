@@ -18,11 +18,13 @@ E2E remains flow-level, but coverage is now enforced in both directions. Every V
 `@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
 requires each generated slice hook consumed by that ViewModel (or by session/guard infrastructure) to appear in
 the flow's `backendSlices`. Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
-`happy` and `sad` flows. A web flow naming backend slices imports `requireBackend` from
-`@aerofortress/frontend-sdk/playwright-backend` and calls it in its own exact case. A Playwright global setup
-calls `probeBackend()` or `createBackendGlobalSetup()` from the same export against `PW_API_URL`; only a
-successful HTTP response sets `PW_API_READY=1`. A local namesake cannot impersonate the guard, another case
-cannot lend it, and a backend-bound spec cannot install request interception or import mock/stub support.
+`happy` and `sad` flows. A web flow naming backend slices declares its checked-in OpenAPI file as
+`backendContract`, then its exact case collects page responses with `observeBackend()` and closes the ledger with
+`expectBackendSlices()`. The expected names must exactly match `backendSlices`; happy flows require 2xx evidence
+and sad flows require 4xx/5xx evidence. A Playwright global setup calls `probeBackend()` or
+`createBackendGlobalSetup()` against `PW_API_URL`; only a successful HTTP response sets `PW_API_READY=1`. A
+local namesake cannot impersonate the branded observation, another case cannot lend it, and a backend-bound spec
+cannot install request interception, import mock/stub support, or call the API directly outside the rendered page.
 `checkE2e(root)` then
 proves every declared flow has an enabled spec/case, terminal assertion, and real runner. A missing/empty manifest
 is red. See the
@@ -36,10 +38,11 @@ import { createBackendGlobalSetup } from "@aerofortress/frontend-sdk/playwright-
 export default createBackendGlobalSetup({ path: "/health" });
 
 // e2e/account.spec.ts
-import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";
+import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";
 test("signs in", async ({ page }) => {
-  requireBackend();
-  // Drive the visible UI; configure the app's API base URL to PW_API_URL without interception.
+  const backend = await observeBackend(page, "contract/Api.json");
+  // Drive the visible UI; configure the app's API base URL to PW_API_URL without interception or direct fetch.
+  expectBackendSlices(backend, ["Login"], { status: "success" });
 });
 ```
 

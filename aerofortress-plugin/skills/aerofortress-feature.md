@@ -24,9 +24,10 @@ specialist; keep the order.
    feature's i18n (every locale); error codes get entries in `api-errors`. Declare `@verify` and
    satisfy it in the exact co-located `*.assay.test.*`. Declare two distinct `@e2e` ids and link
    exact happy/sad flows in `flows.json`. If a flow names `backendSlices`, its Playwright case must
-   import and call the canonical `requireBackend()` from
-   `@aerofortress/frontend-sdk/playwright-backend`; global setup probes `PW_API_URL` with the same
-   package. Put mocked smoke coverage in another spec.
+   declare `backendContract`, collect page responses with canonical `observeBackend()`, and assert the exact
+   operations with `expectBackendSlices()` from `@aerofortress/frontend-sdk/playwright-backend`; global setup
+   probes `PW_API_URL` with the same package. Put mocked smoke coverage in another spec and never call the API
+   directly from a backend-bound case.
 6. **Gate**: run `af gate`. Any AF*/AFFE* finding goes to aerofortress-doctor — fix the shape,
    never suppress, skip, focus, or weaken the manifest.
 

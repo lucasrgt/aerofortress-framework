@@ -68,10 +68,11 @@ screens; the design layer holds the floor (label wiring, role="alert", aria-busy
 Every ViewModel declares distinct `@e2e` ids for happy and sad behavior. Executable surfaces bind
 those ids in `e2e/flows.json` with `features: ["ExactFeatureBasename"]`, an enabled exact case, a
 terminal assertion, and every consumed generated hook in `backendSlices`. A web backend-bound case
-imports `requireBackend` from `@aerofortress/frontend-sdk/playwright-backend`; global setup probes
-`PW_API_URL` with the canonical helper. A spec containing request interception, HAR routing, MSW, or
-mock/stub helpers cannot prove it. Mocked UI smoke coverage stays in a separate front-only
-spec. `af gate` runs the Assay and E2E inventories and fails missing, skipped, focused,
+declares `backendContract`, observes real page responses through
+`@aerofortress/frontend-sdk/playwright-backend`, and asserts the exact `backendSlices`; global setup probes
+`PW_API_URL` with the canonical helper. A spec containing request interception, HAR routing, MSW, mock/stub
+helpers, or direct API calls cannot prove it. Mocked UI smoke coverage stays in a separate front-only spec.
+`af gate` runs the Assay and E2E inventories and fails missing, skipped, focused,
 seed-pending, not-executed, or syntactically manufactured evidence.
 
 ## Comments

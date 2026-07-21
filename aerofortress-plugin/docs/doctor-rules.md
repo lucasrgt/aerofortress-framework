@@ -78,6 +78,6 @@ CS1591 public members documented.
 
 E2E/journey: AFFE-JOURNEY (back↔front flow parity) · AFFE-JOURNEY-002 (flow declares terminal
 in flows.json and spec asserts it) · AFFE-E2E-SKIP-IN-GATE-001 (skipped gate-class flow fails CI
-gate). A web flow naming backendSlices uses the canonical `requireBackend` import and a successful
-`PW_API_URL` global-setup probe; its spec cannot intercept network requests or invoke API mocks.
-Mocked UI smoke cases live in separate front-only specs.
+gate). A web flow naming `backendSlices` declares `backendContract`, observes real page responses, and asserts
+the exact OpenAPI operation ledger after a successful `PW_API_URL` global-setup probe; its spec cannot intercept
+requests, invoke API mocks, or call the API directly. Mocked UI smoke cases live in separate front-only specs.

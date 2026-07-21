@@ -55,10 +55,11 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   *planned, different* AFFE015 ("no orphan placeholder") at `docs/FRONTEND-CONVENTIONS.md:275`.
   _FRAMEWORK-GAP._
 - [x] **Real-backend E2E guard has a framework home.**
-  `@aerofortress/frontend-sdk/playwright-backend` ships `requireBackend`, `probeBackend`, and
-  `createBackendGlobalSetup`. The doctor accepts only that canonical import, verifies the exact case,
-  rejects request interception/mock support in a backend-bound spec, and the runtime guard requires a
-  successful `PW_API_URL` preflight. Seed contents and Playwright process orchestration remain app-owned.
+  `@aerofortress/frontend-sdk/playwright-backend` ships `probeBackend`, `createBackendGlobalSetup`,
+  `observeBackend`, and `expectBackendSlices`. The doctor verifies the exact case and checked-in OpenAPI
+  contract, rejects request interception/mock support and direct API calls in a backend-bound spec, and the
+  branded runtime ledger requires both a successful `PW_API_URL` preflight and observed page responses matching
+  every declared slice operation. Seed contents and Playwright process orchestration remain app-owned.
 
 ## P2 — generic mechanism carried by the pilot, should graduate
 

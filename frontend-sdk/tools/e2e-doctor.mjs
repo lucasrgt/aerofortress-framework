@@ -60,7 +60,7 @@ function classifySource(spec, source) {
   const executable = stripComments(source);
   if (hasNonExecutingTest(executable)) return "disabled";
   if (/\brequireSeed\s*\(/.test(source)) return "seed-pending";
-  if (/\brequireBackend\s*\(/.test(source) && importsCanonicalBackendGuard(source)) return "ci-gated";
+  if (hasBackendObservation(executable) && importsCanonicalBackendProof(executable)) return "ci-gated";
   return "front-only";
 }
 
@@ -70,7 +70,7 @@ function classifySource(spec, source) {
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
  *   - depthGaps: blocking journey-depth findings (AFFE-JOURNEY-002) — a flow with no `terminal`, or a spec
  *     that never asserts its declared `terminal`.
- * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendJourney?, terminal }` where `id` is the stable
+ * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendContract?, backendJourney?, terminal }` where `id` is the stable
  * ViewModel linkage key, `path` is happy|sad, `spec` is relative to root, and optional `case` names one test in a
  * shared spec. `terminal` is the testID/route the proof asserts after entry.
  * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
@@ -160,6 +160,11 @@ export function checkE2e(root) {
       messages.push(`journey "${name}" has invalid or duplicate backendSlices`);
       gaps++;
     }
+    if ((flow.backendSlices?.length ?? 0) > 0
+        && (typeof flow.backendContract !== "string" || !flow.backendContract.trim())) {
+      messages.push(`journey "${name}" names backendSlices but has no backendContract`);
+      gaps++;
+    }
 
     if (flow.target !== "web" && flow.target !== "native") {
       messages.push(`journey "${name}" must declare target:web or target:native`);
@@ -221,8 +226,8 @@ export function checkE2e(root) {
     if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && executionClass !== "ci-gated") {
       messages.push(
         `journey "${name}" names backendSlices but its own case is ${executionClass}; `
-          + "import requireBackend from @aerofortress/frontend-sdk/playwright-backend, call it in the exact case, "
-          + "and exercise the real API instead of borrowing a mocked/browser-only proof",
+          + "collect and assert its exact OpenAPI operations with observeBackend/expectBackendSlices from "
+          + "@aerofortress/frontend-sdk/playwright-backend in that case",
       );
       gaps++;
     }
@@ -232,6 +237,42 @@ export function checkE2e(root) {
           + "move mocked smoke cases to a separate spec and prove backend-bound cases against the real API",
       );
       gaps++;
+    }
+    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && usesDirectBackendCall(specSource)) {
+      messages.push(
+        `journey "${name}" names backendSlices but ${spec} calls the API outside the visible page; `
+          + "drive the rendered UI and let observeBackend collect its responses",
+      );
+      gaps++;
+    }
+    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0) {
+      const contract = readBackendContract(root, flow.backendContract);
+      if (contract.error) {
+        messages.push(`journey "${name}" has invalid backendContract — ${contract.error}`);
+        gaps++;
+      } else {
+        const unknown = flow.backendSlices.filter((slice) => !contract.operationIds.has(slice));
+        if (unknown.length > 0) {
+          messages.push(
+            `journey "${name}" names backendSlices absent from ${flow.backendContract}: ${unknown.join(", ")}`,
+          );
+          gaps++;
+        }
+      }
+
+      const proof = extractBackendProof(proofSource);
+      const expectedStatus = flow.path === "happy" ? "success" : "error";
+      const expectedSlices = JSON.stringify(flow.backendSlices);
+      if (!proof
+          || proof.contract !== flow.backendContract
+          || JSON.stringify(proof.slices) !== expectedSlices
+          || proof.status !== expectedStatus) {
+        messages.push(
+          `journey "${name}" must observe ${flow.backendContract} and assert exactly ${expectedSlices} `
+            + `with status:"${expectedStatus}" in its own case`,
+        );
+        gaps++;
+      }
     }
 
     // Depth (AFFE-JOURNEY-002): every flow must declare its `terminal` and actually assert it in the spec —
@@ -283,16 +324,83 @@ function usesNetworkMock(source) {
     || /\b(?:setupServer|setupWorker|rest\.(?:get|post|put|patch|delete)|http\.(?:get|post|put|patch|delete)|graphql\.(?:query|mutation))\s*\(/.test(executable);
 }
 
-function canonicalBackendImport(source) {
+// A proof must be caused by the rendered application. Direct fetch/APIRequest/generated-client calls can make the
+// network ledger green without traversing the visible feature and are therefore rejected in backend-bound specs.
+function usesDirectBackendCall(source) {
   const executable = stripComments(source);
-  const match = executable.match(
-    /\bimport\s*\{\s*requireBackend\s*\}\s*from\s*["']@aerofortress\/frontend-sdk\/playwright-backend["']\s*;?/,
-  );
-  return match?.[0] ?? "";
+  return /\bfetch\s*\(/.test(executable)
+    || /\b(?:page|context|request)\s*\.\s*(?:delete|get|head|options|patch|post|put)\s*\(/.test(executable)
+    || /\bfrom\s*["'][^"']*client\.gen(?:\/[^"']*)?["']/.test(executable)
+    || /\baxios\s*\.\s*(?:delete|get|head|options|patch|post|put|request)\s*\(/.test(executable);
 }
 
-function importsCanonicalBackendGuard(source) {
-  return canonicalBackendImport(source).length > 0;
+function canonicalBackendImport(source) {
+  const executable = stripComments(source);
+  return [...executable.matchAll(
+    /\bimport\s*\{([^}]*)\}\s*from\s*["']@aerofortress\/frontend-sdk\/playwright-backend["']\s*;?/g,
+  )].map((match) => match[0]).join("\n");
+}
+
+function importsCanonicalBackendProof(source) {
+  const identifiers = new Set();
+  for (const match of source.matchAll(
+    /\bimport\s*\{([^}]*)\}\s*from\s*["']@aerofortress\/frontend-sdk\/playwright-backend["']/g,
+  )) {
+    for (const raw of match[1].split(",")) {
+      const name = raw.trim();
+      if (name && !/\s+as\s+/.test(name)) identifiers.add(name);
+    }
+  }
+  return identifiers.has("observeBackend") && identifiers.has("expectBackendSlices");
+}
+
+function hasBackendObservation(source) {
+  return /\bobserveBackend\s*\(/.test(source) && /\bexpectBackendSlices\s*\(/.test(source);
+}
+
+function extractBackendProof(source) {
+  const executable = stripComments(source);
+  const observation = executable.match(
+    /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+observeBackend\s*\(\s*page\s*,\s*(["'])([^"']+)\2\s*\)/,
+  );
+  if (!observation) return null;
+  const variable = escapeRegex(observation[1]);
+  const assertion = executable.match(new RegExp(
+    `\\bexpectBackendSlices\\s*\\(\\s*${variable}\\s*,\\s*\\[([^\\]]*)\\]\\s*,`
+      + `\\s*\\{\\s*status\\s*:\\s*(["'])(success|error)\\2\\s*,?\\s*\\}\\s*\\)`,
+  ));
+  if (!assertion) return null;
+  const rawSlices = assertion[1];
+  const slices = [...rawSlices.matchAll(/(["'])([^"']+)\1/g)].map((match) => match[2]);
+  const residue = rawSlices.replace(/(["'])[^"']+\1/g, "").replace(/[\s,]/g, "");
+  if (slices.length === 0 || residue) return null;
+  return { contract: observation[3], slices, status: assertion[3] };
+}
+
+function readBackendContract(root, value) {
+  if (typeof value !== "string" || !value.trim()) return { error: "backendContract is missing" };
+  const path = resolve(root, value);
+  const relativePath = relative(resolve(root), path);
+  if (relativePath === ".." || relativePath.startsWith(".." + sep) || isAbsolute(relativePath)) {
+    return { error: "backendContract resolves outside the frontend root" };
+  }
+  try {
+    if (!statSync(path).isFile()) return { error: `${value} is not a file` };
+    const document = JSON.parse(readFileSync(path, "utf8"));
+    if (!document?.paths || typeof document.paths !== "object") return { error: `${value} has no OpenAPI paths` };
+    const operationIds = new Set();
+    for (const item of Object.values(document.paths)) {
+      if (!item || typeof item !== "object") continue;
+      for (const operation of Object.values(item)) {
+        if (operation && typeof operation === "object" && typeof operation.operationId === "string") {
+          operationIds.add(operation.operationId);
+        }
+      }
+    }
+    return { operationIds };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 function testCaseSource(source, title) {

@@ -62,10 +62,11 @@ You are the AeroFortress frontend specialist (React Native + RN-web, MVVM harnes
   `e2e/flows.json` binds exactly that feature basename to a happy and a sad executable case
   (AFFE035); one generic flow cannot pay several features.
 - List every generated backend slice hook consumed by the ViewModel in the linked flows'
-  `backendSlices`. A web case naming backend slices imports `requireBackend` from
-  `@aerofortress/frontend-sdk/playwright-backend`; its global setup probes `PW_API_URL` with the
-  canonical helper. Its spec cannot install `page.route`, `route.fulfill`, HAR routing, MSW, or
-  mock/stub helpers. Keep mocked rendering smoke coverage in a separate front-only spec.
+  `backendSlices` and declare its checked-in OpenAPI file as `backendContract`. A web case naming backend slices
+  uses `observeBackend` before UI interaction and `expectBackendSlices` afterward from
+  `@aerofortress/frontend-sdk/playwright-backend`; its global setup probes `PW_API_URL` with the canonical helper.
+  Its spec cannot install request interception, import mock/stub helpers, or call the API directly. Keep mocked
+  rendering smoke coverage in a separate front-only spec.
 - Every flow declares a terminal that its exact enabled case asserts. Skips, focus, todo,
   seed-pending placeholders, absent runners, and non-executed cases make `af gate` red.
 

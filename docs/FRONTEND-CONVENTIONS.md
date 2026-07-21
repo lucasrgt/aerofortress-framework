@@ -638,20 +638,23 @@ E2E is flow-level, but completeness is enforced in **both directions**. Every Vi
 of the product's executable surfaces. Each surface curates its journeys in `e2e/flows.json`, and
 `tools/e2e-doctor.mjs` proves every declared journey is executable. Absence and an empty list are blocking —
 there is no bootstrap-green state. Each entry is
-`{ id, name, features: ["FeatureBasename"], path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendJourney? }`:
+`{ id, name, features: ["FeatureBasename"], path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendContract?, backendJourney? }`:
 
 - **Feature and endpoint coverage** (hard gap): each ViewModel id resolves to subject-bound flows whose
   `features` array contains exactly that one basename; one flow cannot pay multiple ViewModels. Every visible feature
   has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>`
   hook consumed by that ViewModel must be named in a linked flow's `backendSlices`; the same applies to generated
-  client calls in shared infrastructure. A web flow naming `backendSlices` must be a real-backend case
-  through the canonical `requireBackend()` import from
-  `@aerofortress/frontend-sdk/playwright-backend`. Playwright `globalSetup` must call the package's
-  `probeBackend()` (or `createBackendGlobalSetup()`) against `PW_API_URL`, which alone sets
-  `PW_API_READY=1` after a successful HTTP response. A local namesake/no-op does not count. The spec file may
+  client calls in shared infrastructure. A web flow naming `backendSlices` must identify the checked-in OpenAPI
+  file in `backendContract`. Its exact case starts `observeBackend(page, backendContract)` before interaction and
+  calls the canonical `expectBackendSlices` with exactly the manifest names: `status:"success"` for a happy flow,
+  `status:"error"` for a sad flow. These functions come from
+  `@aerofortress/frontend-sdk/playwright-backend`; the observation is branded and resolves real page responses to
+  OpenAPI `operationId` values. Playwright `globalSetup` calls the package's `probeBackend()` (or
+  `createBackendGlobalSetup()`) against `PW_API_URL`, which alone sets `PW_API_READY=1` after a successful HTTP
+  response. A local namesake/plain object does not count. The spec file may
   not install request interception (`page.route`, `route.fulfill`, HAR routing, MSW, mock/stub imports, or
-  API-mock helpers). Mocked/front-only rendering remains useful smoke coverage in a separate spec, but cannot
-  prove an endpoint.
+  API-mock helpers), import the generated client, or make a direct fetch/APIRequest call. Mocked/front-only
+  rendering remains useful smoke coverage in a separate spec, but cannot prove an endpoint.
   A slice with no frontend consumer remains backend-only.
   Once the UI consumes it, the linked executable journey is mandatory. A shared `core` resolves against all
   product surfaces rather than owning a fake browser.

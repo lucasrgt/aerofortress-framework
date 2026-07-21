@@ -9,6 +9,15 @@ function tmp() {
   return mkdtempSync(join(process.cwd(), "tools", ".e2e-doctor-tmp-"));
 }
 
+function writeContract(dir: string, operationIds = ["Login", "Me"]) {
+  mkdirSync(join(dir, "contract"));
+  const paths = Object.fromEntries(operationIds.map((operationId) => [
+    `/${operationId.toLowerCase()}`,
+    { post: { operationId } },
+  ]));
+  writeFileSync(join(dir, "contract", "api.json"), JSON.stringify({ openapi: "3.1.0", paths }));
+}
+
 describe("checkE2e", () => {
   it("blocks when there is no e2e/flows.json", () => {
     const dir = tmp();
@@ -213,9 +222,9 @@ describe("checkE2e", () => {
     try {
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "backend.spec.ts"),
-        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";\nrequireBackend();\n');
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";\nconst backend = await observeBackend(page, "contract/api.json"); expectBackendSlices(backend, ["Login"], { status: "success" });\n');
       writeFileSync(join(dir, "e2e", "seed.spec.ts"),
-        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";\nrequireBackend(); requireSeed();\n');
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";\nconst backend = await observeBackend(page, "contract/api.json"); expectBackendSlices(backend, ["Login"], { status: "success" }); requireSeed();\n');
       writeFileSync(join(dir, "e2e", "smoke.spec.ts"), "test('renders', () => {});\n");
       writeFileSync(join(dir, "e2e", "disabled.spec.ts"), "test.skip('later', () => {});\n");
       writeFileSync(join(dir, "e2e", "nested-disabled.spec.ts"), "test.each([1]).skip('later', () => {});\n");
@@ -242,25 +251,28 @@ describe("checkE2e", () => {
     try {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
+      writeContract(dir);
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
         {
           id: "login-happy", name: "login uses API", path: "happy", target: "web",
           terminal: "/home", spec: "e2e/login.spec.ts", case: "real login", backendSlices: ["Login"],
+          backendContract: "contract/api.json",
         },
         {
           id: "profile-happy", name: "profile smoke", path: "happy", target: "web",
           terminal: "/profile", spec: "e2e/login.spec.ts", case: "mocked profile", backendSlices: ["Me"],
+          backendContract: "contract/api.json",
         },
       ]));
       writeFileSync(join(dir, "e2e", "login.spec.ts"), [
-        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
-        'test("real login", async ({ page }) => { requireBackend(); await expect(page).toHaveURL("/home"); });',
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'test("real login", async ({ page }) => { const backend = await observeBackend(page, "contract/api.json"); await expect(page).toHaveURL("/home"); expectBackendSlices(backend, ["Login"], { status: "success" }); });',
         'test("mocked profile", async ({ page }) => { await expect(page).toHaveURL("/profile"); });',
       ].join("\n"));
 
       const result = checkE2e(dir);
 
-      expect(result.gaps).toBe(1);
+      expect(result.gaps).toBe(2);
       expect(result.execution["ci-gated"]).toBe(1);
       expect(result.execution["front-only"]).toBe(1);
       expect(result.messages.join(" ")).toContain("profile smoke");
@@ -269,21 +281,23 @@ describe("checkE2e", () => {
     }
   });
 
-  it("rejects network mocks from a backend-bound spec even when the named case calls requireBackend", () => {
+  it("rejects network mocks from a backend-bound spec even when the named case records operations", () => {
     const dir = tmp();
     try {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["Login"]);
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
         {
           id: "login-happy", name: "login uses API", path: "happy", target: "web",
           terminal: "/home", spec: "e2e/login.spec.ts", case: "signs in", backendSlices: ["Login"],
+          backendContract: "contract/api.json",
         },
       ]));
       writeFileSync(join(dir, "e2e", "login.spec.ts"), [
-        'import { requireBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
         'async function accountApi(page) { await page.route("**/account/**", route => route.fulfill({ status: 200 })); }',
-        'test("signs in", async ({ page }) => { requireBackend(); await accountApi(page); await expect(page).toHaveURL("/home"); });',
+        'test("signs in", async ({ page }) => { const backend = await observeBackend(page, "contract/api.json"); await accountApi(page); await expect(page).toHaveURL("/home"); expectBackendSlices(backend, ["Login"], { status: "success" }); });',
       ].join("\n"));
 
       const result = checkE2e(dir);
@@ -296,20 +310,23 @@ describe("checkE2e", () => {
     }
   });
 
-  it("rejects a local no-op requireBackend impersonator", () => {
+  it("rejects local no-op observation impersonators", () => {
     const dir = tmp();
     try {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["Login"]);
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
         {
           id: "login-happy", name: "login uses API", path: "happy", target: "web",
           terminal: "/home", spec: "e2e/login.spec.ts", case: "signs in", backendSlices: ["Login"],
+          backendContract: "contract/api.json",
         },
       ]));
       writeFileSync(join(dir, "e2e", "login.spec.ts"), [
-        "function requireBackend() {}",
-        'test("signs in", async ({ page }) => { requireBackend(); await expect(page).toHaveURL("/home"); });',
+        "async function observeBackend() { return {}; }",
+        "function expectBackendSlices() {}",
+        'test("signs in", async ({ page }) => { const backend = await observeBackend(page, "contract/api.json"); await expect(page).toHaveURL("/home"); expectBackendSlices(backend, ["Login"], { status: "success" }); });',
       ].join("\n"));
 
       const result = checkE2e(dir);
@@ -317,6 +334,57 @@ describe("checkE2e", () => {
       expect(result.execution["front-only"]).toBe(1);
       expect(result.gaps).toBe(1);
       expect(result.messages.join(" ")).toContain("@aerofortress/frontend-sdk/playwright-backend");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects backend proof metadata that disagrees with the flow or OpenAPI contract", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["Login"]);
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "login-sad", name: "login rejects credentials", path: "sad", target: "web",
+        terminal: "invalid", spec: "e2e/login.spec.ts", case: "rejects credentials",
+        backendSlices: ["Missing"], backendContract: "contract/api.json",
+      }]));
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'test("rejects credentials", async ({ page }) => { const backend = await observeBackend(page, "contract/api.json"); await expect(page.getByText("invalid")).toBeVisible(); expectBackendSlices(backend, ["Login"], { status: "success" }); });',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(2);
+      expect(result.messages.join(" ")).toContain("absent from");
+      expect(result.messages.join(" ")).toContain('status:"error"');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a direct fetch that bypasses the rendered feature", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["Login"]);
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "login-happy", name: "login uses API", path: "happy", target: "web",
+        terminal: "/home", spec: "e2e/login.spec.ts", case: "signs in",
+        backendSlices: ["Login"], backendContract: "contract/api.json",
+      }]));
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'test("signs in", async ({ page }) => { const backend = await observeBackend(page, "contract/api.json"); await page.evaluate(() => fetch("/login")); await expect(page).toHaveURL("/home"); expectBackendSlices(backend, ["Login"], { status: "success" }); });',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(1);
+      expect(result.messages.join(" ")).toContain("outside the visible page");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
