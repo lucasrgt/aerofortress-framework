@@ -496,21 +496,21 @@ describe("checkE2e", () => {
     }
   });
 
-  it("rejects the removed backendJourney file-name link", () => {
+  it("rejects unsupported manifest fields instead of silently accepting metadata", () => {
     const dir = tmp();
     try {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
-        id: "legacy", name: "legacy", path: "happy", target: "web", terminal: "/done",
-        spec: "e2e/legacy.spec.ts", backendJourney: "OldAggregateFile",
+        id: "unsupported", name: "unsupported", path: "happy", target: "web", terminal: "/done",
+        spec: "e2e/unsupported.spec.ts", arbitraryTier: "ignored",
       }]));
-      writeFileSync(join(dir, "e2e", "legacy.spec.ts"), 'test("done", async ({ page }) => expect(page).toHaveURL("/done"));\n');
+      writeFileSync(join(dir, "e2e", "unsupported.spec.ts"), 'test("done", async ({ page }) => expect(page).toHaveURL("/done"));\n');
 
       const result = checkE2e(dir);
 
       expect(result.gaps).toBe(1);
-      expect(result.messages.join(" ")).toContain("removed backendJourney");
+      expect(result.messages.join(" ")).toContain("unsupported field(s): arbitraryTier");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

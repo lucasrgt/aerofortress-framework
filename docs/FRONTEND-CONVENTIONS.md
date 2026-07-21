@@ -650,7 +650,7 @@ there is no bootstrap-green state. Each entry is
   and missing happy/sad proofs. ViewModels never use this escape hatch.
   A web flow naming `backendSlices` must identify the checked-in OpenAPI
   file in `backendContract`. Its exact case starts `observeBackend(page, backendContract)` before interaction and
-  calls the canonical `expectBackendSlices` with exactly the manifest names. The default is
+  calls canonical `expectBackendSlices` or bounded `waitForBackendSlices` with exactly the manifest names. The default is
   `status:"success"` for a happy flow and `status:"error"` for a sad flow. When a sad product state is a
   successful response (an empty collection, an absent optional registration, a pending state), declare
   `backendOutcome:"success"`; the doctor then requires that exact observed outcome instead of encouraging an
@@ -676,7 +676,7 @@ there is no bootstrap-green state. Each entry is
 - **Derived parity** (`tools/journey-parity.mjs`, AFFE-JOURNEY): backend write shape and the co-located
   `[Journey(typeof(Slice), Happy|Sad)]` inventory are compared with frontend `backendSlices`. Every UI-bound write
   needs both backend paths; a write absent from every frontend manifest is explicitly backend-only and remains
-  valid. The removed `backendJourney` file-name link is rejected rather than retained as a bypass. A backend
+  valid. Unsupported manifest fields are rejected rather than silently accepted as bypass metadata. A backend
   shared by multiple executable surfaces passes all independently-gated manifests; their union determines the
   UI-bound write set.
 - **Depth** (`depthGaps`, blocking, **AFFE-JOURNEY-002**): a spec *existing* is not coverage — it can

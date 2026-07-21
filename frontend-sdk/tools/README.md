@@ -24,7 +24,8 @@ slice also owes happy+sad real-browser evidence. ViewModels continue to use gene
 Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
 `happy` and `sad` flows. A web flow naming backend slices declares its checked-in OpenAPI file as
 `backendContract`, then its exact case collects page responses with `observeBackend()` and closes the ledger with
-`expectBackendSlices()`. The expected names must exactly match `backendSlices`; happy flows require 2xx evidence
+`expectBackendSlices()` or the bounded `waitForBackendSlices()` when parallel requests can settle after the terminal
+UI. The expected names must exactly match `backendSlices`; happy flows require 2xx evidence
 and sad flows require 4xx/5xx evidence. A Playwright global setup calls `probeBackend()` or
 `createBackendGlobalSetup()` against `PW_API_URL`; only a successful HTTP response sets `PW_API_READY=1`. A
 local namesake cannot impersonate the branded observation, another case cannot lend it, and a backend-bound spec
@@ -45,11 +46,11 @@ import { createBackendGlobalSetup } from "@aerofortress/frontend-sdk/playwright-
 export default createBackendGlobalSetup({ path: "/health" });
 
 // e2e/account.spec.ts
-import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";
+import { observeBackend, waitForBackendSlices } from "@aerofortress/frontend-sdk/playwright-backend";
 test("signs in", async ({ page }) => {
   const backend = await observeBackend(page, "contract/Api.json");
   // Drive the visible UI; configure the app's API base URL to PW_API_URL without interception or direct fetch.
-  expectBackendSlices(backend, ["Login"], { status: "success" });
+  await waitForBackendSlices(backend, ["Login"], { status: "success" });
 });
 ```
 

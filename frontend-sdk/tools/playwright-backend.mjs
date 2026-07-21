@@ -81,17 +81,51 @@ export async function observeBackend(page, contract, env = process.env) {
  * The observation is branded inside this module, so a local namesake or plain object cannot manufacture evidence.
  */
 export function expectBackendSlices(observation, slices, { status } = {}) {
+  validateBackendExpectation(observation, slices, status, "expectBackendSlices");
+  const missing = missingBackendSlices(observation, slices, status);
+  if (missing.length === 0) return;
+
+  throw missingBackendError(observation, missing, status);
+}
+
+/**
+ * Wait until every named slice produces the expected HTTP outcome in the visible journey.
+ * Use this when the terminal UI can render before parallel backend requests have settled.
+ */
+export async function waitForBackendSlices(
+  observation,
+  slices,
+  { status, timeoutMs = DEFAULT_TIMEOUT_MS, intervalMs = DEFAULT_INTERVAL_MS } = {},
+) {
+  validateBackendExpectation(observation, slices, status, "waitForBackendSlices");
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 0) {
+    throw new Error("waitForBackendSlices() timeoutMs must be a non-negative finite number.");
+  }
+  if (!Number.isFinite(intervalMs) || intervalMs < 0) {
+    throw new Error("waitForBackendSlices() intervalMs must be a non-negative finite number.");
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  let missing = missingBackendSlices(observation, slices, status);
+  while (missing.length > 0 && Date.now() < deadline) {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, Math.min(intervalMs, deadline - Date.now())));
+    missing = missingBackendSlices(observation, slices, status);
+  }
+  if (missing.length > 0) throw missingBackendError(observation, missing, status);
+}
+
+function validateBackendExpectation(observation, slices, status, caller) {
   if (!observations.has(observation)) {
-    throw new Error("expectBackendSlices() requires the observation returned by observeBackend().");
+    throw new Error(`${caller}() requires the observation returned by observeBackend().`);
   }
   if (!Array.isArray(slices) || slices.length === 0 || slices.some((slice) => typeof slice !== "string" || !slice)) {
-    throw new Error("expectBackendSlices() requires one or more slice names.");
+    throw new Error(`${caller}() requires one or more slice names.`);
   }
   if (new Set(slices).size !== slices.length) {
-    throw new Error("expectBackendSlices() does not accept duplicate slice names.");
+    throw new Error(`${caller}() does not accept duplicate slice names.`);
   }
   if (status !== "success" && status !== "error") {
-    throw new Error('expectBackendSlices() status must be "success" or "error".');
+    throw new Error(`${caller}() status must be "success" or "error".`);
   }
 
   const known = new Set(observation.operations.map((operation) => operation.operationId));
@@ -99,19 +133,22 @@ export function expectBackendSlices(observation, slices, { status } = {}) {
   if (unknown.length > 0) {
     throw new Error(`OpenAPI contract does not declare slice operation(s): ${unknown.join(", ")}.`);
   }
+}
 
+function missingBackendSlices(observation, slices, status) {
   const matchesStatus = status === "success"
     ? (code) => code >= 200 && code < 300
     : (code) => code >= 400 && code < 600;
-  const missing = slices.filter((slice) => !observation.seen.some(
+  return slices.filter((slice) => !observation.seen.some(
     (entry) => entry.operationId === slice && matchesStatus(entry.status),
   ));
-  if (missing.length === 0) return;
+}
 
+function missingBackendError(observation, missing, status) {
   const evidence = observation.seen.length === 0
     ? "no contract operation was observed"
     : observation.seen.map((entry) => `${entry.operationId}:${entry.status}`).join(", ");
-  throw new Error(
+  return new Error(
     `Browser journey did not prove ${status} response(s) for: ${missing.join(", ")}. Observed: ${evidence}.`,
   );
 }

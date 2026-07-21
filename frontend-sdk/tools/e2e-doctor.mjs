@@ -32,6 +32,10 @@ const RUNNER_DETECT = {
 };
 const WEB_RUNNERS = new Set(["playwright", "cypress"]);
 const NATIVE_RUNNERS = new Set(["maestro", "detox"]);
+const FLOW_KEYS = new Set([
+  "area", "backendContract", "backendOutcome", "backendSlices", "case", "features", "id", "name", "path",
+  "spec", "target", "terminal",
+]);
 
 /** The e2e runners a project has configured (e.g. ["playwright", "maestro"]). */
 export function detectRunners(root) {
@@ -135,6 +139,11 @@ export function checkE2e(root) {
       continue;
     }
     const name = flow.name ?? "(unnamed)";
+    const unsupportedKeys = Object.keys(flow).filter((key) => !FLOW_KEYS.has(key));
+    if (unsupportedKeys.length > 0) {
+      messages.push(`journey "${name}" has unsupported field(s): ${unsupportedKeys.join(", ")}`);
+      gaps++;
+    }
     const spec = String(flow.spec ?? "");
     const id = typeof flow.id === "string" ? flow.id.trim() : "";
     if (!id || !/^[a-z0-9][a-z0-9._-]*$/.test(id) || ids.has(id)) {
@@ -170,14 +179,6 @@ export function checkE2e(root) {
       messages.push(`journey "${name}" names backendSlices but has no backendContract`);
       gaps++;
     }
-    if (Object.hasOwn(flow, "backendJourney")) {
-      messages.push(
-        `journey "${name}" uses removed backendJourney metadata; backend write parity is derived from `
-          + "backendSlices and [Journey] inventories",
-      );
-      gaps++;
-    }
-
     if (flow.target !== "web" && flow.target !== "native") {
       messages.push(`journey "${name}" must declare target:web or target:native`);
       gaps++;
@@ -239,7 +240,8 @@ export function checkE2e(root) {
     if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && executionClass !== "ci-gated") {
       messages.push(
         `journey "${name}" names backendSlices but its own case is ${executionClass}; `
-          + "collect and assert its exact OpenAPI operations with observeBackend/expectBackendSlices from "
+          + "collect and assert its exact OpenAPI operations with observeBackend and expectBackendSlices or "
+          + "waitForBackendSlices from "
           + "@aerofortress/frontend-sdk/playwright-backend in that case",
       );
       gaps++;
@@ -416,11 +418,13 @@ function importsCanonicalBackendProof(source) {
       if (name && !/\s+as\s+/.test(name)) identifiers.add(name);
     }
   }
-  return identifiers.has("observeBackend") && identifiers.has("expectBackendSlices");
+  return identifiers.has("observeBackend")
+    && (identifiers.has("expectBackendSlices") || identifiers.has("waitForBackendSlices"));
 }
 
 function hasBackendObservation(source) {
-  return /\bobserveBackend\s*\(/.test(source) && /\bexpectBackendSlices\s*\(/.test(source);
+  return /\bobserveBackend\s*\(/.test(source)
+    && /\b(?:expect|waitFor)BackendSlices\s*\(/.test(source);
 }
 
 function extractBackendProof(source) {
@@ -431,8 +435,9 @@ function extractBackendProof(source) {
   if (!observation) return null;
   const variable = escapeRegex(observation[1]);
   const assertion = executable.match(new RegExp(
-    `\\bexpectBackendSlices\\s*\\(\\s*${variable}\\s*,\\s*\\[([^\\]]*)\\]\\s*,`
-      + `\\s*\\{\\s*status\\s*:\\s*(["'])(success|error)\\2\\s*,?\\s*\\}\\s*\\)`,
+    `\\b(?:expect|waitFor)BackendSlices\\s*\\(\\s*${variable}\\s*,\\s*\\[([^\\]]*)\\]\\s*,`
+      + `\\s*\\{\\s*status\\s*:\\s*(["'])(success|error)\\2\\s*,?\\s*`
+      + `(?:(?:timeoutMs|intervalMs)\\s*:\\s*\\d+(?:\\.\\d+)?\\s*,?\\s*)*\\}\\s*\\)`,
   ));
   if (!assertion) return null;
   const rawSlices = assertion[1];

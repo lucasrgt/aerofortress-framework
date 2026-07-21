@@ -58,3 +58,10 @@ export function expectBackendSlices(
   slices: readonly string[],
   options: { status: "success" | "error" },
 ): void;
+
+/** Wait for parallel browser requests to produce the expected success or error responses. */
+export function waitForBackendSlices(
+  observation: BackendObservation,
+  slices: readonly string[],
+  options: { status: "success" | "error"; timeoutMs?: number; intervalMs?: number },
+): Promise<void>;

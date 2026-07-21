@@ -9,6 +9,7 @@ describe("frontend SDK package exports", () => {
     expect(backend).toMatchObject({
       createBackendGlobalSetup: expect.any(Function),
       expectBackendSlices: expect.any(Function),
+      waitForBackendSlices: expect.any(Function),
       observeBackend: expect.any(Function),
       probeBackend: expect.any(Function),
     });

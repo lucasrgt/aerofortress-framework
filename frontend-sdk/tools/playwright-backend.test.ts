@@ -4,6 +4,7 @@ import {
   expectBackendSlices,
   observeBackend,
   probeBackend,
+  waitForBackendSlices,
 } from "./playwright-backend.mjs";
 
 const contract = {
@@ -49,6 +50,38 @@ describe("playwright backend proof", () => {
     browser.respond("GET", "http://127.0.0.1:5050/customers/123?expand=contacts", 200);
 
     expect(() => expectBackendSlices(observation, ["GetCustomer"], { status: "success" })).not.toThrow();
+  });
+
+  it("waits for parallel backend responses that settle after the terminal UI", async () => {
+    const browser = fakePage();
+    const observation = await observeBackend(
+      browser.page,
+      contract,
+      { PW_API_URL: "http://127.0.0.1:5050", PW_API_READY: "1" },
+    );
+
+    setTimeout(() => browser.respond("GET", "http://127.0.0.1:5050/customers/123", 200), 5);
+
+    await expect(waitForBackendSlices(
+      observation,
+      ["GetCustomer"],
+      { status: "success", timeoutMs: 100, intervalMs: 1 },
+    )).resolves.toBeUndefined();
+  });
+
+  it("fails a timed-out backend wait with the collected evidence", async () => {
+    const browser = fakePage();
+    const observation = await observeBackend(
+      browser.page,
+      contract,
+      { PW_API_URL: "http://127.0.0.1:5050", PW_API_READY: "1" },
+    );
+
+    await expect(waitForBackendSlices(
+      observation,
+      ["GetCustomer"],
+      { status: "success", timeoutMs: 1, intervalMs: 0 },
+    )).rejects.toThrow("GetCustomer");
   });
 
   it("prefers a static operation over an earlier dynamic route", async () => {
