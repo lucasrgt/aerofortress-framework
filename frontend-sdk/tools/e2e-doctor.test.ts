@@ -365,6 +365,51 @@ describe("checkE2e", () => {
     }
   });
 
+  it("allows a sad business state to prove a successful backend response explicitly", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["ListVisits"]);
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "visits-empty", name: "visits empty state", path: "sad", target: "web",
+        terminal: "no visits", spec: "e2e/visits.spec.ts", case: "shows the empty state",
+        backendSlices: ["ListVisits"], backendContract: "contract/api.json", backendOutcome: "success",
+      }]));
+      writeFileSync(join(dir, "e2e", "visits.spec.ts"), [
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'test("shows the empty state", async ({ page }) => { const backend = await observeBackend(page, "contract/api.json"); await expect(page.getByText("no visits")).toBeVisible(); expectBackendSlices(backend, ["ListVisits"], { status: "success" }); });',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(0);
+      expect(result.depthGaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an unknown backend outcome", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "visits-empty", name: "visits empty state", path: "sad", target: "web",
+        terminal: "no visits", spec: "e2e/visits.spec.ts", backendOutcome: "sometimes",
+      }]));
+      writeFileSync(join(dir, "e2e", "visits.spec.ts"),
+        'test("empty", async ({ page }) => expect(page.getByText("no visits")).toBeVisible());\n');
+
+      const result = checkE2e(dir);
+
+      expect(result.messages.join(" ")).toContain("invalid backendOutcome");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("rejects a direct fetch that bypasses the rendered feature", () => {
     const dir = tmp();
     try {

@@ -638,7 +638,7 @@ E2E is flow-level, but completeness is enforced in **both directions**. Every Vi
 of the product's executable surfaces. Each surface curates its journeys in `e2e/flows.json`, and
 `tools/e2e-doctor.mjs` proves every declared journey is executable. Absence and an empty list are blocking —
 there is no bootstrap-green state. Each entry is
-`{ id, name, features: ["FeatureBasename"], path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendContract? }`:
+`{ id, name, features: ["FeatureBasename"], path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendContract?, backendOutcome? }`:
 
 - **Feature and endpoint coverage** (hard gap): each ViewModel id resolves to subject-bound flows whose
   `features` array contains exactly that one basename; one flow cannot pay multiple ViewModels. Every visible feature
@@ -650,8 +650,11 @@ there is no bootstrap-green state. Each entry is
   and missing happy/sad proofs. ViewModels never use this escape hatch.
   A web flow naming `backendSlices` must identify the checked-in OpenAPI
   file in `backendContract`. Its exact case starts `observeBackend(page, backendContract)` before interaction and
-  calls the canonical `expectBackendSlices` with exactly the manifest names: `status:"success"` for a happy flow,
-  `status:"error"` for a sad flow. These functions come from
+  calls the canonical `expectBackendSlices` with exactly the manifest names. The default is
+  `status:"success"` for a happy flow and `status:"error"` for a sad flow. When a sad product state is a
+  successful response (an empty collection, an absent optional registration, a pending state), declare
+  `backendOutcome:"success"`; the doctor then requires that exact observed outcome instead of encouraging an
+  invented transport failure. These functions come from
   `@aerofortress/frontend-sdk/playwright-backend`; the observation is branded and resolves real page responses to
   OpenAPI `operationId` values. Playwright `globalSetup` calls the package's `probeBackend()` (or
   `createBackendGlobalSetup()`) against `PW_API_URL`, which alone sets `PW_API_READY=1` after a successful HTTP

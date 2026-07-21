@@ -70,7 +70,7 @@ function classifySource(spec, source) {
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
  *   - depthGaps: blocking journey-depth findings (AFFE-JOURNEY-002) — a flow with no `terminal`, or a spec
  *     that never asserts its declared `terminal`.
- * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendContract?, terminal }` where `id` is the stable
+ * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendContract?, backendOutcome?, terminal }` where `id` is the stable
  * ViewModel linkage key, `path` is happy|sad, `spec` is relative to root, and optional `case` names one test in a
  * shared spec. `terminal` is the testID/route the proof asserts after entry.
  * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
@@ -158,6 +158,11 @@ export function checkE2e(root) {
           || flow.backendSlices.some((slice) => typeof slice !== "string" || !/^[A-Za-z_]\w*$/.test(slice))
           || new Set(flow.backendSlices).size !== flow.backendSlices.length)) {
       messages.push(`journey "${name}" has invalid or duplicate backendSlices`);
+      gaps++;
+    }
+    if (flow.backendOutcome !== undefined
+        && flow.backendOutcome !== "success" && flow.backendOutcome !== "error") {
+      messages.push(`journey "${name}" has invalid backendOutcome; expected success or error`);
       gaps++;
     }
     if ((flow.backendSlices?.length ?? 0) > 0
@@ -269,7 +274,7 @@ export function checkE2e(root) {
       }
 
       const proof = extractBackendProof(proofSource);
-      const expectedStatus = flow.path === "happy" ? "success" : "error";
+      const expectedStatus = flow.backendOutcome ?? (flow.path === "happy" ? "success" : "error");
       const expectedSlices = JSON.stringify(flow.backendSlices);
       if (!proof
           || proof.contract !== flow.backendContract
