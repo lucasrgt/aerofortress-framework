@@ -45,9 +45,11 @@ public class GateReportTests
         Assert.False(GateReport.Green(clean, new GateLegs(0, 1)));   // a red leg is never argued away by the matrix
         Assert.False(GateReport.Green(clean, new GateLegs(0, 0, SkippedTests: 1)));
         Assert.False(GateReport.Green(clean, new GateLegs(0, 0,
-            [new FrontendGateLeg("web", FrontendPackageRole.Surface, Tests: 0, Avp: 1, E2eShape: 0, E2e: 0)])));
+            [new FrontendGateLeg("web", FrontendPackageRole.Surface, Tests: 0, Avp: 1, FeatureE2e: 0, E2eShape: 0, E2e: 0)])));
         Assert.True(GateReport.Green(clean, new GateLegs(0, 0,
-            [new FrontendGateLeg("core", FrontendPackageRole.Core, Tests: 0, Avp: 0, E2eShape: null, E2e: null)])));
+            [new FrontendGateLeg("core", FrontendPackageRole.Core, Tests: 0, Avp: 0, FeatureE2e: 0, E2eShape: null, E2e: null)])));
+        Assert.False(GateReport.Green(clean, new GateLegs(0, 0,
+            [new FrontendGateLeg("core", FrontendPackageRole.Core, Tests: 0, Avp: 0, FeatureE2e: 1, E2eShape: null, E2e: null)])));
     }
 
     [Fact]
@@ -56,11 +58,11 @@ public class GateReportTests
         var markdown = GateReport.Markdown(
             SampleMatrix(passing: true),
             new GateLegs(0, 0,
-                [new FrontendGateLeg("web", FrontendPackageRole.Surface, 0, 0, 0, 0)]),
+                [new FrontendGateLeg("web", FrontendPackageRole.Surface, 0, 0, 0, 0, 0)]),
             DateTimeOffset.UnixEpoch);
 
         Assert.Contains("exit codes (`0` = pass)", markdown);
-        Assert.Contains("| Tests exit | AVP exit |", markdown);
+        Assert.Contains("| Tests exit | AVP exit | Feature E2E exit |", markdown);
         Assert.Contains("| web | surface |", markdown);
     }
 

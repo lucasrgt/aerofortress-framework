@@ -861,5 +861,20 @@ ruleTester.run("no-disabled-tests", plugin.rules["no-disabled-tests"], {
   ],
 });
 
+// AFFE035 — a ViewModel must name the real surface flow that covers its visible behavior.
+ruleTester.run("feature-has-e2e-flow", plugin.rules["feature-has-e2e-flow"], {
+  valid: [
+    { filename: "Feature.viewModel.ts", code: `/** @e2e feature-happy */\nexport const useFeature = () => null;` },
+    { filename: "Feature.view.tsx", code: `export const Feature = () => null;` },
+  ],
+  invalid: [
+    {
+      filename: "Feature.viewModel.ts",
+      code: `export const useFeature = () => null;`,
+      errors: [{ messageId: "missing" }],
+    },
+  ],
+});
+
 // eslint-disable-next-line no-console
 console.log("eslint-plugin-aerofortress: all AFFE rule tests passed");

@@ -12,11 +12,14 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 | Unit | `AFFE005` (every ViewModel has a co-located `renderHook` test) | eslint, per-file |
 | Integration | `AFFE006` (every View has a co-located `render()` test) | eslint, per-file |
 | AVP | `AFFE033` (every ViewModel declares `@verify`; the exact co-located `*.assay.test.tsx` registers the matching `@avp` verification) | eslint + `npm run test:avp` |
-| **E2E** | **`e2e-doctor.mjs`** (a curated `e2e/flows.json` + every listed flow has a spec + a runner) | this dir, **per-project** |
+| **E2E** | `AFFE035` + **`feature-e2e-coverage.mjs`** (every ViewModel links a flow; every UI-consumed backend slice is named by that flow) + **`e2e-doctor.mjs`** (every flow has an enabled case, terminal assertion, and runner) | eslint + workspace gate + surface gate |
 
-E2E is flow-level, so it is **not** inferred per component — `checkE2e(root)` enforces a mandatory curated
-checklist: humans declare the product flows in `e2e/flows.json`, the doctor proves each has an enabled spec,
-terminal assertion, and real runner. A missing/empty manifest is red. See the
+E2E remains flow-level, but coverage is now enforced in both directions. Every ViewModel declares one or more
+`@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
+requires each generated slice hook consumed by that ViewModel (or by session/guard infrastructure) to appear in
+the flow's `backendSlices`. A critical consumed slice needs linked `happy` and `sad` flows. `checkE2e(root)` then
+proves every declared flow has an enabled spec/case, terminal assertion, and real runner. A missing/empty manifest
+is red. See the
 Hostpoint dogfood's `scripts/affe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
 
 ## The fullstack loop (journey parity)
@@ -64,7 +67,8 @@ Emits the five co-located files of the canonical unit — `<Feature>.viewModel.t
 The Assay subject is red by design until it mounts the real View and endpoint; the other four files are the
 blessed `sample/items` shape with substitutions, so their structure **passes every AFFE rule and typechecks by construction**
 (`generate.test.ts` writes a unit to disk and lints it with the real rules to prove the emitter and the harness
-agree). Then refine the entity fields, wire the slice in `@/client.gen`, and fill the copy.
+agree). Its generated `@e2e <feature>-happy` is deliberately unresolved until the owning surface adds the real
+flow, spec, and terminal proof. Then refine the entity fields, wire the slice in `@/client.gen`, and fill the copy.
 
 ## Assemble the i18n resource tree
 

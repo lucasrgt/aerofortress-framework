@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// The e2e tier of the frontend doctor (canonical, runner-agnostic + target-aware). E2E is flow-level and
-// feature-grained, so it is NOT enforced per component (that is the integration tier's job, AFFE006). It is enforced
-// at the PROJECT level via a CURATED checklist: a project declares its journeys in `e2e/flows.json`, and the doctor
-// proves every listed journey has an enabled implementation file, a terminal assertion, and a runner for its target.
+// The e2e tier of the frontend doctor (canonical, runner-agnostic + target-aware). A project declares journeys in
+// `e2e/flows.json`, and this doctor proves every listed journey has an enabled implementation file, a terminal
+// assertion, and a runner for its target. `feature-e2e-coverage.mjs` closes the inverse direction: every ViewModel
+// links a flow, and every backend slice consumed by the UI is named by a linked journey.
 // The manifest itself is mandatory: absence and an empty list are coverage gaps, never bootstrap green.
 //
 // SINGLE TIER, by design: being in `flows.json` IS the bar — there are no skipped/ephemeral sub-tiers. Criticality
@@ -68,8 +68,9 @@ export function classifySpec(root, spec) {
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
  *   - depthGaps: blocking journey-depth findings (AFFE-JOURNEY-002) — a flow with no `terminal`, or a spec
  *     that never asserts its declared `terminal`.
- * Each flow: `{ name, area?, target?: "web"|"native", spec, backendJourney?, terminal? }` where spec is a path from
- * root to its impl file and `terminal` is the testID/route the spec must assert to prove the journey reached its end.
+ * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendJourney?, terminal }` where `id` is the stable
+ * ViewModel linkage key, `path` is happy|sad, `spec` is relative to root, and optional `case` names one test in a
+ * shared spec. `terminal` is the testID/route the proof asserts after entry.
  * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
  */
 export function checkE2e(root) {
@@ -123,22 +124,42 @@ export function checkE2e(root) {
     gaps++;
   }
 
+  const ids = new Set();
   const names = new Set();
-  const specs = new Set();
+  const proofs = new Set();
 
   for (const flow of flows) {
     if (!flow || typeof flow !== "object" || Array.isArray(flow)) {
-      messages.push("journey entry must be an object with name, target, spec, and terminal");
+      messages.push("journey entry must be an object with id, name, path, target, spec, and terminal");
       gaps++;
       continue;
     }
     const name = flow.name ?? "(unnamed)";
     const spec = String(flow.spec ?? "");
+    const id = typeof flow.id === "string" ? flow.id.trim() : "";
+    if (!id || !/^[a-z0-9][a-z0-9._-]*$/.test(id) || ids.has(id)) {
+      messages.push(`journey "${name}" has a missing, invalid, or duplicate id`);
+      gaps++;
+    }
+    if (id && /^[a-z0-9][a-z0-9._-]*$/.test(id)) ids.add(id);
     if (typeof flow.name !== "string" || !flow.name.trim() || names.has(flow.name)) {
       messages.push(`journey "${name}" has a missing or duplicate name`);
       gaps++;
     }
     if (typeof flow.name === "string" && flow.name.trim()) names.add(flow.name);
+
+    if (flow.path !== "happy" && flow.path !== "sad") {
+      messages.push(`journey "${name}" must declare path:happy or path:sad`);
+      gaps++;
+    }
+
+    if (flow.backendSlices !== undefined
+        && (!Array.isArray(flow.backendSlices)
+          || flow.backendSlices.some((slice) => typeof slice !== "string" || !/^[A-Za-z_]\w*$/.test(slice))
+          || new Set(flow.backendSlices).size !== flow.backendSlices.length)) {
+      messages.push(`journey "${name}" has invalid or duplicate backendSlices`);
+      gaps++;
+    }
 
     if (flow.target !== "web" && flow.target !== "native") {
       messages.push(`journey "${name}" must declare target:web or target:native`);
@@ -154,16 +175,23 @@ export function checkE2e(root) {
     } catch {
       isFile = false;
     }
-    const proofKey = outside ? spec : specPath;
-    if (spec && specs.has(proofKey)) {
-      messages.push(`journey "${name}" reuses spec ${spec}; each flow needs an explicit proof`);
+    const caseName = typeof flow.case === "string" ? flow.case.trim() : "";
+    const proofKey = `${outside ? spec : specPath}#${caseName}`;
+    if (spec && proofs.has(proofKey)) {
+      messages.push(`journey "${name}" reuses proof ${spec}${caseName ? `#${caseName}` : ""}`);
       gaps++;
     }
-    if (spec) specs.add(proofKey);
+    if (spec) proofs.add(proofKey);
     if (!spec || outside || !isFile) {
       messages.push(`curated journey "${name}" has no spec (${flow.spec ?? "missing"})`);
       gaps++;
       continue;
+    }
+    const specSource = readFileSync(specPath, "utf8");
+    const caseSource = caseName ? testCaseSource(specSource, caseName) : specSource;
+    if (caseName && caseSource === null) {
+      messages.push(`journey "${name}" names case "${caseName}" but ${spec} declares no enabled test with that title`);
+      gaps++;
     }
     if (flow.target === "native" && !hasNative) {
       messages.push(`journey "${name}" is target:native but no native runner (.maestro/ or detox) is configured`);
@@ -198,7 +226,7 @@ export function checkE2e(root) {
           `after entry to prove the journey reaches its end`,
       );
       depthGaps++;
-    } else if (terminal && !assertsTerminal(readFileSync(specPath, "utf8"), terminal)) {
+    } else if (terminal && !assertsTerminal(caseSource ?? specSource, terminal)) {
       messages.push(
         `journey "${name}" never asserts its terminal \`${terminal}\` in ${spec} — the spec may stop at entry ` +
           `instead of proving the journey reaches its end`,
@@ -221,6 +249,24 @@ function hasNonExecutingTest(source) {
   // shape. The chain matcher deliberately crosses parentheses (test.each(...).skip) and members
   // (test.concurrent.skip), but not statement boundaries, so ordinary later calls are not conflated.
   return /\b(?:test|it|describe|context)(?:(?:\s*\.\s*[A-Za-z_$][\w$]*)|(?:\s*\([^;\r\n]*?\)))*\s*\.\s*(?:skip|fixme|todo|skipIf|runIf|only)\s*\(/.test(source);
+}
+
+function testCaseSource(source, title) {
+  const executable = stripComments(source);
+  const prefix = "\\b(?:test|it)(?:(?:\\s*\\.\\s*(?!(?:describe|step)\\b)[A-Za-z_$][\\w$]*)"
+    + "|(?:\\s*\\([^;\\r\\n]*?\\)))*\\s*\\(\\s*";
+  const exact = new RegExp(prefix + "[\"'`]" + escapeRegex(title) + "[\"'`]");
+  const match = exact.exec(executable);
+  if (!match) return null;
+
+  const nextTest = new RegExp(prefix + "[\"'`]", "g");
+  nextTest.lastIndex = match.index + match[0].length;
+  const next = nextTest.exec(executable);
+  return executable.slice(match.index, next?.index ?? executable.length);
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function assertsTerminal(source, terminal) {

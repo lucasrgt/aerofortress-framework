@@ -30,6 +30,15 @@ plugin and the app still builds; you only lose enforcement.
 | `ui-door` | AFFE024 | A `*.view.tsx` renders **no host element** and carries **no `style`/`className`** — everything visual comes from `@/ui` (the app-owned kit, token-typed props). The `data-door` pattern applied to paint; a missing primitive is extended in `ui/`, never inlined. |
 | `scale-only` | AFFE025 | No off-scale spacing/typography literal (`padding: 13`, `fontSize: "13px"`, Tailwind `p-[13px]`) outside `ui/`, the token files, and tests — rhythm comes from the `space`/`text` scales (DESIGN-CONVENTIONS.md). |
 | `semantic-colors` | AFFE026 | No `rgb()/hsl()/oklch()` literal, no CSS named color in a color-ish style key, no value-import of the raw `palette` outside `ui/`, and no Tailwind palette-family utility (`bg-red-500`, `text-blue-600`) in a `className` outside `ui/` — color is a semantic role (`color.*`/theme). Completes `design-tokens` (AFFE012, the hex half). |
+| `query-client-defaults` | AFFE027 | Production QueryClients install the shared success invalidation/feedback and failure feedback defaults. |
+| `no-manual-refetch-ritual` | AFFE028 | A mutation success handler does not duplicate the global invalidation default with a refetch-only ritual. |
+| `refresh-one-door` | AFFE029 | Token refresh is consumed only by the client/session rotation seams, never by a second feature path. |
+| `no-navigation-cast` | AFFE030 | Navigation targets cannot escape typed routes through `as never`/`as any`/`as unknown`. |
+| `submit-invalid-path` | AFFE031 | Form submit wiring carries an invalid callback, so pre-mutation validation failure has a visible path. |
+| `controller-field-state` | AFFE032 | A controlled field reads and surfaces its `fieldState` error. |
+| `verify-has-avp-proof` | AFFE033 | Every ViewModel declares `@verify`; its exact co-located Assay suite carries the matching `@avp` executable proof. |
+| `no-disabled-tests` | AFFE034 | Test/spec files contain no skipped, conditional, todo, or focused declarations. |
+| `feature-has-e2e-flow` | AFFE035 | Every ViewModel declares at least one stable `@e2e <flow-id>`; the workspace doctor resolves it to an executable surface journey. |
 
 ### Routing rules — both routers, one shape
 

@@ -530,8 +530,12 @@ The doctor answers "is the form right?"; the AVP proofs answer "does the behavio
    `[AVP]` verification; any skipped/not-executed result makes the gate red.
 3. **Frontend proof legs, with depth selected by manifest role** — every product `core` runs `npm run test`
    over the non-Assay partition plus direct `assay verify` over `*.assay.test.*`; every executable `frontend`
-   runs those same legs plus the strict `affe-e2e-doctor` and `npm run test:e2e`. A legacy explicit
-   `[harness] frontend` remains an executable surface. The filename partition makes every test execute exactly
+   runs those same legs plus the strict `affe-e2e-doctor` and `npm run test:e2e`. The workspace-level
+   `affe-feature-e2e` leg requires every ViewModel to resolve to one of those surface flows, every backend slice
+   hook consumed by a frontend data door to be named by the linked flow, and happy+sad frontend paths for a
+   UI-consumed critical slice. A backend slice with no frontend consumer remains backend-only. A legacy explicit
+   `[harness] frontend` remains an executable surface. Product `website` declarations are surfaces too; validation
+   without gate discovery is forbidden. The filename partition makes every test execute exactly
    once: AVP is a real gate leg, not a duplicate second Vitest pass. A missing or placeholder script,
    manifest, runner, terminal assertion, seed, or real execution is a failure; there is no ephemeral/skip tier.
 4. **The matrix** — declarations (`*.spec.toml`) × proof sites

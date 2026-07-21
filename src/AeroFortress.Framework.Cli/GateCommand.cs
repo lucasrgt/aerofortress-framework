@@ -32,7 +32,7 @@ internal static class GateCommand
         var skippedTests = verdicts.Count(verdict => verdict.Outcome == "NotExecuted");
         TryDelete(results);
 
-        var frontend = FrontendGate.Run(DoctorCommand.FrontendTargets(root));
+        var frontend = FrontendGate.Run(root, DoctorCommand.FrontendTargets(root));
 
         var matrix = GateMatrix.Build(
             GateScan.DiscoverManifests(root),

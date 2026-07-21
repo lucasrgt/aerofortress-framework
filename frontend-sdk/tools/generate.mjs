@@ -62,7 +62,10 @@ export interface ${Plural}Model {
   state: { ${collection}: AsyncState<${Entity}[]> };
 }
 
-/** @verify count-matches-source */
+/**
+ * @verify count-matches-source
+ * @e2e ${lower}-happy
+ */
 export function use${Plural}Model(): ${Plural}Model {
   const query = useList${Plural}();
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { checkE2e, classifySpec } from "./e2e-doctor.mjs";
 
@@ -27,7 +27,7 @@ describe("checkE2e", () => {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
-        { name: "welcome", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
+        { id: "welcome", name: "welcome", path: "happy", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
       ]));
       writeFileSync(join(dir, "e2e", "welcome.spec.ts"), 'await expect(page).toHaveURL("/home");\n');
       const r = checkE2e(dir);
@@ -45,7 +45,7 @@ describe("checkE2e", () => {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
-        { name: "checkout", target: "web", terminal: "/done", spec: "e2e/checkout.spec.ts" },
+        { id: "checkout", name: "checkout", path: "happy", target: "web", terminal: "/done", spec: "e2e/checkout.spec.ts" },
       ]));
       const r = checkE2e(dir);
       expect(r.gaps).toBeGreaterThan(0);
@@ -60,7 +60,7 @@ describe("checkE2e", () => {
     try {
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
-        { name: "welcome", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
+        { id: "welcome", name: "welcome", path: "happy", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
       ]));
       writeFileSync(join(dir, "e2e", "welcome.spec.ts"), 'await expect(page).toHaveURL("/home");\n');
       const r = checkE2e(dir);
@@ -77,7 +77,7 @@ describe("checkE2e", () => {
       mkdirSync(join(dir, ".maestro"));
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
-        { name: "login", target: "native", terminal: "Home", spec: "e2e/login.yaml" },
+        { id: "login", name: "login", path: "happy", target: "native", terminal: "Home", spec: "e2e/login.yaml" },
       ]));
       writeFileSync(join(dir, "e2e", "login.yaml"), "appId: com.example\n- launchApp\n- assertVisible: Home\n");
       const r = checkE2e(dir);
@@ -94,7 +94,7 @@ describe("checkE2e", () => {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n"); // web runner only
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
-        { name: "cold start", target: "native", terminal: "Home", spec: "e2e/cold.yaml" },
+        { id: "cold-start", name: "cold start", path: "happy", target: "native", terminal: "Home", spec: "e2e/cold.yaml" },
       ]));
       writeFileSync(join(dir, "e2e", "cold.yaml"), "appId: com.example\n- launchApp\n- assertVisible: Home\n");
       const r = checkE2e(dir);
@@ -114,7 +114,7 @@ describe("checkE2e", () => {
       mkdirSync(join(dir, "e2e"));
       writeFileSync(
         join(dir, "e2e", "flows.json"),
-        JSON.stringify([{ name: "onboarding", target: "web", backendJourney: "OnboardingFlow", spec: "e2e/onboarding.spec.ts" }]),
+        JSON.stringify([{ id: "onboarding", name: "onboarding", path: "happy", target: "web", backendJourney: "OnboardingFlow", spec: "e2e/onboarding.spec.ts" }]),
       );
       writeFileSync(join(dir, "e2e", "onboarding.spec.ts"), 'await expect(page).toHaveURL(/\\/onboarding/);\n');
       const r = checkE2e(dir);
@@ -134,7 +134,7 @@ describe("checkE2e", () => {
       writeFileSync(
         join(dir, "e2e", "flows.json"),
         JSON.stringify([
-          { name: "onboarding", target: "web", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
+          { id: "onboarding", name: "onboarding", path: "happy", target: "web", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
         ]),
       );
       // The entry-only spec — asserts the wizard URL and stops; never references the /dashboard terminal.
@@ -156,7 +156,7 @@ describe("checkE2e", () => {
       writeFileSync(
         join(dir, "e2e", "flows.json"),
         JSON.stringify([
-          { name: "onboarding", target: "web", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
+          { id: "onboarding", name: "onboarding", path: "happy", target: "web", backendJourney: "OnboardingFlow", terminal: "/dashboard", spec: "e2e/onboarding.spec.ts" },
         ]),
       );
       writeFileSync(
@@ -166,6 +166,45 @@ describe("checkE2e", () => {
       const r = checkE2e(dir);
       expect(r.gaps).toBe(0);
       expect(r.depthGaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("allows one spec to prove distinct named flow cases and rejects a missing case", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        {
+          id: "login-happy", name: "login succeeds", path: "happy", target: "web",
+          terminal: "/home", spec: "e2e/login.spec.ts", case: "signs in",
+        },
+        {
+          id: "login-sad", name: "login rejects invalid credentials", path: "sad", target: "web",
+          terminal: "invalid credentials", spec: "e2e/login.spec.ts", case: "rejects invalid credentials",
+        },
+      ]));
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'test("signs in", async ({ page }) => expect(page).toHaveURL("/home"));',
+        'test("rejects invalid credentials", async ({ page }) => expect(page.getByText("invalid credentials")).toBeVisible());',
+      ].join("\n"));
+      expect(checkE2e(dir).gaps).toBe(0);
+
+      const malformed = JSON.parse(readFileSync(join(dir, "e2e", "flows.json"), "utf8"));
+      malformed[1].case = "not implemented";
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify(malformed));
+      const result = checkE2e(dir);
+      expect(result.gaps).toBe(1);
+      expect(result.messages.join(" ")).toContain("not implemented");
+
+      malformed[1].case = "rejects invalid credentials";
+      malformed[0].terminal = "invalid credentials";
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify(malformed));
+      const crossed = checkE2e(dir);
+      expect(crossed.depthGaps).toBe(1);
+      expect(crossed.messages.join(" ")).toContain("login succeeds");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -204,8 +243,8 @@ describe("checkE2e", () => {
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
-        { name: "disabled", target: "web", terminal: "/done", spec: "e2e/disabled.spec.ts" },
-        { name: "pending", target: "web", terminal: "/done", spec: "e2e/pending.spec.ts" },
+        { id: "disabled", name: "disabled", path: "happy", target: "web", terminal: "/done", spec: "e2e/disabled.spec.ts" },
+        { id: "pending", name: "pending", path: "happy", target: "web", terminal: "/done", spec: "e2e/pending.spec.ts" },
       ]));
       writeFileSync(join(dir, "e2e", "disabled.spec.ts"), 'test.skip("later", async () => expect(page).toHaveURL("/done"));\n');
       writeFileSync(join(dir, "e2e", "pending.spec.ts"), 'requireSeed(); await expect(page).toHaveURL("/done");\n');
@@ -228,7 +267,7 @@ describe("checkE2e", () => {
       mkdirSync(join(dir, "e2e", "not-a-spec"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
         null,
-        { name: "directory", target: "web", terminal: "/done", spec: "e2e/not-a-spec" },
+        { id: "directory", name: "directory", path: "happy", target: "web", terminal: "/done", spec: "e2e/not-a-spec" },
       ]));
 
       const result = checkE2e(dir);

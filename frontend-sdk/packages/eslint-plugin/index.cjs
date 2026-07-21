@@ -1818,10 +1818,36 @@ const rules = {
       };
     },
   },
+
+  // AFFE035 — every ViewModel is a user-visible feature boundary and therefore names the executable journey(s)
+  // that cover it. Resolution to a real surface manifest is workspace-level and belongs to affe-feature-e2e;
+  // this local rule makes an unlinked feature red at authoring time instead of waiting for the release gate.
+  "feature-has-e2e-flow": {
+    meta: {
+      type: "problem",
+      docs: { description: "Every ViewModel declares at least one stable `@e2e <flow-id>` journey obligation." },
+      messages: {
+        missing:
+          "AFFE035: this ViewModel declares no `@e2e <flow-id>` — link every visible feature to an executable surface journey.",
+      },
+    },
+    create(context) {
+      const f = context.filename.replace(/\\/g, "/");
+      if (!isViewModel(f)) return {};
+      return {
+        "Program:exit"(node) {
+          const sourceCode = context.sourceCode ?? context.getSourceCode();
+          const linked = sourceCode.getAllComments()
+            .some((comment) => /@e2e\s+[a-z0-9][a-z0-9._-]*\b/i.test(comment.value));
+          if (!linked) context.report({ node, messageId: "missing" });
+        },
+      };
+    },
+  },
 };
 
 const plugin = {
-  meta: { name: "eslint-plugin-aerofortress", version: "0.12.1" },
+  meta: { name: "eslint-plugin-aerofortress", version: "0.12.2" },
   rules,
   configs: {},
 };

@@ -40,6 +40,7 @@ const lintConfig = [
       "aerofortress/scale-only": "error",
       "aerofortress/semantic-colors": "error",
       "aerofortress/verify-has-avp-proof": "error",
+      "aerofortress/feature-has-e2e-flow": "error",
     },
   },
 ];
@@ -67,6 +68,7 @@ describe("renderFeature", () => {
     expect(files["Bookings.view.tsx"]).toContain("<Resource");
     expect(files["Bookings.test.tsx"]).toContain("renderHook");
     expect(vm).toContain("@verify count-matches-source");
+    expect(vm).toContain("@e2e bookings-happy");
     expect(files["Bookings.test.tsx"]).not.toContain("@avp count-matches-source");
     expect(files["Bookings.assay.test.tsx"]).toContain("@avp count-matches-source");
     expect(files["Bookings.assay.test.tsx"]).toContain("defineVerification(dataHonesty");

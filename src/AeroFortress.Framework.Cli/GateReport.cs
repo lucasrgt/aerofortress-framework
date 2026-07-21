@@ -7,7 +7,7 @@ namespace AeroFortress.Framework.Cli;
 /// <summary>The deterministic legs' exit codes, carried into the artifacts so a report is self-contained.</summary>
 /// <param name="Doctor">The doctor's exit code (manifest + sync + build/AF* + frontend AFFE* legs).</param>
 /// <param name="Tests">The proof run's exit code (<c>dotnet test</c> over the workspace).</param>
-/// <param name="Frontends">Every frontend client's unit, AVP, E2E-shape and real-E2E outcomes.</param>
+/// <param name="Frontends">Every frontend client's unit, AVP, feature-E2E, E2E-shape and real-E2E outcomes.</param>
 /// <param name="SkippedTests">Tests reported as not executed by the .NET runner.</param>
 internal sealed record GateLegs(
     int Doctor, int Tests, IReadOnlyList<FrontendGateLeg>? Frontends = null, int SkippedTests = 0)
@@ -60,7 +60,7 @@ internal static class GateReport
             writer.WriteLine($"  malformed: {broken.Path} — {broken.Error}");
         foreach (var frontend in legs.FrontendRuns)
             writer.WriteLine($"  frontend {frontend.Client} ({Role(frontend)}) exits: tests={frontend.Tests} "
-                           + $"avp={frontend.Avp} e2e-shape={Exit(frontend.E2eShape)} "
+                           + $"avp={frontend.Avp} feature-e2e={frontend.FeatureE2e} e2e-shape={Exit(frontend.E2eShape)} "
                            + $"e2e={Exit(frontend.E2e)} (0 = pass)");
         if (legs.SkippedTests > 0)
             writer.WriteLine($"  skipped: {legs.SkippedTests} .NET test(s) did not execute");
@@ -87,11 +87,11 @@ internal static class GateReport
             md.AppendLine();
             md.AppendLine("Frontend leg exit codes (`0` = pass):");
             md.AppendLine();
-            md.AppendLine("| Frontend | Role | Tests exit | AVP exit | E2E shape exit | E2E run exit |");
-            md.AppendLine("|---|---|---:|---:|---:|---:|");
+            md.AppendLine("| Frontend | Role | Tests exit | AVP exit | Feature E2E exit | E2E shape exit | E2E run exit |");
+            md.AppendLine("|---|---|---:|---:|---:|---:|---:|");
             foreach (var frontend in legs.FrontendRuns)
                 md.AppendLine(CultureInfo.InvariantCulture,
-                    $"| {frontend.Client} | {Role(frontend)} | {frontend.Tests} | {frontend.Avp} | "
+                    $"| {frontend.Client} | {Role(frontend)} | {frontend.Tests} | {frontend.Avp} | {frontend.FeatureE2e} | "
                   + $"{Exit(frontend.E2eShape)} | {Exit(frontend.E2e)} |");
         }
 

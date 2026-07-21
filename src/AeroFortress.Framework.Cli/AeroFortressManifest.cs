@@ -88,8 +88,9 @@ internal static class AeroFortressManifest
 
     /// <summary>
     /// Discover the package roots the frontend harness must gate. An explicit <c>[harness] frontend</c> is the
-    /// legacy surface coordinator and wins; otherwise product <c>frontend</c>/<c>core</c> paths resolve to their
-    /// owning package while retaining their proof depth. A core runs tests + Assay; a surface additionally runs E2E.
+    /// legacy surface coordinator and wins; otherwise product <c>frontend</c>/<c>website</c>/<c>core</c> paths
+    /// resolve to their owning package while retaining their proof depth. A core runs tests + Assay; either
+    /// executable surface kind additionally runs E2E.
     /// The legacy <c>clients/*</c> scan remains only as a compatibility fallback for manifests that predate those
     /// declarations, so an unrelated package cannot silently join or an <c>apps/*</c> package silently disappear.
     /// </summary>
@@ -107,14 +108,14 @@ internal static class AeroFortressManifest
 
             var declared = Regex.Matches(
                     text,
-                    @"^\s*(frontend|core)\s*=\s*""([^""]+)""",
+                    @"^\s*(frontend|website|core)\s*=\s*""([^""]+)""",
                     RegexOptions.Multiline)
                 .Select(match => new
                 {
                     Path = OwningPackage(root, match.Groups[2].Value),
-                    Role = match.Groups[1].Value == "frontend"
-                        ? FrontendPackageRole.Surface
-                        : FrontendPackageRole.Core,
+                    Role = match.Groups[1].Value == "core"
+                        ? FrontendPackageRole.Core
+                        : FrontendPackageRole.Surface,
                 })
                 .Where(package => package.Path is not null)
                 .GroupBy(package => package.Path!, StringComparer.OrdinalIgnoreCase)

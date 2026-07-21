@@ -23,15 +23,24 @@ Every feature carries executable evidence, regardless of criticality:
 3. Every frontend ViewModel declares at least one `@verify` obligation. Its exact co-located
    `<Feature>.assay.test.tsx` carries `@avp <criterion>` and an executable `defineVerification(...)` (`AFFE033`);
    the `.test` segment is part of the convention because the host Vitest runner must discover the proof.
-4. Disabled, conditional, or focused tests are errors (`AF0032`, `AFFE034`), and the gate rejects runtime `NotExecuted` results.
-5. `af gate` always runs backend tests plus every manifest-selected frontend package's unit/integration and
+4. Every ViewModel also declares at least one `@e2e <flow-id>` (`AFFE035`). The workspace feature-E2E doctor
+   resolves that id against an executable surface's `e2e/flows.json`. Every backend slice hook consumed by the
+   ViewModel or by frontend session/guard infrastructure is named in a linked flow's `backendSlices`; therefore a
+   backend-only endpoint owes backend evidence, while the moment a frontend data door consumes it, a real surface
+   journey becomes mandatory.
+5. A UI-consumed `[Critical]` slice is named by both a `path: "happy"` and a `path: "sad"` frontend flow. This is
+   additional to its backend happy/sad `[Journey]` proofs, not a substitute for them.
+6. Disabled, conditional, or focused tests are errors (`AF0032`, `AFFE034`), and the gate rejects runtime `NotExecuted` results.
+7. `af gate` always runs backend tests plus every manifest-selected frontend package's unit/integration and
    direct Assay/AVP proofs. Product `frontend` surfaces additionally owe E2E-shape and real E2E scripts; product
-   `core` packages do not own browser/device journeys. Missing/placeholder scripts are contract failures.
+   `core` packages link their obligations to the union of those surfaces instead of pretending to own a browser.
+   Missing/placeholder scripts are contract failures.
    There is no `[Ephemeral]` tier. Runtime is managed by ordinary CI parallelism and
    sharding, never by silently removing proof from the release gate.
 
 `[Critical]` keeps its useful, narrower meaning: failure can cost money or trust. It adds happy and sad
-end-to-end journeys through `AF0008`; it never decides whether the feature is tested at all.
+end-to-end journeys through `AF0008` on the backend and through linked `path` entries when visible on a frontend;
+it never decides whether the feature is tested at all.
 
 ## Consequences
 

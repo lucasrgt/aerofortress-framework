@@ -613,6 +613,7 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `AFFE032` | **Controller surfaces its fieldState** — a `<Controller>` whose inline `render` never reads `fieldState` (destructured or accessed) leaves that field's validation error with no surface; pass `error={fieldState.error?.message}` to the field component. Near-zero false positives (`error` on an unvalidated field is inert); a deliberately surface-less control eslint-disables with its justification. Warn-tier, promoted together with `AFFE031` — the pair makes "a validation error always shows" hold by construction | **shipped** | hostpoint: the Description input destructured only `{ field }` — its validation failure had no surface at all (same incident as AFFE031) |
 | `AFFE033` | **Every feature declares and executes AVP** — every `*.viewModel.ts` declares at least one JSDoc `@verify <criterion-id>`. A View/ViewModel obligation is satisfied only by its exact co-located `<Feature>.assay.test.tsx` carrying `@avp <criterion-id>` and registering `defineVerification(...)`; the `.test` segment is mandatory so Vitest discovers it. A comment in `<Feature>.test.tsx` or another feature's assay cannot pay the debt. Direct `assay verify` supplies the gate verdict. Error-tier | **shipped** | AVP existed but was optional and a plain/non-discoverable file could impersonate proof; co-location now binds an executable assay to its subject |
 | `AFFE034` | **Every test must execute** — nested `.skip`, `.fixme`, `.todo`, `.skipIf`, `.runIf`, `.only`, and `x*`/`f*` test aliases in `*.test.*` or `*.spec.*` are errors (including `test.each(...).skip` and `test.concurrent.only`). A runner's zero exit while tests were skipped or excluded is not evidence | **shipped** | skip/focus syntax made incomplete frontend and Playwright suites look green |
+| `AFFE035` | **Every visible feature links an E2E flow** — each `*.viewModel.ts` declares one or more JSDoc `@e2e <flow-id>` obligations. The workspace coverage doctor resolves each id against a surface manifest, and requires every backend slice hook consumed by that ViewModel to be named in one of those linked flows. The lint rule closes omission locally; the aggregate doctor closes resolution and backend linkage | **shipped** | a curated manifest proved only declared flows, so unlisted features could ship with no browser journey |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
@@ -634,13 +635,24 @@ after.
 
 ## E2E journeys — `flows.json` + depth
 
-E2E is flow-level, so it is enforced at the **project** level, not per component: a project curates
-its journeys in `e2e/flows.json` and `tools/e2e-doctor.mjs` proves the list is covered. Absence and an
-empty list are blocking — there is no bootstrap-green state. Each entry is
-`{ name, target: "web"|"native", spec, terminal, backendJourney? }`:
+E2E is flow-level, but completeness is enforced in **both directions**. Every ViewModel declares
+`@e2e <flow-id>` (`AFFE035`); `tools/feature-e2e-coverage.mjs` resolves those obligations against the union
+of the product's executable surfaces. Each surface curates its journeys in `e2e/flows.json`, and
+`tools/e2e-doctor.mjs` proves every declared journey is executable. Absence and an empty list are blocking —
+there is no bootstrap-green state. Each entry is
+`{ id, name, path: "happy"|"sad", target: "web"|"native", spec, case?, terminal, backendSlices?, backendJourney? }`:
 
+- **Feature and endpoint coverage** (hard gap): each ViewModel id resolves to a flow. Every backend `use<Slice>`
+  hook consumed by that ViewModel must be named in a linked flow's `backendSlices`; the same applies to generated
+  hooks consumed by the blessed session/guard data doors. A slice with no frontend consumer remains backend-only.
+  Once the UI consumes it, the linked executable journey is mandatory. A shared `core` resolves against all
+  product surfaces rather than owning a fake browser.
+- **Critical frontend depth** (hard gap): for every UI-consumed `[Critical]` slice, linked flows naming that
+  slice collectively include both `path: "happy"` and `path: "sad"`. The backend still owes its own happy/sad
+  `[Journey]` pair; these frontend proofs cover the visible seam as well.
 - **Existence** (hard `gaps`): the `spec` file exists and a runner for its `target` is configured
-  (Playwright for web, Maestro/Detox for native).
+  (Playwright for web, Maestro/Detox for native). Multiple flow proofs may share a spec only when each names a
+  distinct enabled `case` title, preventing one generic file from impersonating several journeys.
 - **Set parity** (`tools/journey-parity.mjs`, AFFE-JOURNEY): a `backendJourney` (the
   `Journeys/<key>.Tests.cs` twin) links the flow to its backend journey, checked both directions — so
   no critical journey is half-built (tested on the back but never end-to-end on the front, or vice-versa).
@@ -656,8 +668,8 @@ empty list are blocking — there is no bootstrap-green state. Each entry is
   [`docs/decisions/aerofortress-framework-journey-depth-enforcement.md`](decisions/aerofortress-framework-journey-depth-enforcement.md).
 - **Execution** — `af gate` runs the non-Assay `npm run test` partition and direct `assay verify` over
   `*.assay.test.*` for every manifest-declared product `core` and `frontend`. Executable `frontend` surfaces
-  additionally run the E2E doctor and `npm run test:e2e`; a shared `core` does not pretend to own a browser
-  journey. This partitions the Vitest inventory by filename, so every proof executes exactly once.
+  additionally run the E2E doctor and `npm run test:e2e`; the aggregate feature-E2E leg covers both core and
+  surfaces. This partitions the Vitest inventory by filename, so every proof executes exactly once.
   Missing or placeholder scripts,
   seed-pending specs, disabled/focused specs, and tests that never launch the real runner are failures. All release proofs run;
   CI may parallelize or shard them, but cannot silently omit them.
@@ -744,10 +756,9 @@ client` (stock orval, wrapped) with the shipped config + mutator. One blessed fr
   seam, and bolting one on (babel `experimentalDecorators`, wrapper indirection) *adds* LLM decision
   space — the opposite of the goal. Symmetry of **concept** (the slice), not of **mechanism**: on the
   front the **folder/file convention is the annotation**, discovered structurally
-  (`features/<x>/<X>.view.tsx`), exactly as `[Slice]` is on the back. When `@Critical`/`@Journey`
-  earn their place (a concrete multi-screen flow needing flow-level coverage), they arrive as a plain
-  `export const meta = { critical, journey } satisfies FeatureMeta` the doctor reads — never a
-  decorator. Deferred until a real journey lands (YAGNI).
+  (`features/<x>/<X>.view.tsx`), exactly as `[Slice]` is on the back. Traceability uses ordinary erased JSDoc
+  (`@e2e <flow-id>`) plus plain JSON flow metadata; criticality remains single-source on the C# slice and is
+  projected by the workspace doctor. No frontend decorator, runtime wrapper, or second criticality flag exists.
 - **No multi-app sprawl.** One frontend shape, enforced — sprawl was aerocoding's *N* apps, not
   one blessed convention.
 - **No frontend in core.** The harness ships as a separate, optional, doctor-removable package —

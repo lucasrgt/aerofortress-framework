@@ -111,6 +111,34 @@ public class DoctorCommandTests
     }
 
     [Fact]
+    public void Product_websites_are_executable_surfaces_not_validation_only_metadata()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "af-doctor-website-" + Guid.NewGuid().ToString("N"));
+        var website = Path.Combine(root, "clients", "website");
+        Directory.CreateDirectory(website);
+        File.WriteAllText(Path.Combine(website, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "App"
+
+            [products.app]
+            website = "clients/website"
+            """);
+
+        try
+        {
+            var target = Assert.Single(DoctorCommand.FrontendTargets(root));
+
+            Assert.Equal(website, target.Path);
+            Assert.Equal(FrontendPackageRole.Surface, target.Role);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void A_package_declared_as_both_core_and_frontend_owes_surface_depth_once()
     {
         var root = Path.Combine(Path.GetTempPath(), "af-doctor-role-merge-" + Guid.NewGuid().ToString("N"));
