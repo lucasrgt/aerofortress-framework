@@ -25,6 +25,19 @@ describe("checkEndpointCoverage", () => {
     expect(r.messages).toEqual([]);
   });
 
+  it("counts wiring across several frontend surfaces as one product coverage set", () => {
+    const consumerApp = "const account = useMe();";
+    const operatorApp = "const queue = useListMunicipalities();";
+    const partnerApp = "const visits = useListMunicipalityVisits();";
+    const r = checkEndpointCoverage(
+      ["useMe", "useListMunicipalities", "useListMunicipalityVisits"],
+      [consumerApp, operatorApp, partnerApp].join("\n"),
+    );
+
+    expect(r.wired).toBe(3);
+    expect(r.loose).toEqual([]);
+  });
+
   it("flags a loose endpoint (a hook no ViewModel references) as a warning", () => {
     const r = checkEndpointCoverage(["useA", "useB"], "const a = useA();");
     expect(r.wired).toBe(1);

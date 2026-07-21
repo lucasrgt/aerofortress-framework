@@ -60,13 +60,14 @@ function walk(dir, pred) {
   return out;
 }
 
-// CLI: node tools/endpoint-coverage.mjs <client.gen file> <srcDir>
-// Pass the source ROOT (not only features/): the scan collects every data door under it — the ViewModels plus
-// the lib/session|guards infra seams — so legally-consumed session hooks never pollute the loose list.
+// CLI: node tools/endpoint-coverage.mjs <client.gen file> <srcDir> [moreSrcDirs...]
+// Pass every source ROOT served by the generated client (not only features/): the scan unions every surface's data
+// doors — the ViewModels plus the lib/session|guards infra seams — so multi-app products and legally-consumed
+// session hooks do not pollute the loose list.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const [, , clientFile, srcDir] = process.argv;
-  if (!clientFile || !srcDir) {
-    console.error("usage: node tools/endpoint-coverage.mjs <client.gen file> <srcDir>");
+  const [, , clientFile, ...srcDirs] = process.argv;
+  if (!clientFile || srcDirs.length === 0) {
+    console.error("usage: node tools/endpoint-coverage.mjs <client.gen file> <srcDir> [moreSrcDirs...]");
     process.exit(2);
   }
   if (!existsSync(clientFile)) {
@@ -74,7 +75,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(0);
   }
   const hooks = extractHooks(readFileSync(clientFile, "utf8"));
-  const wiredText = walk(srcDir, isDataDoor)
+  const wiredText = srcDirs
+    .flatMap((srcDir) => walk(srcDir, isDataDoor))
     .map((p) => readFileSync(p, "utf8"))
     .join("\n");
   const r = checkEndpointCoverage(hooks, wiredText);

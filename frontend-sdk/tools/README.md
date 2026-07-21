@@ -28,6 +28,13 @@ front flow pointing at a journey the back lacks). The *endpoint* grain is alread
 can't call a missing endpoint) and **AFFE008** for back→front (every endpoint is consumed by a ViewModel). So:
 endpoints by type + coverage, journeys by parity — the same critical path proven on both sides.
 
+When those endpoints are shared by multiple frontend surfaces, endpoint coverage also consumes the union of their
+source roots:
+
+```
+affe-endpoint-coverage app-core/src/client.gen/api.ts app-core/src operator/src partner/src
+```
+
 When one backend serves multiple executable surfaces, pass every independently-gated manifest; parity is computed
 over their union without pretending operator or partner journeys belong to the consumer app:
 
