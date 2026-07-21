@@ -645,6 +645,9 @@ there is no bootstrap-green state. Each entry is
   has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>` hook consumed by the UI must be named in
   at least one subject flow belonging to one of the ViewModels that actually imports it; a shared query is not
   re-proved by every importer. Generated client calls in shared infrastructure retain happy and sad flow evidence.
+  If infrastructure must make a literal raw HTTP call, it declares the exact seam beside it as
+  `@backendSlice SliceName METHOD /path`; the workspace doctor rejects undeclared calls, stale/unknown declarations,
+  and missing happy/sad proofs. ViewModels never use this escape hatch.
   A web flow naming `backendSlices` must identify the checked-in OpenAPI
   file in `backendContract`. Its exact case starts `observeBackend(page, backendContract)` before interaction and
   calls the canonical `expectBackendSlices` with exactly the manifest names: `status:"success"` for a happy flow,

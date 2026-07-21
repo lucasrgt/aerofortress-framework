@@ -50,6 +50,7 @@ shape is wrong; fix the shape.
   `*.assay.test.*` using `defineVerification(...)`.
 - AFFE035/AFFE-JOURNEY: bind every ViewModel to distinct happy/sad `flows.json` entries. Every UI-consumed hook
   appears in at least one flow owned by one of its actual consumer features; shared hooks are proved once.
+  Literal raw infrastructure calls declare `@backendSlice Slice METHOD /path` and retain happy+sad proofs.
   Backend-bound web cases observe page responses against their checked-in OpenAPI contract, assert the exact slice
   ledger, and do not intercept or call the API directly.
 - AFFE001/002: move data access from View into the ViewModel; only VMs import client.gen.

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   checkFeatureE2e,
+  directBackendCalls,
+  extractBackendSliceObligations,
   extractE2eObligations,
   extractSlices,
   sliceHooks,
@@ -40,6 +42,18 @@ describe("feature E2E coverage", () => {
       'import { usePing } from "@/client.gen/api";',
     ].join("\n"), ["Login", "Pay"]))
       .toEqual([]);
+  });
+
+  it("discovers literal raw infrastructure calls and their explicit slice identity", () => {
+    const source = [
+      "/** @backendSlice Refresh POST /account/refresh */",
+      'client.post<{ accessToken: string }>("/account/refresh", {});',
+    ].join("\n");
+
+    expect(directBackendCalls(source)).toEqual([{ method: "POST", path: "/account/refresh" }]);
+    expect(extractBackendSliceObligations(source)).toEqual([{
+      slice: "Refresh", method: "POST", path: "/account/refresh",
+    }]);
   });
 
   it("requires every ViewModel to link an existing flow", () => {
@@ -177,5 +191,31 @@ describe("feature E2E coverage", () => {
       { id: "refresh-sad", path: "sad", backendSlices: ["RefreshSession"] },
     ], ["RefreshSession"], infrastructure);
     expect(complete.gaps).toBe(0);
+  });
+
+  it("requires raw infrastructure calls to declare and prove their backend slice", () => {
+    const missingDeclaration = checkFeatureE2e([], [], ["Refresh"], [{
+      path: "src/lib/client.ts",
+      source: 'client.post("/account/refresh", {});',
+    }]);
+    expect(missingDeclaration.gaps).toBe(1);
+    expect(missingDeclaration.messages.join(" ")).toContain("@backendSlice");
+
+    const source = [
+      "/** @backendSlice Refresh POST /account/refresh */",
+      'client.post("/account/refresh", {});',
+    ].join("\n");
+    const covered = checkFeatureE2e([], [
+      { id: "refresh-happy", path: "happy", backendSlices: ["Refresh"] },
+      { id: "refresh-sad", path: "sad", backendSlices: ["Refresh"] },
+    ], ["Refresh"], [{ path: "src/lib/client.ts", source }]);
+    expect(covered.gaps).toBe(0);
+
+    const stale = checkFeatureE2e([], [], ["Refresh"], [{
+      path: "src/lib/client.ts",
+      source: "/** @backendSlice Refresh POST /account/refresh */",
+    }]);
+    expect(stale.gaps).toBeGreaterThan(0);
+    expect(stale.messages.join(" ")).toContain("no matching raw");
   });
 });

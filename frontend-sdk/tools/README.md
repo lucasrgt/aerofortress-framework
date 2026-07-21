@@ -18,6 +18,9 @@ E2E remains flow-level, but coverage is now enforced in both directions. Every V
 `@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces. Every
 UI-consumed slice hook must appear in at least one subject flow belonging to one of its actual consumer features;
 shared queries are proved once, not once per importer. Session/guard infrastructure retains happy+sad evidence.
+An unavoidable literal raw call in infrastructure declares its identity beside the call as
+`@backendSlice Refresh POST /account/refresh`; missing, stale, or unknown declarations are gaps, and the declared
+slice also owes happy+sad real-browser evidence. ViewModels continue to use generated hooks exclusively.
 Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
 `happy` and `sad` flows. A web flow naming backend slices declares its checked-in OpenAPI file as
 `backendContract`, then its exact case collects page responses with `observeBackend()` and closes the ledger with

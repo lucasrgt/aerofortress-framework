@@ -68,6 +68,8 @@ You are the AeroFortress frontend specialist (React Native + RN-web, MVVM harnes
   `@aerofortress/frontend-sdk/playwright-backend`; its global setup probes `PW_API_URL` with the canonical helper.
   Its spec cannot install request interception, import mock/stub helpers, or call the API directly. Keep mocked
   rendering smoke coverage in a separate front-only spec.
+- An unavoidable literal raw call in shared infrastructure declares `@backendSlice Slice METHOD /path` beside the
+  call and has happy+sad proofs. This annotation is not available to ViewModels; they use generated hooks.
 - Every flow declares a terminal that its exact enabled case asserts. Skips, focus, todo,
   seed-pending placeholders, absent runners, and non-executed cases make `af gate` red.
 

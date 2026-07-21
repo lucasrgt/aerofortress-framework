@@ -72,6 +72,25 @@ export function sliceHooks(source, slices) {
   }).sort();
 }
 
+/** Literal raw HTTP calls that bypass the generated client inside an infrastructure seam. */
+export function directBackendCalls(source) {
+  const calls = [];
+  const memberCalls = source.matchAll(
+    /\.\s*(delete|get|head|options|patch|post|put)\s*(?:<[^;\r\n]*?>)?\s*\(\s*(["'])(\/[^"']*)\2/g,
+  );
+  for (const match of memberCalls) calls.push({ method: match[1].toUpperCase(), path: match[3] });
+  const fetchCalls = source.matchAll(/\bfetch\s*\(\s*(["'])(\/[^"']*)\1/g);
+  for (const match of fetchCalls) calls.push({ method: "GET", path: match[2] });
+  return [...new Map(calls.map((call) => [`${call.method} ${call.path}`, call])).values()];
+}
+
+/** Explicit slice identity for an unavoidable raw infrastructure call: `@backendSlice Refresh POST /refresh`. */
+export function extractBackendSliceObligations(source) {
+  return [...source.matchAll(
+    /@backendSlice\s+([A-Za-z_]\w*)\s+(DELETE|GET|HEAD|OPTIONS|PATCH|POST|PUT)\s+(\/\S+)/g,
+  )].map((match) => ({ slice: match[1], method: match[2], path: match[3] }));
+}
+
 /**
  * Check the complete feature -> flow mapping.
  * @param {{ path: string, source: string }[]} viewModels
@@ -174,7 +193,34 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
   }
 
   for (const dataDoor of infrastructure) {
-    for (const hook of sliceHooks(dataDoor.source, slices)) {
+    const calls = directBackendCalls(dataDoor.source);
+    const declarations = extractBackendSliceObligations(dataDoor.source);
+    for (const call of calls) {
+      if (declarations.some((item) => item.method === call.method && item.path === call.path)) continue;
+      messages.push(
+        `${dataDoor.path}: raw ${call.method} ${call.path} must declare `
+          + `@backendSlice <SliceName> ${call.method} ${call.path}`,
+      );
+      gaps += 1;
+    }
+    for (const declaration of declarations) {
+      if (!slices.includes(declaration.slice)) {
+        messages.push(`${dataDoor.path}: @backendSlice names unknown slice ${declaration.slice}`);
+        gaps += 1;
+      }
+      if (calls.some((call) => call.method === declaration.method && call.path === declaration.path)) continue;
+      messages.push(
+        `${dataDoor.path}: @backendSlice ${declaration.slice} has no matching raw `
+          + `${declaration.method} ${declaration.path} call`,
+      );
+      gaps += 1;
+    }
+
+    const directSlices = declarations
+      .filter((declaration) => slices.includes(declaration.slice)
+        && calls.some((call) => call.method === declaration.method && call.path === declaration.path))
+      .map((declaration) => declaration.slice);
+    for (const hook of new Set([...sliceHooks(dataDoor.source, slices), ...directSlices])) {
       const proofs = flows.filter((flow) => flow.backendSlices?.includes(hook));
       if (proofs.length === 0) {
         messages.push(`${dataDoor.path}: use${hook} is UI infrastructure with no E2E flow declaring that backend slice`);
