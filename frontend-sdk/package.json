@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
   "license": "MIT",
@@ -21,6 +21,7 @@
   ],
   "files": [
     "tools/*.mjs",
+    "tools/*.d.mts",
     "tools/README.md"
   ],
   "exports": {
@@ -33,7 +34,10 @@
     "./i18n-parity": "./tools/i18n-parity.mjs",
     "./journey-parity": "./tools/journey-parity.mjs",
     "./package-versions": "./tools/package-versions.mjs",
-    "./playwright-backend": "./tools/playwright-backend.mjs"
+    "./playwright-backend": {
+      "types": "./tools/playwright-backend.d.mts",
+      "import": "./tools/playwright-backend.mjs"
+    }
   },
   "bin": {
     "affe-contract-freshness": "./tools/contract-freshness.mjs",
