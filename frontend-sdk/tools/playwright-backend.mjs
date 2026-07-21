@@ -57,7 +57,7 @@ export function createBackendGlobalSetup(options = {}) {
  * Call this before navigating or interacting, then close the proof with expectBackendSlices after the UI settles.
  */
 export async function observeBackend(page, contract, env = process.env) {
-  requireReadyBackend(env);
+  const backendUrl = requireReadyBackend(env);
   if (!page || typeof page.on !== "function") {
     throw new Error("observeBackend() requires the Playwright page used by the visible journey.");
   }
@@ -67,7 +67,7 @@ export async function observeBackend(page, contract, env = process.env) {
   const seen = [];
   page.on("response", (response) => {
     const request = response.request();
-    const operation = matchOperation(operations, request.method(), response.url());
+    const operation = matchOperation(operations, request.method(), response.url(), backendUrl);
     if (operation) seen.push({ operationId: operation.operationId, status: response.status() });
   });
 
@@ -163,17 +163,30 @@ function compileOperations(document) {
       if (!operationId) continue;
       if (ids.has(operationId)) throw new Error(`OpenAPI operationId is duplicated: ${operationId}.`);
       ids.add(operationId);
-      operations.push({ operationId, method: method.toUpperCase(), path: pathPattern(path) });
+      operations.push({
+        operationId,
+        method: method.toUpperCase(),
+        path: pathPattern(path),
+        specificity: pathSpecificity(path),
+      });
     }
   }
   if (operations.length === 0) throw new Error("OpenAPI contract declares no named operations.");
-  return operations;
+  return operations.sort((left, right) => right.specificity - left.specificity);
 }
 
-function matchOperation(operations, method, url) {
+function matchOperation(operations, method, url, backendUrl) {
   let pathname;
   try {
-    pathname = decodeURI(new URL(url).pathname);
+    const responseUrl = new URL(url);
+    const backend = new URL(backendUrl);
+    if (responseUrl.origin !== backend.origin) return undefined;
+
+    const basePath = backend.pathname.replace(/\/$/, "");
+    if (basePath && responseUrl.pathname !== basePath && !responseUrl.pathname.startsWith(`${basePath}/`)) {
+      return undefined;
+    }
+    pathname = decodeURI(basePath ? responseUrl.pathname.slice(basePath.length) || "/" : responseUrl.pathname);
   } catch {
     return undefined;
   }
@@ -186,6 +199,13 @@ function pathPattern(path) {
     .map((part) => part.startsWith("{") ? "[^/]+" : escapeRegex(part))
     .join("");
   return new RegExp(`^${escaped}/?$`);
+}
+
+function pathSpecificity(path) {
+  return path
+    .split("/")
+    .filter(Boolean)
+    .reduce((score, segment) => score + (/^\{[^}]+\}$/.test(segment) ? 0 : 1_000 + segment.length), 0);
 }
 
 function escapeRegex(value) {

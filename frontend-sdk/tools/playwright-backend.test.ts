@@ -10,6 +10,7 @@ const contract = {
   paths: {
     "/account/login": { post: { operationId: "Login" } },
     "/customers/{id}": { get: { operationId: "GetCustomer" } },
+    "/customers/search": { get: { operationId: "SearchCustomers" } },
   },
 };
 
@@ -43,6 +44,36 @@ describe("playwright backend proof", () => {
     );
 
     browser.respond("GET", "http://localhost:5173/customers/123?expand=contacts", 200);
+    expect(() => expectBackendSlices(observation, ["GetCustomer"], { status: "success" })).toThrow("GetCustomer");
+
+    browser.respond("GET", "http://127.0.0.1:5050/customers/123?expand=contacts", 200);
+
+    expect(() => expectBackendSlices(observation, ["GetCustomer"], { status: "success" })).not.toThrow();
+  });
+
+  it("prefers a static operation over an earlier dynamic route", async () => {
+    const browser = fakePage();
+    const observation = await observeBackend(
+      browser.page,
+      contract,
+      { PW_API_URL: "http://127.0.0.1:5050", PW_API_READY: "1" },
+    );
+
+    browser.respond("GET", "http://127.0.0.1:5050/customers/search", 200);
+
+    expect(() => expectBackendSlices(observation, ["SearchCustomers"], { status: "success" })).not.toThrow();
+    expect(() => expectBackendSlices(observation, ["GetCustomer"], { status: "success" })).toThrow("GetCustomer");
+  });
+
+  it("matches contract paths below a configured API base path", async () => {
+    const browser = fakePage();
+    const observation = await observeBackend(
+      browser.page,
+      contract,
+      { PW_API_URL: "http://127.0.0.1:5050/api", PW_API_READY: "1" },
+    );
+
+    browser.respond("GET", "http://127.0.0.1:5050/api/customers/123", 200);
 
     expect(() => expectBackendSlices(observation, ["GetCustomer"], { status: "success" })).not.toThrow();
   });
