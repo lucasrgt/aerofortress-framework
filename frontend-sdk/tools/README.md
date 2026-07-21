@@ -28,6 +28,13 @@ front flow pointing at a journey the back lacks). The *endpoint* grain is alread
 can't call a missing endpoint) and **AFFE008** for back→front (every endpoint is consumed by a ViewModel). So:
 endpoints by type + coverage, journeys by parity — the same critical path proven on both sides.
 
+When one backend serves multiple executable surfaces, pass every independently-gated manifest; parity is computed
+over their union without pretending operator or partner journeys belong to the consumer app:
+
+```
+affe-journey-parity ../api/Journeys app/e2e/flows.json operator/e2e/flows.json partner/e2e/flows.json
+```
+
 ## One report — the unified doctor
 
 `doctor.mjs` (`aggregateReport`) is the single front-door that captures the **whole crew** in one pass: `eslint

@@ -12,6 +12,8 @@
 // Reports both directions:
 //   - uncovered: a backend journey with no frontend flow linking to it
 //   - orphans:   a frontend flow whose `backendJourney` names a journey the backend doesn't have
+// A shared backend may serve multiple executable frontend surfaces. The CLI therefore accepts one or more
+// flows manifests and checks the union; each surface remains independently accountable to e2e-doctor.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -41,14 +43,28 @@ export function checkJourneyParity(backendJourneys, frontendFlows) {
   return { uncovered, orphans, linked: [...linked], gaps: uncovered.length + orphans.length, messages };
 }
 
+/**
+ * Parse and combine independently-gated surface manifests for one shared backend.
+ * @param {{ path: string, content: string }[]} manifests
+ * @returns {{ name?: string, backendJourney?: string }[]}
+ */
+export function parseFlowManifests(manifests) {
+  return manifests.flatMap(({ path, content }) => {
+    const flows = JSON.parse(content);
+    if (!Array.isArray(flows)) throw new Error(`${path}: flows manifest must be an array`);
+    return flows;
+  });
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const [, , journeysDir, flowsFile] = process.argv;
-  if (!journeysDir || !flowsFile) {
-    console.error("usage: affe-journey-parity <backend-journeys-dir> <flows.json>");
+  const [, , journeysDir, ...flowsFiles] = process.argv;
+  if (!journeysDir || flowsFiles.length === 0) {
+    console.error("usage: affe-journey-parity <backend-journeys-dir> <flows.json> [...more-flows.json]");
     process.exit(2);
   }
-  if (!existsSync(flowsFile)) {
-    console.log("AFFE-JOURNEY: frontend flows manifest not found — parity cannot be proven.");
+  const missingFiles = flowsFiles.filter((flowsFile) => !existsSync(flowsFile));
+  if (missingFiles.length > 0) {
+    console.log(`AFFE-JOURNEY: frontend flows manifest not found: ${missingFiles.join(", ")} — parity cannot be proven.`);
     process.exit(1);
   }
 
@@ -59,16 +75,18 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     : [];
   let frontendFlows;
   try {
-    frontendFlows = JSON.parse(readFileSync(flowsFile, "utf8"));
-    if (!Array.isArray(frontendFlows)) throw new Error("flows.json must be an array");
+    frontendFlows = parseFlowManifests(
+      flowsFiles.map((flowsFile) => ({ path: flowsFile, content: readFileSync(flowsFile, "utf8") })),
+    );
   } catch (error) {
-    console.log(`AFFE-JOURNEY: flows.json invalid — ${error.message}`);
+    console.log(`AFFE-JOURNEY: flows manifest invalid — ${error.message}`);
     process.exit(1);
   }
 
   const result = checkJourneyParity(backendJourneys, frontendFlows);
   console.log(
-    `AFFE-JOURNEY: ${backendJourneys.length} backend journey(s), ${result.linked.length} linked by a frontend flow, `
+    `AFFE-JOURNEY: ${backendJourneys.length} backend journey(s), ${result.linked.length} linked across `
+      + `${flowsFiles.length} frontend surface(s), `
       + `${result.gaps} parity gap(s).`,
   );
   for (const message of result.messages) console.log(`  - ${message}`);

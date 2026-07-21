@@ -644,6 +644,8 @@ empty list are blocking — there is no bootstrap-green state. Each entry is
 - **Set parity** (`tools/journey-parity.mjs`, AFFE-JOURNEY): a `backendJourney` (the
   `Journeys/<key>.Tests.cs` twin) links the flow to its backend journey, checked both directions — so
   no critical journey is half-built (tested on the back but never end-to-end on the front, or vice-versa).
+  A backend shared by multiple executable surfaces passes all of their independently-gated `flows.json`
+  manifests to the parity command; the union is checked without assigning one surface another's journey.
 - **Depth** (`depthGaps`, blocking, **AFFE-JOURNEY-002**): a spec *existing* is not coverage — it can
   stop at the door. Every flow must declare `terminal` (the testID or route its spec asserts
   *after* entry, to prove the journey reaches its end), and the spec must actually reference it; a spec

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { checkJourneyParity } from "./journey-parity.mjs";
+import { checkJourneyParity, parseFlowManifests } from "./journey-parity.mjs";
 
 // Parity closes the fullstack loop at the journey grain: every backend journey has a frontend flow, and no flow
 // links a journey the backend doesn't have. Pin both directions + the UI-only escape.
@@ -44,5 +44,28 @@ describe("checkJourneyParity", () => {
       { name: "boot smoke" }, // no backendJourney
     ]);
     expect(r.gaps).toBe(0);
+  });
+});
+
+describe("parseFlowManifests", () => {
+  it("combines the independently-owned flows of every surface sharing a backend", () => {
+    const flows = parseFlowManifests([
+      {
+        path: "app/e2e/flows.json",
+        content: JSON.stringify([{ name: "account", backendJourney: "AccountJourney" }]),
+      },
+      {
+        path: "operator/e2e/flows.json",
+        content: JSON.stringify([{ name: "moderation", backendJourney: "ModerationJourney" }]),
+      },
+    ]);
+
+    expect(checkJourneyParity(["AccountJourney", "ModerationJourney"], flows).gaps).toBe(0);
+  });
+
+  it("identifies which surface supplied an invalid manifest", () => {
+    expect(() =>
+      parseFlowManifests([{ path: "operator/e2e/flows.json", content: "{}" }]),
+    ).toThrow("operator/e2e/flows.json: flows manifest must be an array");
   });
 });
