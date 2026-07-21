@@ -48,9 +48,10 @@ shape is wrong; fix the shape.
   red, never excluded.
 - AFFE033: add `@verify` to the ViewModel and satisfy it only in its exact co-located
   `*.assay.test.*` using `defineVerification(...)`.
-- AFFE035/AFFE-JOURNEY: bind every ViewModel to distinct happy/sad `flows.json` entries and list
-  every consumed generated backend hook. Backend-bound web cases observe page responses against their checked-in
-  OpenAPI contract, assert the exact slice ledger, and do not intercept or call the API directly.
+- AFFE035/AFFE-JOURNEY: bind every ViewModel to distinct happy/sad `flows.json` entries. Every UI-consumed hook
+  appears in at least one flow owned by one of its actual consumer features; shared hooks are proved once.
+  Backend-bound web cases observe page responses against their checked-in OpenAPI contract, assert the exact slice
+  ledger, and do not intercept or call the API directly.
 - AFFE001/002: move data access from View into the ViewModel; only VMs import client.gen.
 - AFFE009: replace react-native/expo imports in VMs with injected ports.
 - AFFE010: route loading/error/empty through `<Resource>`. AFFE013/027/028: wire mutation

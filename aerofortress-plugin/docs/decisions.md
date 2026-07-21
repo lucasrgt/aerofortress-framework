@@ -9,8 +9,9 @@
 - **Journey depth enforcement**: Tier A — linked flows declare `terminal` in flows.json and the
   spec asserts it after entry (entry-only flagged); skipped gate-class flows fail the CI gate.
   Tier B — every write's `[Journey]` bodies must assert post-conditions (AF0020), while every
-  visible feature independently links exact happy/sad browser flows and every consumed backend
-  slice. Backend-bound web cases run against the real API without request interception. Runtime
+  visible feature independently links exact happy/sad browser flows and every consumed backend slice appears in
+  one journey owned by an actual consumer (shared slices are proved once). Backend-bound web cases run against
+  the real API without request interception. Runtime
   mutation depth may be layered later, but never replaces the release gate. Honest ceiling:
   semantic adequacy of an assertion is undecidable by analyzer.
 

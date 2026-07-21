@@ -15,9 +15,10 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 | **E2E** | `AFFE035` + **`feature-e2e-coverage.mjs`** (every ViewModel links a flow; every UI-consumed backend slice is named by that flow) + **`e2e-doctor.mjs`** (every flow has an enabled case, terminal assertion, and runner) | eslint + workspace gate + surface gate |
 
 E2E remains flow-level, but coverage is now enforced in both directions. Every ViewModel declares one or more
-`@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
-requires each generated slice hook consumed by that ViewModel (or by session/guard infrastructure) to appear in
-the flow's `backendSlices`. Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
+`@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces. Every
+UI-consumed slice hook must appear in at least one subject flow belonging to one of its actual consumer features;
+shared queries are proved once, not once per importer. Session/guard infrastructure retains happy+sad evidence.
+Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
 `happy` and `sad` flows. A web flow naming backend slices declares its checked-in OpenAPI file as
 `backendContract`, then its exact case collects page responses with `observeBackend()` and closes the ledger with
 `expectBackendSlices()`. The expected names must exactly match `backendSlices`; happy flows require 2xx evidence

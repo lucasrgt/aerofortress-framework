@@ -122,6 +122,47 @@ describe("feature E2E coverage", () => {
     expect(covered.gaps).toBe(0);
   });
 
+  it("proves a shared endpoint once through one of its real consumer features", () => {
+    const viewModels = [
+      {
+        path: "src/CustomerPicker.viewModel.ts",
+        source: '/** @e2e picker-happy\n * @e2e picker-sad */\nimport { useListCustomers } from "@/client.gen/api";',
+      },
+      {
+        path: "src/JobForm.viewModel.ts",
+        source: '/** @e2e job-happy\n * @e2e job-sad */\nimport { useListCustomers } from "@/client.gen/api";',
+      },
+    ];
+    const result = checkFeatureE2e(viewModels, [
+      { id: "picker-happy", path: "happy", features: ["CustomerPicker"], backendSlices: ["ListCustomers"] },
+      { id: "picker-sad", path: "sad", features: ["CustomerPicker"] },
+      { id: "job-happy", path: "happy", features: ["JobForm"] },
+      { id: "job-sad", path: "sad", features: ["JobForm"] },
+    ], ["ListCustomers"]);
+
+    expect(result.gaps).toBe(0);
+    expect(result.complete).toBe(2);
+  });
+
+  it("does not let an unrelated feature borrow endpoint coverage", () => {
+    const viewModels = [
+      {
+        path: "src/Profile.viewModel.ts",
+        source: '/** @e2e profile-happy\n * @e2e profile-sad */\nimport { useGetProfile } from "@/client.gen/api";',
+      },
+      { path: "src/Login.viewModel.ts", source: "/** @e2e login-happy\n * @e2e login-sad */" },
+    ];
+    const result = checkFeatureE2e(viewModels, [
+      { id: "profile-happy", path: "happy", features: ["Profile"] },
+      { id: "profile-sad", path: "sad", features: ["Profile"] },
+      { id: "login-happy", path: "happy", features: ["Login"], backendSlices: ["GetProfile"] },
+      { id: "login-sad", path: "sad", features: ["Login"] },
+    ], ["GetProfile"]);
+
+    expect(result.gaps).toBe(1);
+    expect(result.messages.join(" ")).toContain("no subject flow");
+  });
+
   it("requires infrastructure data doors to have flows too", () => {
     const infrastructure = [{
       path: "src/lib/session.ts",

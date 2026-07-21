@@ -61,8 +61,9 @@ You are the AeroFortress frontend specialist (React Native + RN-web, MVVM harnes
 - Every ViewModel declares at least two distinct `@e2e <flow-id>` links. Its surface's
   `e2e/flows.json` binds exactly that feature basename to a happy and a sad executable case
   (AFFE035); one generic flow cannot pay several features.
-- List every generated backend slice hook consumed by the ViewModel in the linked flows'
-  `backendSlices` and declare its checked-in OpenAPI file as `backendContract`. A web case naming backend slices
+- Ensure every generated backend slice hook has at least one `backendSlices` proof owned by one of its actual
+  consumer features; shared hooks are proved once, not once per importer. Declare the checked-in OpenAPI file as
+  `backendContract`. A web case naming backend slices
   uses `observeBackend` before UI interaction and `expectBackendSlices` afterward from
   `@aerofortress/frontend-sdk/playwright-backend`; its global setup probes `PW_API_URL` with the canonical helper.
   Its spec cannot install request interception, import mock/stub helpers, or call the API directly. Keep mocked

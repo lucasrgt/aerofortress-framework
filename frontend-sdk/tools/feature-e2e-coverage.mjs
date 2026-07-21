@@ -8,8 +8,9 @@
 // real consumer journey.
 //
 // Complete depth is universal: every ViewModel owns linked happy and sad flows, and each flow names the exact
-// feature(s) it proves. A backend slice with no frontend consumer remains backend-only; once its hook enters a
-// ViewModel or infrastructure data door, the real surface journeys must name it.
+// feature it proves. A backend slice with no frontend consumer remains backend-only; once its hook enters one or
+// more ViewModels, at least one real subject flow from that consumer set must prove it. Shared queries are not
+// re-paid by every importer. Infrastructure data doors retain happy+sad evidence because they affect every route.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -117,8 +118,14 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
 
   let linked = 0;
   let complete = 0;
+  const hookConsumers = new Map();
   for (const viewModel of viewModels) {
     const feature = basename(viewModel.path).replace(/\.viewModel\.tsx?$/i, "");
+    for (const hook of sliceHooks(viewModel.source, slices)) {
+      const consumers = hookConsumers.get(hook) ?? new Set();
+      consumers.add(feature);
+      hookConsumers.set(hook, consumers);
+    }
     const obligations = extractE2eObligations(viewModel.source);
     if (obligations.length === 0) {
       messages.push(`${viewModel.path}: ${feature} declares no \`@e2e <flow-id>\` browser/device journey`);
@@ -153,16 +160,17 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
     }
     if (paths.has("happy") && paths.has("sad")) complete += 1;
 
-    const hooks = sliceHooks(viewModel.source, slices);
-    for (const hook of hooks) {
-      if (subjectFlows.some((flow) => flow.backendSlices?.includes(hook))) continue;
-      messages.push(
-        `${viewModel.path}: use${hook} is UI-consumed but none of its linked @e2e flows declares `
-          + `backendSlices:["${hook}"]`,
-      );
-      gaps += 1;
-    }
+  }
 
+  for (const [hook, consumers] of hookConsumers) {
+    const proofs = flows.filter((flow) => flow.backendSlices?.includes(hook)
+      && flow.features?.some((feature) => consumers.has(feature)));
+    if (proofs.length > 0) continue;
+    messages.push(
+      `use${hook} is UI-consumed by ${[...consumers].sort().join(", ")} but no subject flow from those features `
+        + `declares backendSlices:["${hook}"]`,
+    );
+    gaps += 1;
   }
 
   for (const dataDoor of infrastructure) {

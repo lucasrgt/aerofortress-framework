@@ -611,7 +611,7 @@ by construction, and completeness is the compiler. Every rule is born from obser
 | `AFFE032` | **Controller surfaces its fieldState** — a `<Controller>` whose inline `render` never reads `fieldState` (destructured or accessed) leaves that field's validation error with no surface; pass `error={fieldState.error?.message}` to the field component. Near-zero false positives (`error` on an unvalidated field is inert); a deliberately surface-less control eslint-disables with its justification. Warn-tier, promoted together with `AFFE031` — the pair makes "a validation error always shows" hold by construction | **shipped** | hostpoint: the Description input destructured only `{ field }` — its validation failure had no surface at all (same incident as AFFE031) |
 | `AFFE033` | **Every feature declares and executes AVP** — every `*.viewModel.ts` declares at least one JSDoc `@verify <criterion-id>`. A View/ViewModel obligation is satisfied only by its exact co-located `<Feature>.assay.test.tsx` carrying `@avp <criterion-id>` and registering `defineVerification(...)`; the `.test` segment is mandatory so Vitest discovers it. A comment in `<Feature>.test.tsx` or another feature's assay cannot pay the debt. Direct `assay verify` supplies the gate verdict. Error-tier | **shipped** | AVP existed but was optional and a plain/non-discoverable file could impersonate proof; co-location now binds an executable assay to its subject |
 | `AFFE034` | **Every test must execute** — nested `.skip`, `.fixme`, `.todo`, `.skipIf`, `.runIf`, `.only`, and `x*`/`f*` test aliases in `*.test.*` or `*.spec.*` are errors (including `test.each(...).skip` and `test.concurrent.only`). A runner's zero exit while tests were skipped or excluded is not evidence | **shipped** | skip/focus syntax made incomplete frontend and Playwright suites look green |
-| `AFFE035` | **Every visible feature links happy and sad E2E flows** — each `*.viewModel.ts` declares at least two distinct JSDoc `@e2e <flow-id>` obligations. The workspace doctor resolves subject-bound `features` entries and requires both paths plus every consumed backend slice hook. The lint rule closes local omission; the aggregate doctor closes resolution, subject identity, path depth, and backend linkage | **shipped** | one generic or unlisted browser flow let visible failure paths ship unproved |
+| `AFFE035` | **Every visible feature links happy and sad E2E flows** — each `*.viewModel.ts` declares at least two distinct JSDoc `@e2e <flow-id>` obligations. The workspace doctor resolves subject-bound `features` entries, requires both paths, and requires every UI-consumed backend slice in at least one real flow from its consumer set. Shared hooks are proved once, not once per importer. The lint rule closes local omission; the aggregate doctor closes resolution, subject identity, path depth, and backend linkage | **shipped** | one generic or unlisted browser flow let visible failure paths ship unproved |
 
 The two directions are asymmetric, and that sets the severity: **front→back** (the UI calls an
 endpoint that doesn't exist) is never valid → a hard **error**, free from `tsc` (the hook isn't
@@ -642,9 +642,10 @@ there is no bootstrap-green state. Each entry is
 
 - **Feature and endpoint coverage** (hard gap): each ViewModel id resolves to subject-bound flows whose
   `features` array contains exactly that one basename; one flow cannot pay multiple ViewModels. Every visible feature
-  has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>`
-  hook consumed by that ViewModel must be named in a linked flow's `backendSlices`; the same applies to generated
-  client calls in shared infrastructure. A web flow naming `backendSlices` must identify the checked-in OpenAPI
+  has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>` hook consumed by the UI must be named in
+  at least one subject flow belonging to one of the ViewModels that actually imports it; a shared query is not
+  re-proved by every importer. Generated client calls in shared infrastructure retain happy and sad flow evidence.
+  A web flow naming `backendSlices` must identify the checked-in OpenAPI
   file in `backendContract`. Its exact case starts `observeBackend(page, backendContract)` before interaction and
   calls the canonical `expectBackendSlices` with exactly the manifest names: `status:"success"` for a happy flow,
   `status:"error"` for a sad flow. These functions come from

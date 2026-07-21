@@ -66,8 +66,9 @@ screens; the design layer holds the floor (label wiring, role="alert", aria-busy
 ## Visible E2E
 
 Every ViewModel declares distinct `@e2e` ids for happy and sad behavior. Executable surfaces bind
-those ids in `e2e/flows.json` with `features: ["ExactFeatureBasename"]`, an enabled exact case, a
-terminal assertion, and every consumed generated hook in `backendSlices`. A web backend-bound case
+those ids in `e2e/flows.json` with `features: ["ExactFeatureBasename"]`, an enabled exact case, and a
+terminal assertion. Every UI-consumed generated hook appears in `backendSlices` on at least one flow owned by an
+actual consumer feature; shared hooks are proved once. A web backend-bound case
 declares `backendContract`, observes real page responses through
 `@aerofortress/frontend-sdk/playwright-backend`, and asserts the exact `backendSlices`; global setup probes
 `PW_API_URL` with the canonical helper. A spec containing request interception, HAR routing, MSW, mock/stub
