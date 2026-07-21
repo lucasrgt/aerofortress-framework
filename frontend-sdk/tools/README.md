@@ -29,6 +29,7 @@ and sad flows require 4xx/5xx evidence. A Playwright global setup calls `probeBa
 `createBackendGlobalSetup()` against `PW_API_URL`; only a successful HTTP response sets `PW_API_READY=1`. A
 local namesake cannot impersonate the branded observation, another case cannot lend it, and a backend-bound spec
 cannot install request interception, import mock/stub support, or call the API directly outside the rendered page.
+The check follows relative local imports recursively, so moving that bypass into a support helper is still red.
 `checkE2e(root)` then
 proves every declared flow has an enabled spec/case, terminal assertion, and real runner. A missing/empty manifest
 is red. See the

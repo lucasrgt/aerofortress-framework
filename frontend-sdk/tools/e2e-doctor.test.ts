@@ -390,6 +390,42 @@ describe("checkE2e", () => {
     }
   });
 
+  it("rejects direct calls and mocks hidden behind imported local helpers", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["Login"]);
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "login-happy", name: "login uses API", path: "happy", target: "web",
+        terminal: "/home", spec: "e2e/login.spec.ts", case: "signs in",
+        backendSlices: ["Login"], backendContract: "contract/api.json",
+      }]));
+      writeFileSync(join(dir, "e2e", "support.ts"), [
+        'import { hiddenMock } from "./support/mock";',
+        'export async function bypass(page) { hiddenMock(page); await page.evaluate(() => fetch("/login")); }',
+      ].join("\n"));
+      mkdirSync(join(dir, "e2e", "support"));
+      writeFileSync(
+        join(dir, "e2e", "support", "mock.ts"),
+        'export function hiddenMock(page) { return page.route("**/login", route => route.fulfill({ status: 200 })); }\n',
+      );
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'import { expectBackendSlices, observeBackend } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'import { bypass } from "./support";',
+        'test("signs in", async ({ page }) => { const backend = await observeBackend(page, "contract/api.json"); await bypass(page); await expect(page).toHaveURL("/home"); expectBackendSlices(backend, ["Login"], { status: "success" }); });',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(2);
+      expect(result.messages.join(" ")).toContain("network mock");
+      expect(result.messages.join(" ")).toContain("outside the visible page");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("allows network mocks in a separate front-only spec that names no backend slices", () => {
     const dir = tmp();
     try {

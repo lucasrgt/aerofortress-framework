@@ -20,7 +20,7 @@
 // undeclared or never referenced. These are reported as `depthGaps` (warn-tier), kept SEPARATE from the hard
 // existence `gaps`; both are blocking because a journey that only reaches its door is not an E2E proof.
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Known runners → how to detect each (config file or convention dir). Add a runner here, not in consumers.
@@ -200,6 +200,7 @@ export function checkE2e(root) {
       continue;
     }
     const specSource = readFileSync(specPath, "utf8");
+    const backendBoundSource = `${specSource}\n${importedLocalSource(root, specPath)}`;
     const caseSource = caseName ? testCaseSource(specSource, caseName) : specSource;
     if (caseName && caseSource === null) {
       messages.push(`journey "${name}" names case "${caseName}" but ${spec} declares no enabled test with that title`);
@@ -238,16 +239,16 @@ export function checkE2e(root) {
       );
       gaps++;
     }
-    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && usesNetworkMock(specSource)) {
+    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && usesNetworkMock(backendBoundSource)) {
       messages.push(
-        `journey "${name}" names backendSlices but ${spec} installs a network mock; `
+        `journey "${name}" names backendSlices but ${spec} or an imported local helper installs a network mock; `
           + "move mocked smoke cases to a separate spec and prove backend-bound cases against the real API",
       );
       gaps++;
     }
-    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && usesDirectBackendCall(specSource)) {
+    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && usesDirectBackendCall(backendBoundSource)) {
       messages.push(
-        `journey "${name}" names backendSlices but ${spec} calls the API outside the visible page; `
+        `journey "${name}" names backendSlices but ${spec} or an imported local helper calls the API outside the visible page; `
           + "drive the rendered UI and let observeBackend collect its responses",
       );
       gaps++;
@@ -339,6 +340,58 @@ function usesDirectBackendCall(source) {
     || /\b(?:page|context|request)\s*\.\s*(?:delete|get|head|options|patch|post|put)\s*\(/.test(executable)
     || /\bfrom\s*["'][^"']*client\.gen(?:\/[^"']*)?["']/.test(executable)
     || /\baxios\s*\.\s*(?:delete|get|head|options|patch|post|put|request)\s*\(/.test(executable);
+}
+
+// A local helper is part of the proof's executable surface. Reading only the manifest's spec lets a helper hide
+// page.route(), fetch(), or a generated client call while the named case presents a clean observation ledger.
+// Follow static relative imports recursively, staying inside the frontend root; package imports remain trusted
+// dependencies and setup outside this closure cannot manufacture a response inside the observed page.
+function importedLocalSource(root, entryPath) {
+  const rootPath = resolve(root);
+  const seen = new Set([resolve(entryPath)]);
+  const sources = [];
+
+  const visit = (parentPath, source) => {
+    for (const specifier of localImportSpecifiers(source)) {
+      const importedPath = resolveLocalImport(dirname(parentPath), specifier);
+      if (!importedPath || !isWithin(rootPath, importedPath) || seen.has(importedPath)) continue;
+      seen.add(importedPath);
+      const importedSource = readFileSync(importedPath, "utf8");
+      sources.push(importedSource);
+      visit(importedPath, importedSource);
+    }
+  };
+
+  visit(resolve(entryPath), readFileSync(entryPath, "utf8"));
+  return sources.join("\n");
+}
+
+function localImportSpecifiers(source) {
+  const executable = stripComments(source);
+  const specifiers = new Set();
+  const patterns = [
+    /\b(?:import|export)\s+(?:[^"']*?\s+from\s+)?["'](\.[^"']+)["']/g,
+    /\bimport\s*\(\s*["'](\.[^"']+)["']\s*\)/g,
+    /\brequire\s*\(\s*["'](\.[^"']+)["']\s*\)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of executable.matchAll(pattern)) specifiers.add(match[1]);
+  }
+  return specifiers;
+}
+
+function resolveLocalImport(parentDirectory, specifier) {
+  const base = resolve(parentDirectory, specifier);
+  const candidates = extname(base)
+    ? [base]
+    : [base, ...[".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"].map((extension) => `${base}${extension}`),
+        ...[".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"].map((extension) => join(base, `index${extension}`))];
+  return candidates.find((candidate) => existsSync(candidate) && statSync(candidate).isFile()) ?? null;
+}
+
+function isWithin(root, path) {
+  const pathFromRoot = relative(root, path);
+  return pathFromRoot === "" || (!pathFromRoot.startsWith(`..${sep}`) && pathFromRoot !== "..");
 }
 
 function canonicalBackendImport(source) {
