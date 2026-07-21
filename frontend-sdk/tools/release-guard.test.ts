@@ -16,9 +16,10 @@ describe("release-guard", () => {
     expect(violations([{ name: "x", changed: false, versionBumped: false }])).toEqual([]);
   });
 
-  it("covers every publishable package (nuget + the three npm packages)", () => {
+  it("covers every publishable package (framework NuGets, CLI, and the three npm packages)", () => {
     expect(RELEASE_UNITS.map((u) => u.name)).toEqual([
       "AeroFortress.Framework.* (nuget)",
+      "aerofortress-framework-cli",
       "@aerofortress/react",
       "eslint-plugin-aerofortress",
       "@aerofortress/frontend-sdk",

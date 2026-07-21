@@ -17,7 +17,12 @@ export const RELEASE_UNITS = Object.freeze([
   {
     name: "AeroFortress.Framework.* (nuget)",
     version: "build/AeroFortress.Framework.Library.props",
-    paths: ["src", "analyzers/AeroFortress.Framework.Doctor"],
+    paths: ["src", ":(exclude)src/AeroFortress.Framework.Cli", "analyzers/AeroFortress.Framework.Doctor"],
+  },
+  {
+    name: "aerofortress-framework-cli",
+    version: "src/AeroFortress.Framework.Cli/AeroFortress.Framework.Cli.csproj",
+    paths: ["src/AeroFortress.Framework.Cli"],
   },
   {
     name: "@aerofortress/react",
@@ -27,12 +32,12 @@ export const RELEASE_UNITS = Object.freeze([
   {
     name: "eslint-plugin-aerofortress",
     version: "frontend-sdk/packages/eslint-plugin/package.json",
-    paths: ["frontend-sdk/packages/eslint-plugin/index.cjs"],
+    paths: ["frontend-sdk/packages/eslint-plugin/index.cjs", "frontend-sdk/packages/eslint-plugin/README.md"],
   },
   {
     name: "@aerofortress/frontend-sdk",
     version: "frontend-sdk/package.json",
-    paths: ["frontend-sdk/tools"],
+    paths: ["frontend-sdk/tools", "frontend-sdk/README.md"],
   },
 ]);
 
@@ -83,7 +88,7 @@ export function canonicalDrift(canonical, readManifest) {
 
 /** @param {string} content @param {string} versionPath */
 function versionOf(content, versionPath) {
-  if (versionPath.endsWith(".props")) return content.match(/<Version>([^<]+)<\/Version>/)?.[1] ?? "";
+  if (/\.(?:props|csproj)$/.test(versionPath)) return content.match(/<Version>([^<]+)<\/Version>/)?.[1] ?? "";
   try {
     return JSON.parse(content).version ?? "";
   } catch {
