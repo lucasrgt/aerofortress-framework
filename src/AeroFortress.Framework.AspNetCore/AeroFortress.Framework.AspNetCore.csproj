@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AeroFortress.Framework.Abstractions\AeroFortress.Framework.Abstractions.csproj" />
+    <ProjectReference Include="..\AeroFortress.Framework.Storage\AeroFortress.Framework.Storage.csproj" />
     <ProjectReference Include="..\..\analyzers\AeroFortress.Framework.SelfHarness\AeroFortress.Framework.SelfHarness.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
