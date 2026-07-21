@@ -32,9 +32,10 @@ Every feature carries executable evidence, regardless of criticality:
    additional to its backend happy/sad `[Journey]` proofs, not a substitute for them.
 6. Disabled, conditional, or focused tests are errors (`AF0032`, `AFFE034`), and the gate rejects runtime `NotExecuted` results.
 7. `af gate` always runs backend tests plus every manifest-selected frontend package's unit/integration and
-   direct Assay/AVP proofs. Product `frontend` surfaces additionally owe E2E-shape and real E2E scripts; product
-   `core` packages link their obligations to the union of those surfaces instead of pretending to own a browser.
-   Missing/placeholder scripts are contract failures.
+   direct Assay/AVP proofs whenever the package owns a ViewModel or an explicit Assay suite. A static surface with
+   neither is `not applicable`, while the first ViewModel makes Assay mandatory. Product `frontend` surfaces
+   additionally owe E2E-shape and real E2E scripts; product `core` packages link their obligations to the union
+   of those surfaces instead of pretending to own a browser. Missing/placeholder scripts are contract failures.
    There is no `[Ephemeral]` tier. Runtime is managed by ordinary CI parallelism and
    sharding, never by silently removing proof from the release gate.
 

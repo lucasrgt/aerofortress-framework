@@ -43,10 +43,7 @@ internal static class FrontendGate
             // proof runs exactly once through the acceptance verifier below.
             var tests = FrontendScriptContract.Run(client, "test", "--", $"--exclude={AssaySuiteGlob}");
 
-            Console.WriteLine($"af gate — frontend AVP ({name})...");
-            // Invoke Assay directly: a package script is allowed to compose work, but must not be able to replace
-            // the acceptance verifier with a placeholder that exits zero.
-            var avp = Tooling.Run("npx", ["--no-install", "assay", "verify"], client);
+            var avp = RunAssay(client, name);
 
             int? e2eShape = null;
             int? e2e = null;
@@ -64,6 +61,36 @@ internal static class FrontendGate
         }
 
         return legs;
+    }
+
+    /// <summary>Run Assay whenever the package owns a ViewModel or an explicit Assay suite.</summary>
+    internal static int RunAssay(string client, string name)
+    {
+        if (!RequiresAssay(client))
+        {
+            Console.WriteLine($"af gate — frontend AVP ({name}): not applicable (no ViewModel or Assay suite).");
+            return 0;
+        }
+
+        Console.WriteLine($"af gate — frontend AVP ({name})...");
+        // Invoke Assay directly: a package script is allowed to compose work, but must not be able to replace
+        // the acceptance verifier with a placeholder that exits zero.
+        return Tooling.Run("npx", ["--no-install", "assay", "verify"], client);
+    }
+
+    /// <summary>Decide whether the universal ViewModel-to-Assay obligation applies to this package.</summary>
+    internal static bool RequiresAssay(string client)
+    {
+        var source = Path.Combine(client, "src");
+        if (!Directory.Exists(source))
+            return false;
+
+        return Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Any(file => file is not null &&
+                (file.EndsWith(".viewModel.ts", StringComparison.OrdinalIgnoreCase)
+                 || file.EndsWith(".viewModel.tsx", StringComparison.OrdinalIgnoreCase)
+                 || file.Contains(".assay.test.", StringComparison.OrdinalIgnoreCase)));
     }
 
     private static int FeatureCoverage(string workspace, IReadOnlyList<FrontendPackage> targets)
