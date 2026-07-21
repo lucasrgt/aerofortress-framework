@@ -235,6 +235,37 @@ describe("checkE2e", () => {
     }
   });
 
+  it("requires the exact web case naming backend slices to run against the real backend", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        {
+          id: "login-happy", name: "login uses API", path: "happy", target: "web",
+          terminal: "/home", spec: "e2e/login.spec.ts", case: "real login", backendSlices: ["Login"],
+        },
+        {
+          id: "profile-happy", name: "profile smoke", path: "happy", target: "web",
+          terminal: "/profile", spec: "e2e/login.spec.ts", case: "mocked profile", backendSlices: ["Me"],
+        },
+      ]));
+      writeFileSync(join(dir, "e2e", "login.spec.ts"), [
+        'test("real login", async ({ page }) => { requireBackend(); await expect(page).toHaveURL("/home"); });',
+        'test("mocked profile", async ({ page }) => { await expect(page).toHaveURL("/profile"); });',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(1);
+      expect(result.execution["ci-gated"]).toBe(1);
+      expect(result.execution["front-only"]).toBe(1);
+      expect(result.messages.join(" ")).toContain("profile smoke");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("blocks disabled and seed-pending curated specs instead of reporting bootstrap green", () => {
     const dir = tmp();
     try {

@@ -1853,7 +1853,7 @@ const rules = {
 };
 
 const plugin = {
-  meta: { name: "eslint-plugin-aerofortress", version: "1.0.1" },
+  meta: { name: "eslint-plugin-aerofortress", version: "1.0.2" },
   rules,
   configs: {},
 };

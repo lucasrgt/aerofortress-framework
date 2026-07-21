@@ -646,7 +646,9 @@ there is no bootstrap-green state. Each entry is
   `features` array contains exactly that one basename; one flow cannot pay multiple ViewModels. Every visible feature
   has both `path: "happy"` and `path: "sad"`. Every backend `use<Slice>`
   hook consumed by that ViewModel must be named in a linked flow's `backendSlices`; the same applies to generated
-  hooks consumed by the blessed session/guard data doors. A slice with no frontend consumer remains backend-only.
+  client calls in shared infrastructure. A web flow naming `backendSlices` must be a real-backend case
+  (`requireBackend()`); mocked/front-only rendering remains useful smoke coverage but cannot prove an endpoint.
+  A slice with no frontend consumer remains backend-only.
   Once the UI consumes it, the linked executable journey is mandatory. A shared `core` resolves against all
   product surfaces rather than owning a fake browser.
 - **Complete frontend depth** (hard gap): happy + sad belongs to the visible feature, never to an annotation or

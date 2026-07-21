@@ -49,15 +49,19 @@ export function classifySpec(root, spec) {
   if (/\.ya?ml$/i.test(spec)) return "native";
   try {
     const source = readFileSync(join(root, spec), "utf8");
-    const executable = stripComments(source);
-    if (hasNonExecutingTest(executable))
-      return "disabled";
-    if (/\brequireSeed\s*\(/.test(source)) return "seed-pending";
-    if (/\brequireBackend\s*\(/.test(source)) return "ci-gated";
-    return "front-only";
+    return classifySource(spec, source);
   } catch {
     return "missing";
   }
+}
+
+function classifySource(spec, source) {
+  if (/\.ya?ml$/i.test(spec)) return "native";
+  const executable = stripComments(source);
+  if (hasNonExecutingTest(executable)) return "disabled";
+  if (/\brequireSeed\s*\(/.test(source)) return "seed-pending";
+  if (/\brequireBackend\s*\(/.test(source)) return "ci-gated";
+  return "front-only";
 }
 
 /**
@@ -197,7 +201,9 @@ export function checkE2e(root) {
       gaps++;
     }
 
-    const executionClass = classifySpec(root, spec);
+    // Classification belongs to the named case, not its whole file. One real-backend test in a shared spec
+    // must never lend its execution tier to neighboring front-only cases.
+    const executionClass = classifySource(spec, caseSource ?? specSource);
     execution[executionClass] = (execution[executionClass] ?? 0) + 1;
     if (executionClass === "seed-pending") {
       seedPending.push(name);
@@ -210,6 +216,13 @@ export function checkE2e(root) {
       messages.push(`journey "${name}" spec cannot be read (${spec})`);
       gaps++;
       continue;
+    }
+    if (flow.target === "web" && (flow.backendSlices?.length ?? 0) > 0 && executionClass !== "ci-gated") {
+      messages.push(
+        `journey "${name}" names backendSlices but its own case is ${executionClass}; `
+          + "call requireBackend() and exercise the real API instead of borrowing a mocked/browser-only proof",
+      );
+      gaps++;
     }
 
     // Depth (AFFE-JOURNEY-002): every flow must declare its `terminal` and actually assert it in the spec —
