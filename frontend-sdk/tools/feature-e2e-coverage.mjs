@@ -22,9 +22,15 @@ const IGNORED_DIRECTORIES = new Set([
   "node_modules",
   "obj",
   "output",
+  "storybook",
   "test-results",
   "tmp",
 ]);
+
+/** Directories outside the production application graph never create feature or endpoint obligations. */
+export function isIgnoredSourceDirectory(name) {
+  return IGNORED_DIRECTORIES.has(name);
+}
 
 /** Stable flow ids declared by a ViewModel through `@e2e <id>`. */
 export function extractE2eObligations(source) {
@@ -252,7 +258,7 @@ function walk(root, predicate) {
     return files;
   }
   for (const entry of entries) {
-    if (entry.isDirectory() && IGNORED_DIRECTORIES.has(entry.name)) continue;
+    if (entry.isDirectory() && isIgnoredSourceDirectory(entry.name)) continue;
     const path = join(root, entry.name);
     if (entry.isDirectory()) files.push(...walk(path, predicate));
     else if (entry.isFile() && predicate(path)) files.push(path);

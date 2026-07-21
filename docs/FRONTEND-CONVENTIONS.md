@@ -664,7 +664,9 @@ there is no bootstrap-green state. Each entry is
   rendering remains useful smoke coverage in a separate spec, but cannot prove an endpoint.
   A slice with no frontend consumer remains backend-only.
   Once the UI consumes it, the linked executable journey is mandatory. A shared `core` resolves against all
-  product surfaces rather than owning a fake browser.
+  product surfaces rather than owning a fake browser. The conventional `src/storybook/` development surface is
+  excluded from production feature and endpoint inventory; there is no configurable ignore list that an agent can
+  widen to hide ordinary application code.
 - **Complete frontend depth** (hard gap): happy + sad belongs to the visible feature, never to an annotation or
   backend risk class. A UI-consumed write also has its backend happy/sad `[Journey]` pair; the browser proofs cover
   the visible seam, while a UI-consumed read still owes visible success and failure behavior.

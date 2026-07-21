@@ -5,10 +5,17 @@ import {
   extractBackendSliceObligations,
   extractE2eObligations,
   extractSlices,
+  isIgnoredSourceDirectory,
   sliceHooks,
 } from "./feature-e2e-coverage.mjs";
 
 describe("feature E2E coverage", () => {
+  it("excludes the standardized Storybook development surface without allowing arbitrary source bypasses", () => {
+    expect(isIgnoredSourceDirectory("storybook")).toBe(true);
+    expect(isIgnoredSourceDirectory("stories")).toBe(false);
+    expect(isIgnoredSourceDirectory("features")).toBe(false);
+  });
+
   it("extracts stable unique obligations", () => {
     expect(extractE2eObligations("/** @e2e login-happy\n * @e2e login-happy\n * @e2e login-sad */"))
       .toEqual(["login-happy", "login-sad"]);

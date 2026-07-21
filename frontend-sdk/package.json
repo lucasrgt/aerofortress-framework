@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "type": "module",
   "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
   "license": "MIT",
@@ -36,7 +36,9 @@
     "./package-versions": "./tools/package-versions.mjs",
     "./playwright-backend": {
       "types": "./tools/playwright-backend.d.mts",
-      "import": "./tools/playwright-backend.mjs"
+      "import": "./tools/playwright-backend.mjs",
+      "require": "./tools/playwright-backend.mjs",
+      "default": "./tools/playwright-backend.mjs"
     }
   },
   "bin": {
