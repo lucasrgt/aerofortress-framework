@@ -29,6 +29,16 @@ describe("feature E2E coverage", () => {
     ], true)).toEqual(["Undecided"]);
   });
 
+  it("discovers slices whose attribute lines carry explanatory comments", () => {
+    const sources = [
+      "[Slice] // visible endpoint\n[Critical] // auth bypass defense\npublic static class Login {}",
+      "[Slice]\n[NonCritical] // read-only query\npublic static class Profile {}",
+    ];
+
+    expect(extractSlices(sources)).toEqual(["Login", "Profile"]);
+    expect(extractCriticalSlices(sources)).toEqual(["Login"]);
+  });
+
   it("finds only critical hooks consumed by the ViewModel", () => {
     expect(criticalHooks('import { useLogin, usePing } from "@/client.gen/api";\nuseLogin();', ["Login", "Pay"]))
       .toEqual(["Login"]);

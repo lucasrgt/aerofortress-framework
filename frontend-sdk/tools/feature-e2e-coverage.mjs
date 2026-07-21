@@ -36,7 +36,7 @@ function sliceDeclarations(sources) {
   const declarations = [];
   for (const source of sources) {
     const classes = source.matchAll(
-      /((?:^\s*\[[^\]\r\n]+\]\s*\r?\n)+)\s*public\s+static\s+class\s+([A-Za-z_]\w*)/gm,
+      /((?:^\s*\[[^\]\r\n]+\]\s*(?:\/\/[^\r\n]*)?\r?\n)+)\s*public\s+static\s+class\s+([A-Za-z_]\w*)/gm,
     );
     for (const match of classes) {
       const attributes = match[1];
