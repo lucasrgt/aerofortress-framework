@@ -7,7 +7,7 @@ stranger-maintainable code, and a "doctor" of Roslyn analyzers that enforce the 
 - **Modular monolith** — modules are logical bounded contexts sharing one `AppDb`; a module writes only
   its own entities (AF0009) and references others by id, so a context stays carvable into its own service.
 - **The doctor** — the `AF####` analyzers catch structural drift (slice shape, co-located tests, `ctx.md`
-  freshness, write-ownership, `[Critical]` journeys, registry error codes…) at build time. Full catalog in
+  freshness, write-ownership, shape-derived write journeys, registry error codes…) at build time. Full catalog in
   [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
 - **Generators** — `af new`, `af g module / slice / entity / vo / crud / auth` scaffold exactly the convention.
 

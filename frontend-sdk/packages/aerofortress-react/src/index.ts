@@ -5,9 +5,7 @@
 export {
   type AsyncState,
   type QueryLike,
-  type ResourceFlags,
   toAsyncState,
-  fromResourceFlags,
   mapAsyncState,
   combineAsyncStates,
 } from "./async-state";

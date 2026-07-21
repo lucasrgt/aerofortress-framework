@@ -6,11 +6,10 @@ namespace MyApp.Api.Modules.Account;
 /// <summary>Authenticate with email + password; issue an access token (JWT) and a refresh token. The
 /// user is looked up by email — globally, one-human-one-account — and the identity is read off the
 /// user and put into the JWT, never assumed.</summary>
-/// <remarks>Critical: a silent regression on the sad path (bad credentials accidentally yielding a
+/// <remarks>Security contract: a silent regression on the sad path (bad credentials accidentally yielding a
 /// token) is an auth bypass — trivial code, catastrophic blast radius. AF0008 forces the happy and the
 /// deny path to be proven end-to-end (see Journeys/AuthJourney).</remarks>
 [Slice]
-[Critical]
 public static class Login
 {
     public record Input(string Email, string Password);

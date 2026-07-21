@@ -4,7 +4,7 @@
 # catalog ids it must be PROVEN against; the doctor reads this file (as an AdditionalFile) to close the
 # spec↔code bijection both ways: AF0031 fails any [Slice] not declared here with >=1 criterion,
 # AF0030 fails a declared criterion that no subject-bound [AVP] proof verifies. The obligation lives here, not on
-# an inline [Verify] attribute, so the spec is a reviewable file beside the module.
+# source annotations, so the spec is a reviewable file beside the module.
 
 module = "Wallets"
 

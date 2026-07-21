@@ -28,7 +28,7 @@
     package id defaults to the assembly name (AeroFortress.Framework.*); per-package Description can override the default below.
   -->
   <PropertyGroup>
-    <Version>2.2.4</Version>
+    <Version>3.0.0</Version>
     <Authors>Lucas Tinoco</Authors>
     <Company>AeroFortress</Company>
     <Product>AeroFortress</Product>
@@ -38,6 +38,7 @@
     <RepositoryUrl>https://github.com/lucasrgt/aerofortress-framework</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) Lucas Tinoco</Copyright>
     <!-- Reproducible, debuggable packages: link the sources to the commit + ship a symbol package. -->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -45,5 +46,9 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="\" Link="README.md" />
+  </ItemGroup>
 
 </Project>

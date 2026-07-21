@@ -72,14 +72,15 @@ public static class Deposit
   only through a smart constructor returning `Result<T>` (`AF0013/14`); a persisted or entity-owned type must
   declare its mark (`AF0021`). **Write-ownership**: a module writes only its own entities — on a `DbSet` or
   through the untyped `db.Add(entity)` (`AF0009`). A held `Result<T>` is **checked before unwrapped** —
-  `IsSuccess`/`IsFailure`/`Validation.Collect` before `.Value`/`.Error` (`AF0025`). An entity a `[Critical]`
-  slice writes carries a concurrency token (`[Timestamp] RowVersion` — `AF0026`, warn-tier).
+  `IsSuccess`/`IsFailure`/`Validation.Collect` before `.Value`/`.Error` (`AF0025`). Every persisted write's
+  entity carries a concurrency token (`[Timestamp] RowVersion` — `AF0026`, warn-tier).
 - **Validation inline** at the top of `Handle`, accumulated with `Validation` — `Check`/`Collect` plus the
   shorthands `Require(guid, field, code)`, `NotBlank`, `InRange`.
 - **Errors are registry constants** on a `*ErrorCodes` class (`AF0018/19`) — the OpenAPI + i18n seam.
   `.WithName(nameof(Slice))` (`AF0012`) is what the typed client turns into the `use<Slice>` hook.
-- **Tests**: every slice has a co-located `<Slice>.Tests.cs` (`AF0003`); a `[Critical]` slice has a happy **and**
-  a sad `[Journey]` that asserts its post-condition (`AF0008/10/20`). Files ≤ 500 LOC (`AF0007`).
+- **Tests**: every slice declares a `.spec.toml` criterion and a subject-bound executable `[AVP]`
+  (`AF0030/31/32`). Every shape-derived write has happy **and** sad `[Journey]` proofs whose terminal state is
+  asserted (`AF0008/10/20`). Unknown shapes fail closed as writes. Files ≤ 500 LOC (`AF0007`).
 
 ---
 
@@ -129,6 +130,9 @@ A screen is a triple: a **View** that renders, a **ViewModel** that owns data, a
 - **Contract freshness** — the typed client is pinned to the spec it was generated from: the codegen tail stamps
   `client.gen/.spec-hash` and the doctor compares it against the live OpenAPI document. A moved contract is a
   build-time "regenerate", never a runtime 404.
+- **Feature proof is complete**: every ViewModel has a co-located Assay proof (`AFFE033`) and at least two
+  subject-bound `@e2e` obligations resolving to executable happy and sad surface flows (`AFFE035`). No annotation,
+  manifest mode, skipped test, or undeclared frontend package can lower that bar.
 
 Routing rules are **error**-tier (correctness), beside the architecture rules — not the warn-tier polish rules.
 A badly-wired route **fails the build**.

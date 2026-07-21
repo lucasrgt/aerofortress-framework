@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "version": "0.2.6",
+  "version": "1.0.0",
   "type": "module",
   "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
   "license": "MIT",
@@ -50,9 +50,6 @@
   "workspaces": [
     "packages/*"
   ],
-  "overrides": {
-    "esbuild": "^0.28.1"
-  },
   "scripts": {
     "typecheck": "npm run typecheck:spine && npm run typecheck:sample",
     "typecheck:spine": "tsc --noEmit -p packages/aerofortress-react/tsconfig.json",
@@ -84,6 +81,7 @@
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-no-secrets": "^1.1.2",
     "eslint-plugin-sonarjs": "^4.2.0",
+    "esbuild": "^0.28.1",
     "i18next": "^24.2.0",
     "jsdom": "^25.0.1",
     "msw": "^2.15.0",

@@ -9,11 +9,10 @@ namespace Sample.Api.Modules.Wallets;
 /// balance cannot cover the amount — so no slice can bypass it and the balance stays authoritative
 /// server-side. The slice only orchestrates: validate input, load, delegate, persist. It is idempotent: a
 /// request carrying an Idempotency-Key is applied at most once — a retry replays the recorded outcome instead
-/// of debiting again — which is why it is [Critical] and its module's Wallets.spec.toml declares the
+/// of debiting again; its module's Wallets.spec.toml declares the
 /// "idempotency-key-honored" criterion for it, proven by the [AVP] test beside it.
 /// </remarks>
 [Slice]
-[Critical]
 public static class Withdraw
 {
     public record Input(Guid WalletId, decimal Amount);

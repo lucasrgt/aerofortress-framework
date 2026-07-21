@@ -17,19 +17,19 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 E2E remains flow-level, but coverage is now enforced in both directions. Every ViewModel declares one or more
 `@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
 requires each generated slice hook consumed by that ViewModel (or by session/guard infrastructure) to appear in
-the flow's `backendSlices`. A critical consumed slice needs linked `happy` and `sad` flows. `checkE2e(root)` then
+the flow's `backendSlices`. Every ViewModel needs subject-bound `happy` and `sad` flows. `checkE2e(root)` then
 proves every declared flow has an enabled spec/case, terminal assertion, and real runner. A missing/empty manifest
 is red. See the
 Hostpoint dogfood's `scripts/affe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
 
 ## The fullstack loop (journey parity)
 
-`journey-parity.mjs` (`checkJourneyParity`) closes the loop at the **journey grain**: the backend declares critical
+`journey-parity.mjs` (`checkJourneyParity`) closes the loop at the **journey grain**: the backend declares write
 journeys (its `Journeys/*.Tests.cs`), the frontend declares them in `flows.json` (linked explicitly via a
 `backendJourney` field) — and the doctor proves the two sets agree (no backend journey uncovered on the front, no
 front flow pointing at a journey the back lacks). The *endpoint* grain is already closed: `tsc` for front→back (you
 can't call a missing endpoint) and **AFFE008** for back→front (every endpoint is consumed by a ViewModel). So:
-endpoints by type + coverage, journeys by parity — the same critical path proven on both sides.
+endpoints by type + coverage, journeys by parity — the same write path proven on both sides.
 
 When those endpoints are shared by multiple frontend surfaces, endpoint coverage also consumes the union of their
 source roots:

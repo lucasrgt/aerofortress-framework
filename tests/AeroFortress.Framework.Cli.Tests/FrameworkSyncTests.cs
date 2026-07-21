@@ -45,7 +45,7 @@ public class FrameworkSyncTests
     }
 
     [Fact]
-    public void A_legacy_plugin_copy_fails_even_without_a_frontend()
+    public void A_retired_plugin_copy_fails_even_without_a_frontend()
     {
         var app = NewApp();
         Directory.CreateDirectory(Path.Combine(app, "clients", "eslint-plugin-aerofortress"));
@@ -53,7 +53,7 @@ public class FrameworkSyncTests
         var outcome = FrameworkSync.Check(app);
 
         Assert.False(outcome.InSync);
-        Assert.Contains(outcome.Messages, m => m.Contains("legacy vendored"));
+        Assert.Contains(outcome.Messages, m => m.Contains("retired vendored"));
     }
 
     // The SSOT safety net: the version baked into the CLI (what scaffolds stamp and the gate enforces) must equal

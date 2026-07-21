@@ -1721,7 +1721,7 @@ const rules = {
       },
       messages: {
         undeclared:
-          "AFFE033: this ViewModel declares no `@verify <criterion-id>` acceptance obligation — every feature needs at least one AVP criterion, regardless of criticality.",
+          "AFFE033: this ViewModel declares no `@verify <criterion-id>` acceptance obligation — every feature needs at least one AVP criterion.",
         missing:
           "AFFE033: `@verify {{id}}` declares an AVP obligation with no co-located proof — create {{test}} with an `@avp {{id}}` assay verification that proves the behaviour.",
         unproven:
@@ -1819,16 +1819,18 @@ const rules = {
     },
   },
 
-  // AFFE035 — every ViewModel is a user-visible feature boundary and therefore names the executable journey(s)
-  // that cover it. Resolution to a real surface manifest is workspace-level and belongs to affe-feature-e2e;
-  // this local rule makes an unlinked feature red at authoring time instead of waiting for the release gate.
+  // AFFE035 — every ViewModel is a user-visible feature boundary and therefore names at least two executable
+  // journeys: happy and sad. Resolution, path polarity and exact subject binding are workspace-level and belong
+  // to affe-feature-e2e; this local floor makes an incomplete feature red at authoring time.
   "feature-has-e2e-flow": {
     meta: {
       type: "problem",
-      docs: { description: "Every ViewModel declares at least one stable `@e2e <flow-id>` journey obligation." },
+      docs: { description: "Every ViewModel declares stable happy and sad `@e2e <flow-id>` obligations." },
       messages: {
         missing:
-          "AFFE035: this ViewModel declares no `@e2e <flow-id>` — link every visible feature to an executable surface journey.",
+          "AFFE035: this ViewModel declares no `@e2e <flow-id>` — link every visible feature to happy and sad executable journeys.",
+        incomplete:
+          "AFFE035: this ViewModel declares only one `@e2e <flow-id>` — complete depth requires distinct happy and sad surface flows.",
       },
     },
     create(context) {
@@ -1837,9 +1839,13 @@ const rules = {
       return {
         "Program:exit"(node) {
           const sourceCode = context.sourceCode ?? context.getSourceCode();
-          const linked = sourceCode.getAllComments()
-            .some((comment) => /@e2e\s+[a-z0-9][a-z0-9._-]*\b/i.test(comment.value));
-          if (!linked) context.report({ node, messageId: "missing" });
+          const linked = new Set();
+          for (const comment of sourceCode.getAllComments()) {
+            for (const match of comment.value.matchAll(/@e2e\s+([a-z0-9][a-z0-9._-]*)\b/gi))
+              linked.add(match[1]);
+          }
+          if (linked.size === 0) context.report({ node, messageId: "missing" });
+          else if (linked.size === 1) context.report({ node, messageId: "incomplete" });
         },
       };
     },
@@ -1847,7 +1853,7 @@ const rules = {
 };
 
 const plugin = {
-  meta: { name: "eslint-plugin-aerofortress", version: "0.12.2" },
+  meta: { name: "eslint-plugin-aerofortress", version: "1.0.0" },
   rules,
   configs: {},
 };

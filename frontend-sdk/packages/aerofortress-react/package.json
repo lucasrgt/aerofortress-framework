@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/react",
-  "version": "0.6.0",
+  "version": "1.0.0",
   "description": "AeroFortress Framework frontend spine — platform/design-system-agnostic React primitives (AsyncState, Resource, session, paging, …) the app composes.",
   "license": "MIT",
   "author": "Lucas Tinoco",
@@ -28,13 +28,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --sourcemap --external:react --external:react-dom",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": ">=18"
   },
-  "devDependencies": {
-    "tsup": "^8.3.5"
-  }
+  "devDependencies": {}
 }

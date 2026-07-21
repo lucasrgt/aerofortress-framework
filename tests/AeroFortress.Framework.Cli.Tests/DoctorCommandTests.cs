@@ -5,7 +5,7 @@ namespace AeroFortress.Framework.Cli.Tests;
 public class DoctorCommandTests
 {
     [Fact]
-    public void Every_package_under_clients_is_gated_even_when_its_eslint_config_is_missing()
+    public void Only_manifest_declared_frontend_packages_are_gated()
     {
         var root = Path.Combine(Path.GetTempPath(), "af-doctor-clients-" + Guid.NewGuid().ToString("N"));
         var web = Path.Combine(root, "clients", "web");
@@ -13,6 +13,13 @@ public class DoctorCommandTests
         Directory.CreateDirectory(web);
         Directory.CreateDirectory(nonPackage);
         File.WriteAllText(Path.Combine(web, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "App"
+
+            [products.app]
+            frontend = "clients/web"
+            """);
 
         try
         {
@@ -26,26 +33,16 @@ public class DoctorCommandTests
     }
 
     [Fact]
-    public void An_explicit_harness_frontend_is_the_only_gate_coordinator()
+    public void A_clients_directory_is_not_a_topology_fallback()
     {
         var root = Path.Combine(Path.GetTempPath(), "af-doctor-harness-" + Guid.NewGuid().ToString("N"));
         var app = Path.Combine(root, "apps", "web");
-        var unrelated = Path.Combine(root, "clients", "design-tokens");
         Directory.CreateDirectory(app);
-        Directory.CreateDirectory(unrelated);
         File.WriteAllText(Path.Combine(app, "package.json"), "{}");
-        File.WriteAllText(Path.Combine(unrelated, "package.json"), "{}");
-        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
-            [workspace]
-            name = "App"
-
-            [harness]
-            frontend = "apps/web"
-            """);
 
         try
         {
-            Assert.Equal(app, Assert.Single(DoctorCommand.FrontendClients(root)));
+            Assert.Empty(DoctorCommand.FrontendClients(root));
         }
         finally
         {

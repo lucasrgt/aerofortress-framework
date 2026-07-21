@@ -26,7 +26,7 @@ internal static class FrameworkSync
     {
         var messages = new List<string>();
         CheckBackendPackageVersions(root, messages);
-        CheckLegacyFrontendCopies(root, messages);
+        CheckVendoredFrontendCopies(root, messages);
         return new Outcome(Gating: true, InSync: messages.Count == 0, Messages: messages);
     }
 
@@ -54,12 +54,12 @@ internal static class FrameworkSync
     // The frontend half is enforced self-contained on the npm side: eslint-plugin-aerofortress + @aerofortress/*
     // version parity ships in @aerofortress/frontend-sdk's framework-sync and runs through the client lint chain,
     // so it is not duplicated here. What stays is the filesystem tell that the retired vendored model was revived.
-    private static void CheckLegacyFrontendCopies(string root, List<string> messages)
+    private static void CheckVendoredFrontendCopies(string root, List<string> messages)
     {
-        var legacyPlugin = Path.Combine(root, "clients", "eslint-plugin-aerofortress");
-        if (Directory.Exists(legacyPlugin))
+        var vendoredPlugin = Path.Combine(root, "clients", "eslint-plugin-aerofortress");
+        if (Directory.Exists(vendoredPlugin))
             messages.Add(
-                "framework-sync: clients/eslint-plugin-aerofortress is a legacy vendored plugin copy — delete it "
+                "framework-sync: clients/eslint-plugin-aerofortress is a retired vendored plugin copy — delete it "
                 + "and consume eslint-plugin-aerofortress from npm");
     }
 

@@ -17,15 +17,14 @@ namespace AeroFortress.Framework.Doctor;
 /// (slice ⟹ criterion). Together they close the spec-driven bridge in both directions, so a slice can never
 /// ship proving nothing at the AVP layer.
 ///
-/// The obligation moved off the inline <c>[Verify]</c> attribute onto the manifest (read via
-/// <see cref="SpecManifest"/>), so a slice's acceptance spec is a reviewable file beside it rather than
+/// The obligation lives in the manifest (read via <see cref="SpecManifest"/>), so a slice's acceptance spec is
+/// a reviewable file beside it rather than
 /// source noise. It is one rung finer than
 /// <c>AF0008</c>'s end-to-end journeys — a journey proves the path runs; the AVP criterion proves a named
-/// property holds. Criticality still controls the extra happy/sad journey depth; it never controls whether
-/// a feature is tested at all.
+/// property holds. Write shape controls the additional happy/sad journey depth.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class CriticalCriterionAnalyzer : DiagnosticAnalyzer
+public sealed class SliceCriterionAnalyzer : DiagnosticAnalyzer
 {
     /// <summary>The identifier reported for a slice not declared in its module's spec manifest.</summary>
     public const string DiagnosticId = "AF0031";
@@ -41,7 +40,7 @@ public sealed class CriticalCriterionAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Every slice must name at least one AVP acceptance criterion in its module's "
                    + "<Module>.spec.toml — the reverse of AF0030 — so no feature can ship proving nothing. "
-                   + "Critical slices additionally owe the deeper journeys enforced by AF0008.",
+                   + "Write slices additionally owe the deeper journeys enforced by AF0008.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     /// <inheritdoc />
@@ -64,7 +63,7 @@ public sealed class CriticalCriterionAnalyzer : DiagnosticAnalyzer
         context.RegisterSyntaxNodeAction(node =>
         {
             var cls = (ClassDeclarationSyntax)node.Node;
-            if (!CriticalityPolicy.IsSlice(cls))
+            if (!VerificationDepthPolicy.IsSlice(cls))
                 return;
             var module = ModuleNaming.ModuleOf(cls);
             if (module is not null)

@@ -138,7 +138,12 @@ internal static class GateReport
             {
                 OrphanProofs = matrix.OrphanProofs.Select(p => new
                 {
-                    p.Module, p.Subject, Criterion = p.CriterionId, p.File, Class = p.ClassName, p.Method,
+                    p.Module,
+                    p.Subject,
+                    Criterion = p.CriterionId,
+                    p.File,
+                    Class = p.ClassName,
+                    p.Method,
                 }),
                 UndeclaredSlices = matrix.UndeclaredSlices.Select(s => new { s.Module, Slice = s.Name, s.File }),
                 DeclaredWithoutClass = matrix.DeclaredWithoutClass.Select(d => new { d.Module, d.Slice, Manifest = d.ManifestPath }),

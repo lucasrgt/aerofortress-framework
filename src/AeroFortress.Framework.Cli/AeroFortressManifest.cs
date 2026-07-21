@@ -81,18 +81,19 @@ internal static class AeroFortressManifest
                 messages.Add($"{FileName}: {kind} path '{rel}' has no package.json");
         }
 
-        CheckCriticalityPolicy(text, messages);
+        CheckManifestSections(text, messages);
+        CheckFrontendInventory(root, text, messages);
+        CheckGateWorkflow(root, messages);
 
         return new Outcome(Present: true, Valid: messages.Count == 0, Messages: messages);
     }
 
     /// <summary>
-    /// Discover the package roots the frontend harness must gate. An explicit <c>[harness] frontend</c> is the
-    /// legacy surface coordinator and wins; otherwise product <c>frontend</c>/<c>website</c>/<c>core</c> paths
-    /// resolve to their owning package while retaining their proof depth. A core runs tests + Assay; either
-    /// executable surface kind additionally runs E2E.
-    /// The legacy <c>clients/*</c> scan remains only as a compatibility fallback for manifests that predate those
-    /// declarations, so an unrelated package cannot silently join or an <c>apps/*</c> package silently disappear.
+    /// Discover the package roots the frontend harness must gate. Product
+    /// <c>frontend</c>/<c>website</c>/<c>core</c> paths resolve to their owning package while retaining their proof
+    /// depth. A core runs tests + Assay; either executable surface kind additionally runs E2E.
+    /// Manifest validation independently rejects undisclosed frontend packages, so deleting a declaration cannot
+    /// make a proof surface disappear from the release verdict.
     /// </summary>
     public static IReadOnlyList<FrontendPackage> FrontendPackages(string root)
     {
@@ -100,20 +101,11 @@ internal static class AeroFortressManifest
         if (File.Exists(path))
         {
             var text = File.ReadAllText(path);
-            var harnessFrontend = ReadStringKey(Section(text, "harness"), "frontend");
-            if (harnessFrontend is not null)
-                return [new FrontendPackage(
-                    Path.GetFullPath(Path.Combine(root, harnessFrontend)),
-                    FrontendPackageRole.Surface)];
-
-            var declared = Regex.Matches(
-                    text,
-                    @"^\s*(frontend|website|core)\s*=\s*""([^""]+)""",
-                    RegexOptions.Multiline)
-                .Select(match => new
+            var declared = ProductFrontendDeclarations(text)
+                .Select(declaration => new
                 {
-                    Path = OwningPackage(root, match.Groups[2].Value),
-                    Role = match.Groups[1].Value == "core"
+                    Path = OwningPackage(root, declaration.RelativePath),
+                    Role = declaration.Kind == "core"
                         ? FrontendPackageRole.Core
                         : FrontendPackageRole.Surface,
                 })
@@ -125,17 +117,9 @@ internal static class AeroFortressManifest
                         ? FrontendPackageRole.Surface
                         : FrontendPackageRole.Core))
                 .ToList();
-            if (declared.Count > 0)
-                return declared;
+            return declared;
         }
-
-        var clients = Path.Combine(root, "clients");
-        if (!Directory.Exists(clients))
-            return [];
-        return Directory.EnumerateDirectories(clients)
-            .Where(dir => File.Exists(Path.Combine(dir, "package.json")))
-            .Select(dir => new FrontendPackage(dir, FrontendPackageRole.Surface))
-            .ToList();
+        return [];
     }
 
     private static string? OwningPackage(string root, string relativePath)
@@ -156,34 +140,145 @@ internal static class AeroFortressManifest
         return null;
     }
 
-    private static string Section(string text, string name)
-    {
-        var match = Regex.Match(
-            text,
-            $@"(?ms)^\s*\[{Regex.Escape(name)}\]\s*(?<body>.*?)(?=^\s*\[|\z)");
-        return match.Success ? match.Groups["body"].Value : string.Empty;
-    }
+    private sealed record FrontendDeclaration(string Kind, string RelativePath);
 
-    private static string? ReadStringKey(string section, string key)
+    private static IReadOnlyList<FrontendDeclaration> ProductFrontendDeclarations(string text)
     {
-        var match = Regex.Match(section, $@"(?m)^\s*{Regex.Escape(key)}\s*=\s*""([^""]+)""");
-        return match.Success ? match.Groups[1].Value : null;
+        var declarations = new List<FrontendDeclaration>();
+        foreach (Match section in Regex.Matches(
+                     text,
+                     @"(?ms)^\s*\[products\.[^\]\r\n]+\]\s*(?<body>.*?)(?=^\s*\[|\z)"))
+        {
+            foreach (Match entry in Regex.Matches(
+                         section.Groups["body"].Value,
+                         @"^\s*(frontend|website|core)\s*=\s*""([^""]+)""",
+                         RegexOptions.Multiline))
+            {
+                declarations.Add(new FrontendDeclaration(entry.Groups[1].Value, entry.Groups[2].Value));
+            }
+        }
+
+        return declarations;
     }
 
     /// <summary>
-    /// The <c>[testing] criticality</c> dial (the doctor's criticality policy) must, when present, name one of
-    /// the three known levels — <c>"opt-in"</c>, <c>"explicit"</c>, <c>"strict"</c>. A typo would otherwise
-    /// fall back silently to <c>opt-in</c> at build time (the projection only matches a known keyword), so a
-    /// misspelled <c>"strickt"</c> reads as "no policy" with no warning. The check is textual, like the rest of
-    /// this validator; an absent key is fine (absence means <c>opt-in</c>).
+    /// Keep the workspace schema closed. Verification has no manifest section or mode: its complete depth is an
+    /// unconditional framework invariant, so neither a typo nor a newly invented key can become an escape hatch.
     /// </summary>
-    private static void CheckCriticalityPolicy(string text, List<string> messages)
+    private static void CheckManifestSections(string text, List<string> messages)
     {
-        var match = Regex.Match(text, @"^\s*criticality\s*=\s*""([^""]*)""", RegexOptions.Multiline);
-        if (match.Success && match.Groups[1].Value is not ("opt-in" or "explicit" or "strict"))
+        foreach (Match section in Regex.Matches(text, @"^\s*\[([^\]\r\n]+)\]", RegexOptions.Multiline))
+        {
+            var name = section.Groups[1].Value;
+            if (name == "workspace" || name == "framework" || name.StartsWith("products.", StringComparison.Ordinal))
+                continue;
+            messages.Add($"{FileName}: unsupported section [{name}] — the manifest only declares topology; verification has no configurable mode.");
+        }
+    }
+
+    /// <summary>
+    /// Compare the declared topology with the packages that contain AeroFortress frontend proof surfaces. This
+    /// second, filesystem-derived inventory means deleting a product declaration cannot make its ViewModels or E2E
+    /// registry disappear from the gate. The manifest must name every owning product package explicitly.
+    /// </summary>
+    private static void CheckFrontendInventory(string root, string text, List<string> messages)
+    {
+        var declared = ProductFrontendDeclarations(text)
+            .Select(declaration => OwningPackage(root, declaration.RelativePath))
+            .Where(path => path is not null)
+            .Select(path => path!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var package in DiscoverFrontendProofPackages(root))
+        {
+            if (declared.Contains(package))
+                continue;
+
             messages.Add(
-                $"{FileName}: [testing] criticality must be \"opt-in\", \"explicit\", or \"strict\" (got " +
-                $"\"{match.Groups[1].Value}\") — an unknown value silently falls back to opt-in at build time.");
+                $"{FileName}: frontend proof package '{Path.GetRelativePath(root, package)}' is not declared by a "
+              + "[products.*] frontend, website, or core key — undeclared packages cannot disappear from the gate.");
+        }
+    }
+
+    private static IReadOnlyList<string> DiscoverFrontendProofPackages(string root)
+    {
+        var packages = new List<string>();
+        foreach (var packageJson in EnumerateFiles(root, "package.json"))
+        {
+            var package = Path.GetDirectoryName(packageJson)!;
+            var hasRegistry = File.Exists(Path.Combine(package, "e2e", "flows.json"));
+            var source = Path.Combine(package, "src");
+            var hasViewModel = Directory.Exists(source)
+                && EnumerateFiles(source, "*.viewModel.ts").Concat(EnumerateFiles(source, "*.viewModel.tsx")).Any();
+            if (hasRegistry || hasViewModel)
+                packages.Add(package);
+        }
+
+        return packages;
+    }
+
+    private static IEnumerable<string> EnumerateFiles(string root, string pattern)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            foreach (var file in Directory.EnumerateFiles(current, pattern, SearchOption.TopDirectoryOnly))
+                yield return file;
+
+            foreach (var directory in Directory.EnumerateDirectories(current))
+            {
+                var name = Path.GetFileName(directory);
+                if (name is ".git" or ".aerofortress" or "bin" or "coverage" or "dist" or "local-feed"
+                    or "node_modules" or "obj" or "output" or "playwright-report" or "TestResults" or "tmp")
+                {
+                    continue;
+                }
+
+                pending.Push(directory);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Require the non-bypassable release entry point in CI. Local hooks remain useful feedback, but only a
+    /// checked workflow can supply a required status to branch protection after an agent changes the code.
+    /// </summary>
+    private static void CheckGateWorkflow(string root, List<string> messages)
+    {
+        var workflows = Path.Combine(root, ".github", "workflows");
+        var files = Directory.Exists(workflows)
+            ? Directory.EnumerateFiles(workflows, "*.yml").Concat(Directory.EnumerateFiles(workflows, "*.yaml"))
+            : [];
+        var wired = files.Any(file => WorkflowRunsGate(File.ReadAllText(file)));
+        if (!wired)
+        {
+            messages.Add(
+                $"{FileName}: no .github/workflows/*.yml job directly runs `af gate` — CI must publish the "
+              + "release verdict so branch protection can require it.");
+        }
+    }
+
+    private static bool WorkflowRunsGate(string yaml)
+    {
+        var withoutComments = string.Join(
+            "\n",
+            yaml.Split('\n').Where(line => !line.TrimStart().StartsWith('#')));
+        var pullRequest = Regex.IsMatch(withoutComments, @"(?im)^\s*pull_request\s*:")
+            || Regex.IsMatch(withoutComments, @"(?im)^\s*on\s*:\s*\[[^\]]*\bpull_request\b");
+        if (!pullRequest
+            || Regex.IsMatch(withoutComments, @"(?im)^\s*(?:-\s*)?continue-on-error\s*:\s*true\b")
+            || Regex.IsMatch(withoutComments, @"(?im)^\s*(?:-\s*)?if\s*:\s*(?:\$\{\{\s*)?false\b"))
+        {
+            return false;
+        }
+
+        var invocation = Regex.Match(
+            withoutComments,
+            @"(?im)^\s*-?\s*run\s*:\s*(?<command>(?:af(?:\.exe)?\s+gate\b|dotnet\s+run\b[^\r\n]*--\s+gate\b)[^\r\n]*)");
+        return invocation.Success
+            && !Regex.IsMatch(invocation.Groups["command"].Value, @"(?:&&|\|\||;|\s\|\s)");
     }
 
     /// <summary>

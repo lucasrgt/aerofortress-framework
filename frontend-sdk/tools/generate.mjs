@@ -65,6 +65,7 @@ export interface ${Plural}Model {
 /**
  * @verify count-matches-source
  * @e2e ${lower}-happy
+ * @e2e ${lower}-sad
  */
 export function use${Plural}Model(): ${Plural}Model {
   const query = useList${Plural}();

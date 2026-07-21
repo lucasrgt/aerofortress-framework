@@ -6,7 +6,7 @@ parts: `UserSession.RowVersion` (a `[Timestamp]` token), the 10-second theft gra
 catch in `Refresh` mapped to the benign retry. Parts (1) and (2) are proven by the render+compile smoke
 (`tools/auth-smoke.sh`, in-memory, deterministic via a controllable clock); part (3)'s exception path is
 relational-only (the in-memory provider never raises it) and is documented below, not shipped as a test.
-The `[Critical]` sad journey was reworked accordingly (see below).
+The sad write journey was reworked accordingly (see below).
 
 ## Problem
 
@@ -36,7 +36,7 @@ The doctor already flags this: `AF0026` (warn) fires on `Login`/`Register`/`Refr
    "retry" error — the racer that lost the optimistic-concurrency check is a benign concurrent refresh,
    not a thief.
 
-## How the `[Critical]` journey was reworked
+## How the write journey was reworked
 
 `AuthJourney.Replayed_refresh_token_burns_the_whole_family` replayed the spent token **immediately** and
 asserted the family was burned. Under the grace window an immediate replay is now *benign*, so that single

@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// AF0026 — <b>a <c>[Critical]</c> write declares its concurrency posture</b>. A <c>[Critical]</c> slice whose
+/// AF0026 — <b>every persisted write declares its concurrency posture</b>. A slice whose
 /// <c>Handle</c> saves changes against an entity that carries no concurrency token runs last-write-wins: two
 /// concurrent requests both read the same row, both mutate, and the second save silently erases the first —
 /// the classic double-spend on exactly the slices marked high-stakes. The token is one property:
@@ -19,23 +19,23 @@ namespace AeroFortress.Framework.Doctor;
 /// <c>RowVersion</c> (recognized) or tune the severity in <c>.editorconfig</c>.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class CriticalConcurrencyAnalyzer : DiagnosticAnalyzer
+public sealed class WriteConcurrencyAnalyzer : DiagnosticAnalyzer
 {
-    /// <summary>The identifier reported when a critical slice saves an entity that has no concurrency token.</summary>
+    /// <summary>The identifier reported when a write saves an entity that has no concurrency token.</summary>
     public const string DiagnosticId = "AF0026";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
-        title: "A [Critical] write should be guarded by a concurrency token",
-        messageFormat: "Critical slice '{0}' saves entity '{1}' which declares no concurrency token — "
+        title: "A persisted write should be guarded by a concurrency token",
+        messageFormat: "Write slice '{0}' saves entity '{1}' which declares no concurrency token — "
                      + "concurrent requests are last-write-wins; add a [Timestamp] RowVersion (or "
                      + "[ConcurrencyCheck]) so a conflicting save fails loudly instead of silently losing a write",
         category: "AeroFortress.Framework.Convention",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "A [Critical] slice that saves changes against an entity with no concurrency token "
+        description: "A slice that saves changes against an entity with no concurrency token "
                    + "(no [Timestamp]/[ConcurrencyCheck] member, no RowVersion property) runs last-write-wins "
-                   + "on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration "
+                   + "on the operation. Warning-tier: fluent-only configuration "
                    + "is invisible to the doctor — name the property RowVersion or tune the severity.");
 
     /// <inheritdoc />
@@ -52,13 +52,13 @@ public sealed class CriticalConcurrencyAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeClass(SyntaxNodeAnalysisContext context)
     {
         var cls = (ClassDeclarationSyntax)context.Node;
-        if (!HasAttribute(cls, "Slice") || !HasAttribute(cls, "Critical"))
+        if (!VerificationDepthPolicy.IsSlice(cls))
             return;
 
         var handle = cls.Members.OfType<MethodDeclarationSyntax>()
             .FirstOrDefault(m => m.Identifier.Text == "Handle");
         if (handle is null || !SavesChanges(handle))
-            return; // a read-only critical slice has no write to guard
+            return;
 
         foreach (var entity in TouchedEntities(handle, context))
             if (!HasConcurrencyToken(entity))
@@ -94,10 +94,4 @@ public sealed class CriticalConcurrencyAnalyzer : DiagnosticAnalyzer
                     is "Timestamp" or "TimestampAttribute"
                     or "ConcurrencyCheck" or "ConcurrencyCheckAttribute"));
 
-    private static bool HasAttribute(ClassDeclarationSyntax cls, string name) =>
-        cls.AttributeLists
-            .SelectMany(list => list.Attributes)
-            .Select(attr => attr.Name.ToString())
-            .Any(n => n == name || n == name + "Attribute"
-                   || n.EndsWith("." + name) || n.EndsWith("." + name + "Attribute"));
 }

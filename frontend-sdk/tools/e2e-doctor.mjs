@@ -5,8 +5,7 @@
 // links a flow, and every backend slice consumed by the UI is named by a linked journey.
 // The manifest itself is mandatory: absence and an empty list are coverage gaps, never bootstrap green.
 //
-// SINGLE TIER, by design: being in `flows.json` IS the bar — there are no skipped/ephemeral sub-tiers. Criticality
-// still adds happy + sad backend journey depth (AF0008); it never makes a declared frontend flow optional. A listed
+// SINGLE TIER, by design: being in `flows.json` IS the bar — there are no skipped/ephemeral sub-tiers. A listed
 // flow with no executable spec is a blocking gap, not a backlog item dressed as coverage.
 //
 // The runner is the swappable slot (the "RSpec"): Playwright is the blessed default for WEB, Maestro/Detox for
@@ -63,8 +62,7 @@ export function classifySpec(root, spec) {
 
 /**
  * Inspect a project's e2e tier. Returns
- * `{ bootstrap, runners, flows, gaps, depthGaps, execution, seedPending, messages }`:
- *   - bootstrap: retained for response compatibility and always false; absence is now a blocking gap
+ * `{ runners, flows, gaps, depthGaps, execution, seedPending, messages }`:
  *   - runners: detected runners; flows: count of curated journeys; gaps: hard existence problems; messages: lines
  *   - depthGaps: blocking journey-depth findings (AFFE-JOURNEY-002) — a flow with no `terminal`, or a spec
  *     that never asserts its declared `terminal`.
@@ -78,7 +76,6 @@ export function checkE2e(root) {
   const flowsFile = join(root, "e2e", "flows.json");
   if (!existsSync(flowsFile)) {
     return {
-      bootstrap: false,
       runners: detectRunners(root),
       flows: 0,
       gaps: 1,
@@ -108,7 +105,6 @@ export function checkE2e(root) {
     if (!Array.isArray(flows)) throw new Error("flows.json must be an array");
   } catch (e) {
     return {
-      bootstrap: false,
       runners,
       flows: 0,
       gaps: gaps + 1,
@@ -235,7 +231,7 @@ export function checkE2e(root) {
     }
   }
 
-  return { bootstrap: false, runners, flows: flows.length, gaps, depthGaps, execution, seedPending, messages };
+  return { runners, flows: flows.length, gaps, depthGaps, execution, seedPending, messages };
 }
 
 function stripComments(source) {

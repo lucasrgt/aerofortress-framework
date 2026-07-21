@@ -819,7 +819,7 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
     },
     // The old suffix is not Vitest-discoverable; it cannot satisfy a runtime obligation.
     {
-      filename: path.join(AFFE033_FIX, "Legacy.view.tsx"),
+      filename: path.join(AFFE033_FIX, "OldStyle.view.tsx"),
       code: `/** @verify old-file */\nexport const X = () => null;`,
       errors: [{ messageId: "missing" }],
     },
@@ -864,7 +864,7 @@ ruleTester.run("no-disabled-tests", plugin.rules["no-disabled-tests"], {
 // AFFE035 — a ViewModel must name the real surface flow that covers its visible behavior.
 ruleTester.run("feature-has-e2e-flow", plugin.rules["feature-has-e2e-flow"], {
   valid: [
-    { filename: "Feature.viewModel.ts", code: `/** @e2e feature-happy */\nexport const useFeature = () => null;` },
+    { filename: "Feature.viewModel.ts", code: `/** @e2e feature-happy\n * @e2e feature-sad */\nexport const useFeature = () => null;` },
     { filename: "Feature.view.tsx", code: `export const Feature = () => null;` },
   ],
   invalid: [
@@ -872,6 +872,11 @@ ruleTester.run("feature-has-e2e-flow", plugin.rules["feature-has-e2e-flow"], {
       filename: "Feature.viewModel.ts",
       code: `export const useFeature = () => null;`,
       errors: [{ messageId: "missing" }],
+    },
+    {
+      filename: "Feature.viewModel.ts",
+      code: `/** @e2e feature-happy */\nexport const useFeature = () => null;`,
+      errors: [{ messageId: "incomplete" }],
     },
   ],
 });

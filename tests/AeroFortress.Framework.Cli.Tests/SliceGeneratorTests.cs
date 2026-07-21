@@ -63,26 +63,11 @@ public class SliceGeneratorTests
     }
 
     [Fact]
-    public void A_plain_slice_has_no_critical_marker_or_journeys()
+    public void A_generated_write_gets_complete_journeys()
     {
         var root = NewProject("Shop.Api");
 
         SliceGenerator.Generate(root, "Orders", "Place", verify: ["my-domain-invariant"]);
-
-        var slice = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.cs"));
-        Assert.DoesNotContain("[Critical]", slice);
-        Assert.False(Directory.Exists(Path.Combine(root, "Journeys")));
-    }
-
-    [Fact]
-    public void A_critical_slice_is_marked_and_gets_happy_and_sad_journeys()
-    {
-        var root = NewProject("Shop.Api");
-
-        SliceGenerator.Generate(root, "Orders", "Place", critical: true, verify: ["my-domain-invariant"]);
-
-        var slice = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.cs"));
-        Assert.Contains("[Critical]", slice);
 
         var journey = File.ReadAllText(Path.Combine(root, "Journeys", "PlaceJourney.Tests.cs"));
         Assert.Contains("namespace Shop.Tests.Journeys;", journey);
@@ -95,8 +80,7 @@ public class SliceGeneratorTests
     {
         var root = NewProject("Shop.Api");
 
-        var code = SliceGenerator.Generate(root, "Wallets", "Withdraw", critical: true,
-            verify: ["idempotency-key-honored"]);
+        var code = SliceGenerator.Generate(root, "Wallets", "Withdraw", verify: ["idempotency-key-honored"]);
 
         Assert.Equal(0, code);
 
@@ -122,7 +106,7 @@ public class SliceGeneratorTests
     {
         var root = NewProject("Shop.Api");
 
-        SliceGenerator.Generate(root, "Orders", "Place", critical: true, verify: ["my-domain-invariant"]);
+        SliceGenerator.Generate(root, "Orders", "Place", verify: ["my-domain-invariant"]);
 
         var proof = File.ReadAllText(Path.Combine(root, "Modules", "Orders", "Slices", "Place.Avp.Tests.cs"));
         Assert.Contains("[AVP(typeof(Place), \"my-domain-invariant\")]", proof);
@@ -138,7 +122,7 @@ public class SliceGeneratorTests
         Directory.SetCurrentDirectory(root);
         try
         {
-            Assert.Equal(0, SliceGenerator.Run("Wallets", "Withdraw", ["--critical", "--verify", "idempotency-key-honored"]));
+            Assert.Equal(0, SliceGenerator.Run("Wallets", "Withdraw", ["--verify", "idempotency-key-honored"]));
             Assert.True(File.Exists(Path.Combine(root, "Modules", "Wallets", "Wallets.spec.toml")));
 
             Assert.Equal(1, SliceGenerator.Run("Wallets", "Deposit", []));              // criteria are mandatory

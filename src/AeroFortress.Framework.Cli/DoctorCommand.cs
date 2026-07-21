@@ -47,9 +47,8 @@ internal static class DoctorCommand
         return code;
     }
 
-    // The manifest names the real harness package; AeroFortressManifest retains a clients/* compatibility fallback.
-    // Requiring an eslint config for discovery made a missing harness file erase the client precisely when the
-    // doctor must fail, so package.json — not a healthy config — remains the executable boundary.
+    // The manifest names every real frontend package. Validation independently inventories ViewModels and flow
+    // registries, so deleting a declaration makes the manifest red instead of shrinking this list silently.
     internal static IReadOnlyList<string> FrontendClients(string root)
         => FrontendTargets(root).Select(package => package.Path).ToList();
 

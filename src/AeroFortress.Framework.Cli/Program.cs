@@ -40,8 +40,8 @@ static int Usage()
         usage:
           af new <Name>                 scaffold a new AeroFortress project (dotnet new aerofortress)
           af g module <Name>            generate a module + wire it into Program.cs
-          af g slice <Module> <Name> [--critical] --verify <id,id>
-                                        generate a slice + tests (+ journeys if critical); --verify
+          af g slice <Module> <Name> --verify <id,id>
+                                        generate a slice + tests + complete write journeys; --verify
                                         declares the AVP criteria in <Module>.spec.toml and scaffolds the
                                         co-located [AVP] proof (red by design — correct by construction)
           af criteria list|suggest <words...>   the AVP catalog menu / ranked criteria for a slice

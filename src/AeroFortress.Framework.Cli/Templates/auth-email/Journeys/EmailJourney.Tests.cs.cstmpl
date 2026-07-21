@@ -8,10 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MyApp.Tests.Journeys;
 
-// Journeys for the [Critical] email-token slices (ResetPassword, VerifyEmail). Like the SMS code, the token
+// Journeys for the email-token writes (ResetPassword, VerifyEmail). Like the SMS code, the token
 // only leaves the system as an email — it is hashed in storage — so the test layers a capturing IEmailSender
 // over the booted app (the last registration wins) to read the token the real Request* slice sent. Same seam
-// as the phone journey, over a different provider. AF0008 requires a happy and a sad per critical slice.
+// as the phone journey, over a different provider. AF0008 requires a happy and a sad path per write.
 public class EmailJourney
 {
     private const string Email = "reset@example.com";

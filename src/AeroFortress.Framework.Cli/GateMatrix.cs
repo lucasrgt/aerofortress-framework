@@ -81,7 +81,7 @@ internal sealed class GateMatrix
 
     /// <summary>Join the scanned evidence into the matrix. Pure; order-stable for deterministic reports.</summary>
     /// <param name="manifests">Every discovered <c>*.spec.toml</c> (parsed or malformed).</param>
-    /// <param name="proofs">Every subject-bound or legacy <c>[AVP]</c> site in source.</param>
+    /// <param name="proofs">Every subject-bound <c>[AVP]</c> site in source.</param>
     /// <param name="slices">Every <c>[Slice]</c> class in source.</param>
     /// <param name="verdicts">Every test outcome from the run's TRX files.</param>
     public static GateMatrix Build(
@@ -92,8 +92,7 @@ internal sealed class GateMatrix
     {
         var parsed = manifests.Where(m => m.Manifest is not null).ToList();
         var proofsByObligation = proofs
-            .Where(p => p.Subject is not null)
-            .GroupBy(p => (p.Module, Subject: p.Subject!, p.CriterionId))
+            .GroupBy(p => (p.Module, p.Subject, p.CriterionId))
             .ToDictionary(g => g.Key, g => (IReadOnlyList<AvpProof>)g.ToList());
 
         var rows = new List<MatrixRow>();
@@ -119,8 +118,7 @@ internal sealed class GateMatrix
         }
 
         var orphans = proofs
-            .Where(p => p.Subject is null
-                || !declaredObligations.Contains((p.Module, p.Subject, p.CriterionId)))
+            .Where(p => !declaredObligations.Contains((p.Module, p.Subject, p.CriterionId)))
             .ToList();
         var undeclaredSlices = slices
             .Where(s => !parsed.Any(m =>

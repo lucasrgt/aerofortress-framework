@@ -7,9 +7,9 @@
 // against the union of all surface manifests, so a core never pretends to own a browser while still owing a
 // real consumer journey.
 //
-// Criticality remains single-source in C#: when a ViewModel consumes `use<CriticalSlice>`, its linked flows
-// must include both `path: "happy"` and `path: "sad"`. A backend slice with no ViewModel remains backend-only;
-// once its hook enters a ViewModel, frontend journey depth becomes mandatory.
+// Complete depth is universal: every ViewModel owns linked happy and sad flows, and each flow names the exact
+// feature(s) it proves. A backend slice with no frontend consumer remains backend-only; once its hook enters a
+// ViewModel or infrastructure data door, the real surface journeys must name it.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,11 +41,7 @@ function sliceDeclarations(sources) {
     for (const match of classes) {
       const attributes = match[1];
       if (!/\bSlice(?:Attribute)?\b/.test(attributes)) continue;
-      declarations.push({
-        name: match[2],
-        critical: /\bCritical(?:Attribute)?\b/.test(attributes),
-        nonCritical: /\bNonCritical(?:Attribute)?\b/.test(attributes),
-      });
+      declarations.push({ name: match[2] });
     }
   }
   return declarations;
@@ -54,13 +50,6 @@ function sliceDeclarations(sources) {
 /** Every backend slice class name from ordinary C# source files. */
 export function extractSlices(sources) {
   return [...new Set(sliceDeclarations(sources).map(({ name }) => name))].sort();
-}
-
-/** Critical slice class names, including undecided slices when the workspace policy is strict. */
-export function extractCriticalSlices(sources, strict = false) {
-  return [...new Set(sliceDeclarations(sources)
-    .filter(({ critical, nonCritical }) => critical || (strict && !nonCritical))
-    .map(({ name }) => name))].sort();
 }
 
 /** Backend hooks consumed directly by one frontend data door. */
@@ -82,23 +71,22 @@ export function sliceHooks(source, slices) {
   }).sort();
 }
 
-/** Critical backend hooks consumed directly by one ViewModel. */
-export function criticalHooks(source, criticalSlices) {
-  return sliceHooks(source, criticalSlices);
-}
-
 /**
  * Check the complete feature -> flow mapping.
  * @param {{ path: string, source: string }[]} viewModels
- * @param {{ id?: string, path?: string, backendSlices?: string[], __surface?: string }[]} flows
+ * @param {{ id?: string, path?: string, features?: string[], backendSlices?: string[], __surface?: string }[]} flows
  * @param {string[]} slices
- * @param {string[]} criticalSlices
  * @param {{ path: string, source: string }[]} infrastructure
  */
-export function checkFeatureE2e(viewModels, flows, slices, criticalSlices, infrastructure = []) {
+export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) {
   const messages = [];
   let gaps = 0;
   const byId = new Map();
+  const featureNames = viewModels.map((viewModel) => basename(viewModel.path).replace(/\.viewModel\.tsx?$/i, ""));
+  for (const duplicate of featureNames.filter((feature, index) => featureNames.indexOf(feature) !== index)) {
+    messages.push(`ViewModel feature id "${duplicate}" is duplicated; filenames must identify one proof subject`);
+    gaps += 1;
+  }
 
   for (const flow of flows) {
     const id = typeof flow?.id === "string" ? flow.id.trim() : "";
@@ -109,6 +97,16 @@ export function checkFeatureE2e(viewModels, flows, slices, criticalSlices, infra
       continue;
     }
     byId.set(id, flow);
+    if (flow.features !== undefined && (!Array.isArray(flow.features)
+      || flow.features.some((feature) => typeof feature !== "string" || !feature.trim()))) {
+      messages.push(`flow id "${id}" has malformed features; use an array of ViewModel feature names`);
+      gaps += 1;
+    }
+    for (const feature of flow.features ?? []) {
+      if (featureNames.includes(feature)) continue;
+      messages.push(`flow id "${id}" links unknown ViewModel feature "${feature}"`);
+      gaps += 1;
+    }
     for (const slice of flow.backendSlices ?? []) {
       if (slices.includes(slice)) continue;
       messages.push(`flow id "${id}" links unknown backend slice "${slice}"`);
@@ -117,7 +115,7 @@ export function checkFeatureE2e(viewModels, flows, slices, criticalSlices, infra
   }
 
   let linked = 0;
-  let critical = 0;
+  let complete = 0;
   for (const viewModel of viewModels) {
     const feature = basename(viewModel.path).replace(/\.viewModel\.tsx?$/i, "");
     const obligations = extractE2eObligations(viewModel.source);
@@ -137,11 +135,26 @@ export function checkFeatureE2e(viewModels, flows, slices, criticalSlices, infra
         resolvedFlows.push(flow);
       }
     }
-    if (resolvedFlows.length > 0) linked += 1;
+    if (resolvedFlows.length === 0) continue;
+    const subjectFlows = resolvedFlows.filter((flow) => flow.features?.includes(feature));
+    for (const flow of resolvedFlows) {
+      if (flow.features?.includes(feature)) continue;
+      messages.push(`${viewModel.path}: linked flow "${flow.id}" does not declare features:["${feature}"]`);
+      gaps += 1;
+    }
+    if (subjectFlows.length > 0) linked += 1;
+
+    const paths = new Set(subjectFlows.map((flow) => flow.path));
+    for (const required of ["happy", "sad"]) {
+      if (paths.has(required)) continue;
+      messages.push(`${viewModel.path}: complete verification requires a subject-bound @e2e flow with path:${required}`);
+      gaps += 1;
+    }
+    if (paths.has("happy") && paths.has("sad")) complete += 1;
 
     const hooks = sliceHooks(viewModel.source, slices);
     for (const hook of hooks) {
-      if (resolvedFlows.some((flow) => flow.backendSlices?.includes(hook))) continue;
+      if (subjectFlows.some((flow) => flow.backendSlices?.includes(hook))) continue;
       messages.push(
         `${viewModel.path}: use${hook} is UI-consumed but none of its linked @e2e flows declares `
           + `backendSlices:["${hook}"]`,
@@ -149,19 +162,6 @@ export function checkFeatureE2e(viewModels, flows, slices, criticalSlices, infra
       gaps += 1;
     }
 
-    const criticalHooksUsed = hooks.filter((hook) => criticalSlices.includes(hook));
-    if (criticalHooksUsed.length === 0) continue;
-    critical += 1;
-    for (const hook of criticalHooksUsed) {
-      const paths = new Set(resolvedFlows
-        .filter((flow) => flow.backendSlices?.includes(hook))
-        .map((flow) => flow.path));
-      for (const required of ["happy", "sad"]) {
-        if (paths.has(required)) continue;
-        messages.push(`${viewModel.path}: critical use${hook} requires a linked @e2e flow with path:${required}`);
-        gaps += 1;
-      }
-    }
   }
 
   for (const dataDoor of infrastructure) {
@@ -172,17 +172,16 @@ export function checkFeatureE2e(viewModels, flows, slices, criticalSlices, infra
         gaps += 1;
         continue;
       }
-      if (!criticalSlices.includes(hook)) continue;
       const paths = new Set(proofs.map((flow) => flow.path));
       for (const required of ["happy", "sad"]) {
         if (paths.has(required)) continue;
-        messages.push(`${dataDoor.path}: critical infrastructure use${hook} requires an E2E flow with path:${required}`);
+        messages.push(`${dataDoor.path}: infrastructure use${hook} requires an E2E flow with path:${required}`);
         gaps += 1;
       }
     }
   }
 
-  return { features: viewModels.length, linked, critical, gaps, messages };
+  return { features: viewModels.length, linked, complete, gaps, messages };
 }
 
 function walk(root, predicate) {
@@ -237,19 +236,14 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       .map((file) => ({ path: file, source: readFileSync(file, "utf8") }));
     const backendSources = walk(workspace, (file) => file.endsWith(".cs"))
       .map((file) => readFileSync(file, "utf8"));
-    const manifest = existsSync(join(workspace, "AeroFortress.toml"))
-      ? readFileSync(join(workspace, "AeroFortress.toml"), "utf8")
-      : "";
-    const strict = /^\s*criticality\s*=\s*["']strict["']/m.test(manifest);
     const slices = extractSlices(backendSources);
-    const criticalSlices = extractCriticalSlices(backendSources, strict);
     const flows = packages
       .filter(({ role }) => role === "surface")
       .flatMap(({ path }) => readFlows(path));
-    const result = checkFeatureE2e(viewModels, flows, slices, criticalSlices, infrastructure);
+    const result = checkFeatureE2e(viewModels, flows, slices, infrastructure);
     console.log(
       `AFFE-FEATURE-E2E: ${result.linked}/${result.features} ViewModel feature(s) linked; `
-        + `${result.critical} critical frontend feature(s); ${result.gaps} coverage gap(s).`,
+        + `${result.complete} complete happy+sad feature(s); ${result.gaps} coverage gap(s).`,
     );
     for (const message of result.messages) console.log(`  - ${message}`);
     process.exit(result.gaps > 0 ? 1 : 0);

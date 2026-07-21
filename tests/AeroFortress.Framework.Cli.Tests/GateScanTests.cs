@@ -42,6 +42,15 @@ public class GateScanTests
     }
 
     [Fact]
+    public void An_unbound_marker_is_not_an_avp_proof()
+    {
+        var root = NewDir();
+        Write(root, "Unbound.cs", "class Proof { [AVP(\"criterion\")] void Check() { } }");
+
+        Assert.Empty(GateScan.ScanProofs(root));
+    }
+
+    [Fact]
     public void Attribute_examples_inside_strings_never_mint_proofs_or_slices()
     {
         var root = NewDir();
@@ -76,7 +85,6 @@ public class GateScanTests
 
             /// <summary>Withdraw money.</summary>
             [Slice]
-            [Critical]
             public static class Withdraw
             {
             }
@@ -91,21 +99,17 @@ public class GateScanTests
 
         var slice = Assert.Single(GateScan.ScanSlices(root));
 
-        Assert.Equal(("Wallets", "Withdraw", true), (slice.Module, slice.Name, slice.Critical));
+        Assert.Equal(("Wallets", "Withdraw"), (slice.Module, slice.Name));
     }
 
     [Fact]
-    public void A_marker_mentioned_in_prose_is_never_read_as_the_mark()
+    public void An_attribute_name_mentioned_in_prose_does_not_mint_a_slice()
     {
-        // The fluxoterra false positive: a doc comment explaining why a slice is NOT [Critical]
-        // ("no write, so no [Critical] requirement") must not turn the slice critical — and prose
-        // mentioning [Slice] must not mint a slice. Only attribute lines carry markers.
         var root = NewDir();
         Write(root, "HypothesizeMaterial.cs", """
             namespace Fluxo.Api.Modules.Catalog;
 
-            /// <summary>Read-only hypothesis, deliberately not
-            /// <c>[Critical]</c>: no write, so no journey requirement.</summary>
+            /// <summary>Read-only hypothesis.</summary>
             [Slice]
             public static class HypothesizeMaterial
             {
@@ -123,7 +127,6 @@ public class GateScanTests
         var slice = Assert.Single(GateScan.ScanSlices(root));
 
         Assert.Equal("HypothesizeMaterial", slice.Name);
-        Assert.False(slice.Critical);
     }
 
     [Fact]

@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 namespace Sample.Tests.Modules.Wallets;
 
 /// <summary>
-/// The AVP proof of <see cref="Withdraw"/>'s <c>[Verify("idempotency-key-honored")]</c> obligation — Doctor 2 of
+/// The AVP proof of <see cref="Withdraw"/>'s <c>idempotency-key-honored</c> spec obligation — Doctor 2 of
 /// the Clockwork gate. It runs the shared backend verifier (Assay.Net's request-idempotency archetype) over the
 /// REAL slice on a real HTTP server: two POSTs with the same Idempotency-Key must replay one outcome, a new key
 /// must apply again. The verifier is a calibrated ruler — the second test confirms it FAILS a non-idempotent

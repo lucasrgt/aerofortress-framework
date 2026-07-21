@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Journey parity — the fullstack-loop doctor. The backend declares its critical journeys as Journeys/*.Tests.cs;
-// the frontend declares its e2e journeys in e2e/flows.json. This proves the two SETS agree, so no critical journey
+// Journey parity — the fullstack-loop doctor. The backend declares its write journeys as Journeys/*.Tests.cs;
+// the frontend declares its e2e journeys in e2e/flows.json. This proves the two SETS agree, so no write journey
 // is half-built (tested on the back but never end-to-end on the front, or vice-versa). It closes the loop at the
 // JOURNEY grain — the endpoint grain is already closed elsewhere (tsc for front->back, AFFE008 for back->front).
 //

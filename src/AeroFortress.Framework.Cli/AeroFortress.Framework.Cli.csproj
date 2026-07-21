@@ -14,9 +14,9 @@
     <PackageId>aerofortress-framework-cli</PackageId>
 
     <!-- Package metadata (the CLI doesn't import AeroFortress.Framework.Library.props — that turns CS1591 into an error, and a
-         tool isn't a documented library surface). 0.3.5 keeps universal Assay strict for every ViewModel while
-         treating a static surface with no ViewModel or Assay suite as not applicable. -->
-    <Version>0.3.5</Version>
+         tool isn't a documented library surface). 1.0 removes proof modes and topology fallbacks: one manifest,
+         one complete fail-closed gate. -->
+    <Version>1.0.0</Version>
     <Authors>Lucas Tinoco</Authors>
     <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
     <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>
@@ -24,6 +24,7 @@
     <RepositoryUrl>https://github.com/lucasrgt/aerofortress-framework</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) Lucas Tinoco</Copyright>
   </PropertyGroup>
 
@@ -35,6 +36,7 @@
        non-standard tools/ path, which makes some SDKs fail to find DotnetToolSettings.xml on install. -->
   <ItemGroup>
     <None Include="Templates\**\*.cstmpl" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Link="README.md" />
   </ItemGroup>
 
   <!-- The one allowed cross-repo dependency direction: framework → avp (Assay.Net is standalone, xUnit-like,

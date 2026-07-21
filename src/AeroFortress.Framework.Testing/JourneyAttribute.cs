@@ -11,11 +11,11 @@ public enum JourneyPath
 }
 
 /// <summary>
-/// Declares that an <c>[E2E]</c> test is the journey proving a <c>[Critical]</c> slice on a given
-/// <see cref="Path"/>. The relation is enforced both ways: <c>AF0008</c> requires every critical slice to
+/// Declares that an <c>[E2E]</c> test is the journey proving a write slice on a given
+/// <see cref="Path"/>. The relation is enforced both ways: <c>AF0008</c> requires every write slice to
 /// have both a <see cref="JourneyPath.Happy"/> and a <see cref="JourneyPath.Sad"/> journey, and
-/// <c>AF0010</c> requires every journey to cover a critical slice. So a journey is exactly the proof of a
-/// critical operation — not a label for any flow: a voluntary end-to-end test that proves no critical slice
+/// <c>AF0010</c> requires every journey to cover a write slice. So a journey is exactly the proof of a
+/// state-changing operation — not a label for any flow: a voluntary end-to-end test that proves a read
 /// is a plain <c>[E2E]</c> with no <c>[Journey]</c> (by convention a <c>*Flow.Tests.cs</c>, vs a
 /// <c>*Journey.Tests.cs</c>).
 ///
@@ -28,8 +28,8 @@ public enum JourneyPath
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
 public sealed class JourneyAttribute : Attribute
 {
-    /// <summary>Declare the critical slice this journey proves and which path it covers.</summary>
-    /// <param name="covers">The <c>[Critical]</c> slice this journey proves.</param>
+    /// <summary>Declare the write slice this journey proves and which path it covers.</summary>
+    /// <param name="covers">The write slice this journey proves.</param>
     /// <param name="path">Whether this journey proves the happy flow or a sad flow.</param>
     public JourneyAttribute(Type covers, JourneyPath path)
     {
@@ -37,7 +37,7 @@ public sealed class JourneyAttribute : Attribute
         Path = path;
     }
 
-    /// <summary>The <c>[Critical]</c> slice this journey proves.</summary>
+    /// <summary>The write slice this journey proves.</summary>
     public Type Covers { get; }
 
     /// <summary>Whether this journey proves the happy flow or a sad flow.</summary>

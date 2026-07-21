@@ -7,13 +7,12 @@ namespace Sample.Api.Modules.Wallets;
 /// Why: deposits are the only inflow that grows a balance; all top-ups funnel here. The balance is
 /// authoritative server-side — recompute from the stored value, never trust a client-sent total. It is
 /// idempotent: a request carrying an Idempotency-Key is applied at most once — a retry replays the recorded
-/// outcome instead of crediting again — which is why it is [Critical] and its module's Wallets.spec.toml
+/// outcome instead of crediting again; its module's Wallets.spec.toml
 /// declares the "idempotency-key-honored" criterion for it, proven by the [AVP] test beside it. The "why"
 /// lives in this header because the slice is self-contained; it graduates to a separate Deposit.ctx.md only
 /// if it ever outgrows a header.
 /// </remarks>
 [Slice]
-[Critical]
 public static class Deposit
 {
     public record Input(Guid WalletId, decimal Amount);

@@ -21,7 +21,7 @@ const require = createRequire(import.meta.url);
 const aerofortress = require("./packages/eslint-plugin/index.cjs");
 // Accessibility — web (DOM) uses jsx-a11y (alt / aria / href). The mobile RN counterpart (react-native-a11y)
 // is dropped until it publishes an eslint-9 peer: its latest release still caps eslint at 8, and we keep the
-// install ERESOLVE-clean rather than pin a legacy-peer-deps escape hatch. Restore the mobile block (and a
+// install ERESOLVE-clean rather than pin a peer-dependency escape hatch. Restore the mobile block (and a
 // toWarn helper) once a maintained eslint-9 RN-a11y plugin exists.
 const jsxA11y = require("eslint-plugin-jsx-a11y");
 

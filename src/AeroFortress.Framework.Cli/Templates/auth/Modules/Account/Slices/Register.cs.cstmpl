@@ -6,12 +6,11 @@ namespace MyApp.Api.Modules.Account;
 /// Register a new account with an email and password. Public. Email is unique globally, so a taken
 /// email is taken everywhere. The password is hashed (argon2id) before it ever reaches storage.
 /// </summary>
-/// <remarks>Critical: the sad path (a taken email) guards the one-human-one-account identity invariant.
+/// <remarks>Security contract: the sad path (a taken email) guards the one-human-one-account identity invariant.
 /// If a duplicate were silently created, login-by-email becomes ambiguous — an identity breach in the
 /// auth system. AF0008 forces both the happy registration and the duplicate rejection to be proven
 /// end-to-end (see Journeys/AuthJourney).</remarks>
 [Slice]
-[Critical]
 public static class Register
 {
     public record Input(string Email, string Password);

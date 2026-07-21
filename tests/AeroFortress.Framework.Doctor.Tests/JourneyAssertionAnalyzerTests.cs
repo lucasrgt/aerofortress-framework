@@ -24,7 +24,7 @@ public class JourneyAssertionAnalyzerTests
             {
                 [Journey(typeof(Deposit), JourneyPath.Sad)]
                 [Fact]
-                public void Overdraft_is_rejected() { VerifyRejected(Run()); }
+                public void Overdraft_is_rejected() { VerifyRejected(Run()); VerifyBalanceUnchanged(); }
             }
             """).RunAsync();
 
@@ -40,9 +40,9 @@ public class JourneyAssertionAnalyzerTests
             }
             """);
         test.TestState.ExpectedDiagnostics.Add(
-            new DiagnosticResult(JourneyAssertionAnalyzer.DiagnosticId, DiagnosticSeverity.Warning)
+            new DiagnosticResult(JourneyAssertionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
                 .WithSpan("WalletJourney.Tests.cs", 3, 5, 3, 48)
-                .WithArguments("Deposit"));
+                .WithArguments("Deposit", "Sad"));
         return test.RunAsync();
     }
 
@@ -59,9 +59,27 @@ public class JourneyAssertionAnalyzerTests
             }
             """);
         test.TestState.ExpectedDiagnostics.Add(
-            new DiagnosticResult(JourneyAssertionAnalyzer.DiagnosticId, DiagnosticSeverity.Warning)
+            new DiagnosticResult(JourneyAssertionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
                 .WithSpan("WalletJourney.Tests.cs", 3, 5, 3, 50)
-                .WithArguments("Deposit"));
+                .WithArguments("Deposit", "Happy"));
+        return test.RunAsync();
+    }
+
+    [Fact]
+    public Task A_sad_journey_with_only_the_rejection_assertion_is_flagged()
+    {
+        var test = Make("""
+            public class WalletJourney
+            {
+                [Journey(typeof(Deposit), JourneyPath.Sad)]
+                [Fact]
+                public void Overdraft_is_rejected() { Assert.True(Run().IsFailure); }
+            }
+            """);
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult(JourneyAssertionAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+                .WithSpan("WalletJourney.Tests.cs", 3, 5, 3, 48)
+                .WithArguments("Deposit", "Sad"));
         return test.RunAsync();
     }
 

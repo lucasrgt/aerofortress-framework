@@ -4,7 +4,7 @@ using MyApp.Api.Modules.Account;
 
 namespace MyApp.Tests.Journeys;
 
-// Journeys for the [Critical] auth slices. They prove, end-to-end, the failures that a unit test on
+// Journeys for the auth writes. They prove, end-to-end, the failures that a unit test on
 // Handle cannot: that a bad credential is denied (no token leaks) and that a replayed refresh token
 // burns the whole family (theft detection). Both are security properties of the wired stack — the
 // middleware, the token, the rotation — not just of Handle. AF0008 requires a happy and a sad per slice.
@@ -36,7 +36,7 @@ public class AuthJourney
     }
 
     // The bypass guard: a wrong password is denied with 401 and mints no token. A silent inversion of
-    // this check is the whole reason Login is [Critical].
+    // this check is the whole reason Login needs a sad journey.
     [E2E]
     [Journey(typeof(Login), JourneyPath.Sad)]
     [Fact]

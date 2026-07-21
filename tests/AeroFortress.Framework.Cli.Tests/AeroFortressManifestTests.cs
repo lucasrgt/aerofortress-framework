@@ -144,7 +144,7 @@ public class AeroFortressManifestTests
     }
 
     [Fact]
-    public void A_known_criticality_policy_is_valid()
+    public void Verification_has_no_manifest_mode()
     {
         var root = NewDir();
         var backend = Path.Combine(root, "src", "MyApp.Api");
@@ -157,8 +157,50 @@ public class AeroFortressManifestTests
             [products.app]
             backend = "src/MyApp.Api"
 
-            [testing]
-            criticality = "strict"
+            [proofs]
+            depth = "complete"
+            """);
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, message => message.Contains("unsupported section [proofs]")
+            && message.Contains("no configurable mode"));
+    }
+
+    [Fact]
+    public void A_frontend_proof_package_omitted_from_products_is_reported()
+    {
+        var root = NewDir();
+        var app = Path.Combine(root, "apps", "web");
+        Directory.CreateDirectory(Path.Combine(app, "src", "features"));
+        File.WriteAllText(Path.Combine(app, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(app, "src", "features", "Checkout.viewModel.ts"), "export {};");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "MyApp"
+            """);
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, message => message.Contains("apps") && message.Contains("not declared"));
+    }
+
+    [Fact]
+    public void A_declared_frontend_proof_package_is_valid_inventory()
+    {
+        var root = NewDir();
+        var app = Path.Combine(root, "apps", "web");
+        Directory.CreateDirectory(Path.Combine(app, "src", "features"));
+        File.WriteAllText(Path.Combine(app, "package.json"), "{}");
+        File.WriteAllText(Path.Combine(app, "src", "features", "Checkout.viewModel.ts"), "export {};");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "MyApp"
+
+            [products.app]
+            frontend = "apps/web"
             """);
 
         var outcome = AeroFortressManifest.Validate(root);
@@ -168,28 +210,57 @@ public class AeroFortressManifestTests
     }
 
     [Fact]
-    public void An_unknown_criticality_policy_is_reported()
+    public void A_manifest_without_an_af_gate_workflow_is_reported()
     {
-        // A typo must not silently fall back to opt-in: the doctor names the three legal levels.
-        var root = NewDir();
-        var backend = Path.Combine(root, "src", "MyApp.Api");
-        Directory.CreateDirectory(backend);
-        WriteLaunchSettings(backend, environment: "Development", applicationUrl: "http://localhost:8080");
+        var root = NewDir(withGateWorkflow: false);
         File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
             [workspace]
             name = "MyApp"
-
-            [products.app]
-            backend = "src/MyApp.Api"
-
-            [testing]
-            criticality = "strickt"
             """);
 
         var outcome = AeroFortressManifest.Validate(root);
 
         Assert.False(outcome.Valid);
-        Assert.Contains(outcome.Messages, m => m.Contains("criticality") && m.Contains("strickt"));
+        Assert.Contains(outcome.Messages, message => message.Contains("af gate") && message.Contains("workflow"));
+    }
+
+    [Fact]
+    public void A_comment_that_mentions_af_gate_does_not_wire_the_workflow()
+    {
+        var root = NewDir(withGateWorkflow: false);
+        var workflows = Path.Combine(root, ".github", "workflows");
+        Directory.CreateDirectory(workflows);
+        File.WriteAllText(Path.Combine(workflows, "ci.yml"), "# remember to run af gate\n");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "MyApp"
+            """);
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, message => message.Contains("af gate") && message.Contains("workflow"));
+    }
+
+    [Theory]
+    [InlineData("on: [pull_request]\njobs:\n  gate:\n    steps:\n      - run: af gate || true\n")]
+    [InlineData("on: [pull_request]\njobs:\n  gate:\n    continue-on-error: true\n    steps:\n      - run: af gate\n")]
+    [InlineData("on: [push]\njobs:\n  gate:\n    steps:\n      - run: af gate\n")]
+    public void A_gate_whose_verdict_can_be_ignored_is_not_wired(string yaml)
+    {
+        var root = NewDir(withGateWorkflow: false);
+        var workflows = Path.Combine(root, ".github", "workflows");
+        Directory.CreateDirectory(workflows);
+        File.WriteAllText(Path.Combine(workflows, "ci.yml"), yaml);
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "MyApp"
+            """);
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, message => message.Contains("af gate") && message.Contains("workflow"));
     }
 
     [Fact]
@@ -205,10 +276,16 @@ public class AeroFortressManifestTests
         Assert.Contains(outcome.Messages, m => m.Contains("[workspace]"));
     }
 
-    private static string NewDir()
+    private static string NewDir(bool withGateWorkflow = true)
     {
         var dir = Path.Combine(Path.GetTempPath(), "aerofortress-manifest-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
+        if (withGateWorkflow)
+        {
+            var workflows = Path.Combine(dir, ".github", "workflows");
+            Directory.CreateDirectory(workflows);
+            File.WriteAllText(Path.Combine(workflows, "ci.yml"), "on: [pull_request]\njobs:\n  gate:\n    steps:\n      - run: af gate\n");
+        }
         return dir;
     }
 

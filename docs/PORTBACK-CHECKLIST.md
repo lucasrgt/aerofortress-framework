@@ -26,7 +26,7 @@ AF0006 (no-repository) · AF0007 (file ≤500) · AF0020 (journey asserts its po
 **Deferred follow-up (each blocked on a real dependency, not skipped):**
 the frontend generator (unblocks monorepo scaffold, `af gen client`, the e2e-support harness home +
 Tier A2 skip-in-gate) · the Tier B4 seam-rule feasibility spike · `@aerofortress/react` publish (needs a build
-pipeline + an outward npm/registry step) · Tier C mutation lane (needs a `[Critical]` journey set). The
+pipeline + an outward npm/registry step) · periodic mutation-depth audit. The
 AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pilot rule.
 
 ---
@@ -84,22 +84,15 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   analyzers (`analyzers/AeroFortress.Framework.Doctor/NoRepositoryAnalyzer.cs`, `FileSizeAnalyzer.cs`) with twin tests
   (7 green); `docs/CONVENTIONS.md` flipped planned→shipped. _was FRAMEWORK-GAP (documented commitment)._
 
-## Journey-depth (decision `aerofortress-framework-journey-depth-enforcement.md`)
+## Complete verification (decision `aerofortress-framework-fail-closed-verification.md`)
 
-- [x] **Tier A1 `AFFE-JOURNEY-002`** — terminal-depth in `e2e-doctor.mjs` (+ tests). _done this session._
-- [ ] **Decision-doc fixes** — `AF0011` collides with `TestInfraPurityAnalyzer` → renumber to `AF0020`;
-  refresh the stale "today" baseline (A1 is now implemented).
-- [x] **Tier B3 `AF0020`** (was AF0011) — _Done:_ `analyzers/AeroFortress.Framework.Doctor/JourneyAssertionAnalyzer.cs`
-  flags a `[Journey]` whose body asserts nothing (warning-tier, textual over the journey AdditionalFiles,
-  lenient on custom asserters); 4 tests; `CONVENTIONS.md` lists it shipped.
-- [ ] **Tier A2 `AFFE-E2E-SKIP-IN-GATE-001`** — a skipped gate-class flow must fail in gate mode.
-  _Deferred:_ couples to the e2e-support harness home (requireBackend/requireSeed), which is frontend-
-  scaffold territory (the frontend generator is deferred). Cheap once that home exists.
-- [ ] **Tier B4 `AFFE-JOURNEY-SEAM-001`** — lifecycle-advancing `[Critical]` slice needs a frontend
-  flow proving the post-transition navigation. _Deferred:_ the grade itself flagged this needs a
-  cross-artifact feasibility spike (does a frontend guard read a backend lifecycle?) before committing.
-- [ ] **Tier C** — Stryker mutation-score lane (doctor consumes the artifact). _Deferred — needs a
-  `[Critical]` journey set to be meaningful._
+- [x] **Terminal depth** — every curated flow declares and asserts its terminal.
+- [x] **Backend assertion depth** — happy proves effect; sad proves rejection and unchanged state (`AF0020`).
+- [x] **No disabled evidence** — skip/focus syntax and `NotExecuted` verdicts fail the gate.
+- [x] **Full-stack subject binding** — every ViewModel owns Assay plus happy/sad E2E, and linked flows name exact
+  features and consumed backend hooks.
+- [x] **Fail-closed inventory** — write depth is shape-derived; frontend proof packages are independently
+  inventoried; CI must directly invoke `af gate`.
 
 ## Re-sweep 2026-06-09 — new findings (not previously tracked)
 

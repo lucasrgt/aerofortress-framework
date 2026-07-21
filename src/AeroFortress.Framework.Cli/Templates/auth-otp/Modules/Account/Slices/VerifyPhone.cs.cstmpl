@@ -5,12 +5,11 @@ namespace MyApp.Api.Modules.Account;
 
 /// <summary>Verify the caller's phone with the code from their latest active OTP. On success the phone is
 /// marked verified and registration completes; a wrong code bumps the attempt count, never reveals more.</summary>
-/// <remarks>Critical: the sad path is the verification-bypass guard — a wrong code must be rejected and
+/// <remarks>Security contract: the sad path is the verification-bypass guard — a wrong code must be rejected and
 /// leave the phone unverified. If it passed silently, anyone could mark a phone verified without the code.
 /// AF0008 forces both the happy verification and the wrong-code rejection to be proven end-to-end (see
 /// Journeys/PhoneVerificationJourney).</remarks>
 [Slice]
-[Critical]
 public static class VerifyPhone
 {
     public record Input(string Code);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { type AsyncState, combineAsyncStates, fromResourceFlags, mapAsyncState, toAsyncState } from "./async-state";
+import { type AsyncState, combineAsyncStates, mapAsyncState, toAsyncState } from "./async-state";
 
 // The projection is the spine's load-bearing logic: every screen's state flows through it. Pin each branch — a
 // regression here silently breaks loading/error/empty/ready across every feature at once.
@@ -99,23 +99,6 @@ describe("mapAsyncState", () => {
     expect(mapAsyncState({ status: "error", message: "boom" } as AsyncState<number>, String)).toEqual({
       status: "error",
       message: "boom",
-    });
-  });
-});
-
-describe("fromResourceFlags", () => {
-  it("lowers aggregate flags with canonical precedence", () => {
-    expect(fromResourceFlags({ isLoading: true, isError: true }, "data", "failed")).toEqual({ status: "loading" });
-    expect(fromResourceFlags({ isLoading: false, isError: true }, "data", "failed")).toEqual({
-      status: "error",
-      message: "failed",
-    });
-    expect(fromResourceFlags({ isLoading: false, isError: false, isEmpty: true }, "data", "failed")).toEqual({
-      status: "empty",
-    });
-    expect(fromResourceFlags({ isLoading: false, isError: false }, "data", "failed")).toEqual({
-      status: "ready",
-      data: "data",
     });
   });
 });

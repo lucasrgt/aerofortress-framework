@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MyApp.Tests.Journeys;
 
-// Journey for the [Critical] VerifyPhone slice. Phone verification can't be driven purely over HTTP — the
+// Journey for the VerifyPhone write. Phone verification can't be driven purely over HTTP — the
 // OTP is hashed in storage and only leaves the system as an SMS — so the test layers a capturing ISmsSender
 // over the booted app (the last registration wins) to read the code the real ResendPhoneCode slice sent.
 // That layering is exactly what the framework's host hook is for; the rest of the stack is the real one.

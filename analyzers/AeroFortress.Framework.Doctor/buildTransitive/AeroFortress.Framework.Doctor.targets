@@ -23,26 +23,4 @@
     <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)aerofortress.globalconfig" />
   </ItemGroup>
 
-  <!--
-    Project the criticality policy onto the analyzers. The dial is one TOML key — [testing] criticality in
-    the workspace AeroFortress.toml — but the analyzer never parses TOML (that would not be removable, and the
-    doctor would carry a config format). Instead this target reads the key here, in MSBuild, and hands the
-    analyzers the resolved level through a CompilerVisibleProperty (surfaced as build_property.AeroFortressCriticality
-    in AnalyzerConfigOptionsProvider.GlobalOptions). Absent file or key ⇒ opt-in — today's behavior, by default.
-    Ships and is removed WITH the doctor, so Law 2 holds: drop the package and the policy plumbing goes with it.
-  -->
-  <PropertyGroup Condition="'$(Language)' == 'C#'">
-    <AeroFortressCriticality Condition="'$(AeroFortressCriticality)' == ''">opt-in</AeroFortressCriticality>
-    <_AeroFortressManifestPath>$([MSBuild]::GetPathOfFileAbove('AeroFortress.toml', '$(MSBuildProjectDirectory)'))</_AeroFortressManifestPath>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Language)' == 'C#' and '$(_AeroFortressManifestPath)' != '' and Exists('$(_AeroFortressManifestPath)')">
-    <_AeroFortressCriticalityRaw>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(_AeroFortressManifestPath)')), 'criticality\s*=\s*&quot;(opt-in|explicit|strict)&quot;').Groups.get_Item(1).Value)</_AeroFortressCriticalityRaw>
-    <AeroFortressCriticality Condition="'$(_AeroFortressCriticalityRaw)' != ''">$(_AeroFortressCriticalityRaw)</AeroFortressCriticality>
-  </PropertyGroup>
-
-  <ItemGroup Condition="'$(Language)' == 'C#'">
-    <CompilerVisibleProperty Include="AeroFortressCriticality" />
-  </ItemGroup>
-
 </Project>

@@ -9,20 +9,19 @@ namespace AeroFortress.Framework.Cli;
 
 /// <summary>An AVP proof site: which subject and test method proves a criterion.</summary>
 /// <param name="Module">The module namespace containing the proof.</param>
-/// <param name="Subject">The production subject, or <c>null</c> for a legacy unbound marker.</param>
+/// <param name="Subject">The production subject named by <c>typeof(...)</c>.</param>
 /// <param name="CriterionId">The catalog criterion id the proof carries.</param>
 /// <param name="File">The proof file, relative to the workspace root.</param>
 /// <param name="ClassName">The namespace-qualified declaring class, used to match the test-run verdict.</param>
 /// <param name="Method">The proof method name, used to match the test-run verdict.</param>
 internal sealed record AvpProof(
-    string Module, string? Subject, string CriterionId, string File, string ClassName, string Method);
+    string Module, string Subject, string CriterionId, string File, string ClassName, string Method);
 
 /// <summary>A <c>[Slice]</c> class found in source: the code-side inventory the manifest is checked against.</summary>
 /// <param name="Module">The module the slice belongs to (namespace-derived, path fallback).</param>
 /// <param name="Name">The slice class name.</param>
-/// <param name="Critical">Whether the class carries an explicit <c>[Critical]</c> attribute.</param>
 /// <param name="File">The slice file, relative to the workspace root.</param>
-internal sealed record SliceSite(string Module, string Name, bool Critical, string File);
+internal sealed record SliceSite(string Module, string Name, string File);
 
 /// <summary>One test method's outcome from a TRX result file, keyed the way proofs are matched.</summary>
 /// <param name="ClassName">The fully-qualified test class from the TRX definition.</param>
@@ -101,12 +100,7 @@ internal static class GateScan
         return proofs;
     }
 
-    /// <summary>Collect every class carrying <c>[Slice]</c> (and whether it also carries <c>[Critical]</c>).</summary>
-    /// <remarks>
-    /// The scan reads the attribute lines immediately above (or on) the class line, so it mirrors the shapes the
-    /// scaffolder emits. Criticality derived from a <em>policy</em> (not the attribute) is the doctor's domain
-    /// (AF0031 reads <c>CriticalityPolicy</c>); the matrix reports the explicit marks.
-    /// </remarks>
+    /// <summary>Collect every class carrying <c>[Slice]</c>.</summary>
     public static IReadOnlyList<SliceSite> ScanSlices(string root)
     {
         var slices = new List<SliceSite>();
@@ -125,7 +119,6 @@ internal static class GateScan
                 slices.Add(new SliceSite(
                     ModuleOf(fileNamespace, file),
                     declaration.Identifier.ValueText,
-                    HasAttribute(declaration, "Critical"),
                     Relative(root, file)));
             }
         }
@@ -183,23 +176,17 @@ internal static class GateScan
     private static string Qualified(string fileNamespace, string className) =>
         fileNamespace.Length == 0 ? className : fileNamespace + "." + className;
 
-    private static bool TryReadAvp(AttributeSyntax attribute, out string? subject, out string criterionId)
+    private static bool TryReadAvp(AttributeSyntax attribute, out string subject, out string criterionId)
     {
-        subject = null;
+        subject = "";
         criterionId = "";
         var arguments = attribute.ArgumentList?.Arguments;
-        if (arguments is null || arguments.Value.Count == 0)
+        if (arguments is null || arguments.Value.Count != 2
+            || arguments.Value[0].Expression is not TypeOfExpressionSyntax typeOf)
             return false;
 
-        var criterionIndex = 0;
-        if (arguments.Value[0].Expression is TypeOfExpressionSyntax typeOf)
-        {
-            subject = SimpleTypeName(typeOf.Type.ToString());
-            criterionIndex = 1;
-        }
-
-        if (arguments.Value.Count <= criterionIndex
-            || arguments.Value[criterionIndex].Expression is not LiteralExpressionSyntax literal
+        subject = SimpleTypeName(typeOf.Type.ToString());
+        if (arguments.Value[1].Expression is not LiteralExpressionSyntax literal
             || !literal.IsKind(SyntaxKind.StringLiteralExpression))
             return false;
         criterionId = literal.Token.ValueText;

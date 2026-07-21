@@ -11,31 +11,31 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace AeroFortress.Framework.Doctor;
 
 /// <summary>
-/// AF0008 — a slice marked <c>[Critical]</c> must be proven end-to-end on both paths: it needs a
-/// happy journey and at least one sad journey covering it. High-stakes operations (money, trust) are
-/// where a mishandled failure does the real damage — a partial commit, a wrong status — so the
-/// framework demands the failure path be exercised through the booted app, not just the success path.
+/// AF0008 — every write slice must be proven end-to-end on both paths: it needs a happy journey and at
+/// least one sad journey covering it. Write depth is derived from ordinary code — persistence calls and
+/// endpoint verbs — rather than a self-selected risk marker. An ambiguous slice receives the stronger bar.
 ///
 /// Journeys live in test files excluded from the app's compilation, so the analyzer reads them as
-/// <c>AdditionalFiles</c> and matches each critical slice against the <c>[Journey(typeof(Slice),
+/// <c>AdditionalFiles</c> and matches each write slice against the <c>[Journey(typeof(Slice),
 /// JourneyPath.Happy|Sad)]</c> declarations it finds. The match is textual — the same trade-off as
 /// <c>AF0003</c> — which is enough to enforce that both journeys exist.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class CriticalJourneyAnalyzer : DiagnosticAnalyzer
+public sealed class WriteJourneyAnalyzer : DiagnosticAnalyzer
 {
-    /// <summary>The identifier reported for a critical slice missing a journey.</summary>
+    /// <summary>The identifier reported for a write slice missing a journey.</summary>
     public const string DiagnosticId = "AF0008";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
-        title: "Critical slice must have happy and sad journeys",
-        messageFormat: "Critical slice '{0}' is missing a {1} journey; add [Journey(typeof({0}), JourneyPath.{1})] to an [E2E] test",
+        title: "Write slice must have happy and sad journeys",
+        messageFormat: "Write slice '{0}' is missing a {1} journey; add [Journey(typeof({0}), JourneyPath.{1})] to an [E2E] test",
         category: "AeroFortress.Framework.Convention",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A [Critical] slice must be proven end-to-end on the happy path and at least one sad "
-                   + "path; the sad journey asserts the failure status and that no state changed.",
+        description: "Every write slice must be proven end-to-end on the happy path and at least one sad "
+                   + "path; the sad journey asserts the failure status and that no state changed. The operation "
+                   + "shape determines the obligation, so application code cannot opt out.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     // Matches [Journey(typeof(Slice), JourneyPath.Happy)] — covers: prefix and the enum qualifier are
@@ -57,25 +57,22 @@ public sealed class CriticalJourneyAnalyzer : DiagnosticAnalyzer
 
     private static void OnStart(CompilationStartAnalysisContext context)
     {
-        // The active policy decides what "critical" means here — identical to today under opt-in/explicit
-        // (Slice + [Critical]); under strict an undecided slice (no [NonCritical]) counts as critical too.
-        var level = CriticalityPolicy.Read(context.Options.AnalyzerConfigOptionsProvider);
-        var critical = new ConcurrentBag<(string Name, Location Location)>();
+        var writes = new ConcurrentBag<(string Name, Location Location)>();
 
         context.RegisterSyntaxNodeAction(syntax =>
         {
             var cls = (ClassDeclarationSyntax)syntax.Node;
-            if (CriticalityPolicy.IsCriticalUnderPolicy(cls, level))
-                critical.Add((cls.Identifier.Text, cls.Identifier.GetLocation()));
+            if (VerificationDepthPolicy.RequiresJourneys(cls))
+                writes.Add((cls.Identifier.Text, cls.Identifier.GetLocation()));
         }, SyntaxKind.ClassDeclaration);
 
         context.RegisterCompilationEndAction(end =>
         {
-            if (critical.IsEmpty)
+            if (writes.IsEmpty)
                 return;
 
             var covered = CoveredJourneys(end.Options.AdditionalFiles, end.CancellationToken);
-            foreach (var (name, location) in critical)
+            foreach (var (name, location) in writes)
             {
                 if (!covered.Contains((name, "Happy")))
                     end.ReportDiagnostic(Diagnostic.Create(Rule, location, name, "Happy"));

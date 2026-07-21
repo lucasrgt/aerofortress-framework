@@ -11,13 +11,13 @@ describe("framework-sync", () => {
       declarations: [{
         path: "clients/app/package.json",
         packages: {
-          "@aerofortress/frontend-sdk": "^0.2.6",
-          "eslint-plugin-aerofortress": "^0.12.2",
-          "@aerofortress/react": "~0.6.0",
+          "@aerofortress/frontend-sdk": "^1.0.0",
+          "eslint-plugin-aerofortress": "^1.0.0",
+          "@aerofortress/react": "~1.0.0",
         },
       }],
       hasFrontend: true,
-      legacyMirror: false,
+      vendoredMirror: false,
     });
     expect(result.status).toBe("ok");
   });
@@ -33,7 +33,7 @@ describe("framework-sync", () => {
         },
       }],
       hasFrontend: true,
-      legacyMirror: false,
+      vendoredMirror: false,
     });
     expect(result.status).toBe("drifted");
     expect(result.messages.join("\n")).toContain("0.10.0");
@@ -45,10 +45,10 @@ describe("framework-sync", () => {
       canonical,
       declarations: [],
       hasFrontend: false,
-      legacyMirror: true,
+      vendoredMirror: true,
     });
     expect(result.status).toBe("drifted");
-    expect(result.messages[0]).toContain("legacy vendored");
+    expect(result.messages[0]).toContain("retired vendored");
   });
 
   it("extracts the concrete version from a dependency range", () => {

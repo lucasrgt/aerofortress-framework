@@ -18,8 +18,7 @@ namespace AeroFortress.Framework.Doctor;
 /// The manifest is co-located with the module (e.g. <c>Modules/Wallets/Wallets.spec.toml</c>) and read
 /// from <c>AdditionalFiles</c> — the app opts in with <c>&lt;AdditionalFiles Include="**\*.spec.toml" /&gt;</c>
 /// — the same textual approach the doctor uses for <c>.ctx.md</c> and <c>*.Tests.cs</c>. The acceptance
-/// obligation moved off the inline <c>[Verify]</c> attribute and into this manifest, so a slice's spec is a
-/// reviewable file beside it, not source noise; <c>[Verify]</c> is retired from the doctor's logic.
+/// obligation lives in this manifest, so a slice's spec is a reviewable file beside it, not source noise.
 ///
 /// A focused hand-rolled reader parses exactly this known shape (no TOML NuGet dependency, which a Roslyn
 /// analyzer cannot easily carry):

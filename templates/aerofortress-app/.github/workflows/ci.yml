@@ -21,6 +21,6 @@ jobs:
       # When a frontend harness joins, add setup-node + `npm ci` here — the doctor discovers its package from
       # AeroFortress.toml and runs lint, typecheck, unit/integration, direct Assay, and E2E legs automatically.
       - name: install the AeroFortress CLI
-        run: dotnet tool install -g aerofortress-framework-cli --version 0.3.0
+        run: dotnet tool install -g aerofortress-framework-cli --version 1.0.0
       - name: af gate
         run: af gate

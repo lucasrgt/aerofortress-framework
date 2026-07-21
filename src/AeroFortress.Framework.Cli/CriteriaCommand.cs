@@ -61,7 +61,7 @@ internal static class CriteriaCommand
         }
 
         Console.WriteLine();
-        Console.WriteLine("declare the chosen ids at scaffold time: af g slice <Module> <Name> --critical --verify <id,id>");
+        Console.WriteLine("declare the chosen ids at scaffold time: af g slice <Module> <Name> --verify <id,id>");
         return 0;
     }
 

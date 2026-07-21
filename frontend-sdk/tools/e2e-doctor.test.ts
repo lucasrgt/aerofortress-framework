@@ -14,7 +14,6 @@ describe("checkE2e", () => {
     const dir = tmp();
     try {
       const result = checkE2e(dir);
-      expect(result.bootstrap).toBe(false);
       expect(result.gaps).toBe(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -31,7 +30,6 @@ describe("checkE2e", () => {
       ]));
       writeFileSync(join(dir, "e2e", "welcome.spec.ts"), 'await expect(page).toHaveURL("/home");\n');
       const r = checkE2e(dir);
-      expect(r.bootstrap).toBe(false);
       expect(r.gaps).toBe(0);
       expect(r.flows).toBe(1);
     } finally {

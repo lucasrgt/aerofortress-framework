@@ -5,7 +5,7 @@ namespace AeroFortress.Framework.Cli;
 /// <summary>
 /// Generates a conformant slice and its co-located tests — code that passes the doctor by
 /// construction (AF0001's shape, AF0003's test, AF0012's endpoint name, AF0018's registry constant,
-/// and for a critical slice AF0008's journeys), so the
+/// and AF0008's write journeys), so the
 /// convention is born right instead of the author having to remember it. The root namespace is read
 /// from the project's .csproj in the target directory; the test namespace follows the
 /// <c>&lt;App&gt;.Api → &lt;App&gt;.Tests</c> convention.
@@ -13,7 +13,7 @@ namespace AeroFortress.Framework.Cli;
 public static class SliceGenerator
 {
     /// <summary>
-    /// The <c>af g slice</c> entry: parse the flags (<c>--critical</c>, <c>--verify id,id</c>) and generate
+    /// The <c>af g slice</c> entry: parse <c>--verify id,id</c> and generate
     /// from the current directory. Kept beside the generator so <c>Program</c> stays an index.
     /// </summary>
     /// <param name="module">The module the slice belongs to.</param>
@@ -21,15 +21,11 @@ public static class SliceGenerator
     /// <param name="flags">The remaining command-line flags.</param>
     public static int Run(string module, string name, string[] flags)
     {
-        var critical = false;
         var verify = new List<string>();
         for (var i = 0; i < flags.Length; i++)
         {
             switch (flags[i])
             {
-                case "--critical":
-                    critical = true;
-                    break;
                 case "--verify" when i + 1 < flags.Length:
                     verify.AddRange(flags[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                     break;
@@ -37,7 +33,7 @@ public static class SliceGenerator
                     Console.Error.WriteLine("af: --verify expects a comma-separated list of AVP criterion ids (see `af criteria list`).");
                     return 1;
                 default:
-                    Console.Error.WriteLine($"af: unknown flag '{flags[i]}' for `g slice` (expected --critical and/or --verify <id,id>).");
+                    Console.Error.WriteLine($"af: unknown flag '{flags[i]}' for `g slice` (expected --verify <id,id>).");
                     return 1;
             }
         }
@@ -49,21 +45,20 @@ public static class SliceGenerator
             return 1;
         }
 
-        return Generate(Directory.GetCurrentDirectory(), module, name, critical, verify);
+        return Generate(Directory.GetCurrentDirectory(), module, name, verify);
     }
 
     /// <summary>Generate <paramref name="name"/> in <paramref name="module"/> under the <paramref name="root"/> project.</summary>
     /// <param name="root">The application project directory (holding the .csproj).</param>
     /// <param name="module">The module the slice belongs to.</param>
     /// <param name="name">The slice (operation) name.</param>
-    /// <param name="critical">When true, mark the slice <c>[Critical]</c> and scaffold happy + sad journeys.</param>
     /// <param name="verify">
     /// AVP criterion ids to declare for the slice — correct-by-construction: the module's spec manifest gains
     /// the declaration and a co-located, red-by-design <c>[AVP]</c> proof scaffold is emitted with it, so the
     /// AF0030/AF0031 bridge is born closed instead of caught later.
     /// </param>
     public static int Generate(
-        string root, string module, string name, bool critical = false, IReadOnlyList<string>? verify = null)
+        string root, string module, string name, IReadOnlyList<string>? verify = null)
     {
         var csproj = Directory.GetFiles(root, "*.csproj").FirstOrDefault();
         if (csproj is null)
@@ -94,7 +89,7 @@ public static class SliceGenerator
         }
 
         Directory.CreateDirectory(directory);
-        File.WriteAllText(slicePath, Slice(appNamespace, module, name, critical));
+        File.WriteAllText(slicePath, Slice(appNamespace, module, name));
         File.WriteAllText(testPath, Test(testNamespace, module, name));
         Console.WriteLine($"created {slicePath}");
         Console.WriteLine($"created {testPath}");
@@ -103,14 +98,11 @@ public static class SliceGenerator
         ErrorCodeScaffold.EnsureModuleCode(Path.Combine(root, "Modules", module), appNamespace, module,
             "IdRequired", "id.required", "The id input is required.");
 
-        if (critical)
-        {
-            var journeys = Path.Combine(root, "Journeys");
-            Directory.CreateDirectory(journeys);
-            var journeyPath = Path.Combine(journeys, name + "Journey.Tests.cs");
-            File.WriteAllText(journeyPath, Journey(appNamespace, testNamespace, module, name));
-            Console.WriteLine($"created {journeyPath}");
-        }
+        var journeys = Path.Combine(root, "Journeys");
+        Directory.CreateDirectory(journeys);
+        var journeyPath = Path.Combine(journeys, name + "Journey.Tests.cs");
+        File.WriteAllText(journeyPath, Journey(appNamespace, testNamespace, module, name));
+        Console.WriteLine($"created {journeyPath} (red by design — complete both paths)");
 
         DeclareAndProve(root, directory, testNamespace, appNamespace, module, name, verify);
 
@@ -144,14 +136,13 @@ public static class SliceGenerator
                             + "(ADR 0002); its proof scaffold is a red placeholder until you write the verifier.");
     }
 
-    private static string Slice(string appNamespace, string module, string name, bool critical)
+    private static string Slice(string appNamespace, string module, string name)
     {
-        var attributes = critical ? "[Slice]\n[Critical]" : "[Slice]";
         return $$"""
             namespace {{appNamespace}}.Modules.{{module}};
 
             /// <summary>{{name}} — fill in the operation; the "why" lives here until it outgrows a header.</summary>
-            {{attributes}}
+            [Slice]
             public static class {{name}}
             {
                 public record Input(Guid Id);
@@ -213,7 +204,7 @@ public static class SliceGenerator
 
         namespace {{testNamespace}}.Journeys;
 
-        // Generated for the [Critical] {{name}} slice. Implement both journeys, then remove the Skip:
+        // Generated for the {{name}} write slice. Implement both journeys, then remove the Skip:
         //   happy — prove the success effect is observable end-to-end.
         //   sad   — a rejected request returns the failure status AND leaves no state changed.
         public class {{name}}Journey

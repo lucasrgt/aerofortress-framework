@@ -20,14 +20,14 @@ export function declaredVersion(spec) {
  *   canonical: ReadonlyArray<{name: string, version: string}>,
  *   declarations: ReadonlyArray<{path: string, packages: Record<string, string>}>,
  *   hasFrontend: boolean,
- *   legacyMirror: boolean,
+ *   vendoredMirror: boolean,
  * }} input
  */
-export function checkPackages({ canonical, declarations, hasFrontend, legacyMirror }) {
+export function checkPackages({ canonical, declarations, hasFrontend, vendoredMirror }) {
   const messages = [];
-  if (legacyMirror)
+  if (vendoredMirror)
     messages.push(
-      "framework-sync: clients/eslint-plugin-aerofortress is a legacy vendored plugin copy — delete it and "
+      "framework-sync: clients/eslint-plugin-aerofortress is a retired vendored plugin copy — delete it and "
       + "consume eslint-plugin-aerofortress from npm.",
     );
   if (!hasFrontend) return { status: messages.length ? "drifted" : "ok", messages };
@@ -98,7 +98,7 @@ if (invokedDirectly) {
     canonical: FRONTEND_PACKAGE_VERSIONS,
     declarations: packageDeclarations(appRoot),
     hasFrontend: frontendExists(appRoot),
-    legacyMirror: existsSync(join(appRoot, "clients", "eslint-plugin-aerofortress")),
+    vendoredMirror: existsSync(join(appRoot, "clients", "eslint-plugin-aerofortress")),
   });
   for (const message of result.messages) console.error(message);
   if (result.status === "ok") console.log("framework-sync: frontend package versions match the published SDK contract.");

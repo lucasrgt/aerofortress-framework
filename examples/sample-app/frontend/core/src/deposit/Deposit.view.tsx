@@ -10,7 +10,7 @@ import { useDepositModel } from "./Deposit.viewModel";
 /**
  * @verify no-phantom-success — on a failed deposit the entered amount persists and the command error is visible;
  * the form never reports a phantom success. Proven by the co-located `@avp no-phantom-success` test — the
- * front-side of the backend's AF0030 ([Verify]↔[AVP]) bridge, enforced by AFFE033.
+ * front-side of the backend's AF0030 (spec criterion ↔ subject-bound AVP) bridge, enforced by AFFE033.
  */
 export function DepositView() {
   const { t } = useTranslation("deposit");

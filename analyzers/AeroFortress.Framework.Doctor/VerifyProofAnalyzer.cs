@@ -17,14 +17,14 @@ namespace AeroFortress.Framework.Doctor;
 /// verifier (AVP / Assay.Net): the framework refuses to build a slice whose manifest declares an acceptance
 /// criterion it never proves. A declared criterion with no proof is the bridge's <em>gap</em>.
 ///
-/// The acceptance obligation moved off the inline <c>[Verify]</c> attribute onto the manifest (read via
-/// <see cref="SpecManifest"/>); AVP proofs live in test files excluded from the app's compilation, so the
+/// The acceptance obligation lives in the manifest (read via <see cref="SpecManifest"/>); AVP proofs live in
+/// test files excluded from the app's compilation, so the
 /// analyzer reads both the manifests and the proofs as <c>AdditionalFiles</c> (and scans the compilation for
 /// in-source <c>[AVP]</c>), matching subject × criterion textually — the same trade-off as <c>AF0008</c>. Detection is by
 /// attribute name, so the framework takes no dependency on the AVP package and the relation stays one-way
 /// (framework knows AVP, never the reverse). The analyzer enforces only the structural bijection
-/// slice↔manifest↔<c>[AVP]</c>. A legacy criterion-only marker deliberately proves nothing for this rule:
-/// one feature must never borrow another feature's proof. Validating an id against the AVP catalog is the runtime's job, not the
+/// slice↔manifest↔<c>[AVP]</c>. A proof always names its subject, so one feature can never borrow another
+/// feature's proof. Validating an id against the AVP catalog is the runtime's job, not the
 /// doctor's.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -78,7 +78,7 @@ public sealed class VerifyProofAnalyzer : DiagnosticAnalyzer
         context.RegisterSyntaxNodeAction(syntax =>
         {
             var cls = (ClassDeclarationSyntax)syntax.Node;
-            if (!CriticalityPolicy.IsSlice(cls))
+            if (!VerificationDepthPolicy.IsSlice(cls))
                 return;
             var module = ModuleNaming.ModuleOf(cls);
             if (module is not null)

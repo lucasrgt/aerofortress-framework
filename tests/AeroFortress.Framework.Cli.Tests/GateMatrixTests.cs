@@ -11,7 +11,7 @@ public class GateMatrixTests
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
             [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
-            [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
+            [new SliceSite("Wallets", "Withdraw", "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
 
         var row = Assert.Single(matrix.Rows);
@@ -25,7 +25,7 @@ public class GateMatrixTests
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
             [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
-            [new SliceSite("Wallets", "Withdraw", Critical: true, "W.cs")],
+            [new SliceSite("Wallets", "Withdraw", "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Failed")]);
 
         Assert.Equal(MatrixVerdict.Fail, Assert.Single(matrix.Rows).Verdict);
@@ -38,7 +38,7 @@ public class GateMatrixTests
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"no-overdraw\"]")],
             proofs: [],
-            [new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs")],
+            [new SliceSite("Wallets", "Withdraw", "W.cs")],
             verdicts: []);
 
         Assert.Equal(MatrixVerdict.NoProof, Assert.Single(matrix.Rows).Verdict);
@@ -52,7 +52,7 @@ public class GateMatrixTests
         var matrix = GateMatrix.Build(
             [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
             [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
-            [new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs")],
+            [new SliceSite("Wallets", "Withdraw", "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "NotExecuted")]);
 
         Assert.Equal(MatrixVerdict.NotRun, Assert.Single(matrix.Rows).Verdict);
@@ -68,7 +68,7 @@ public class GateMatrixTests
                 new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "A.cs", "ProofA", "Checks_it"),
                 new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "B.cs", "ProofB", "Checks_it_too"),
             ],
-            [new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs")],
+            [new SliceSite("Wallets", "Withdraw", "W.cs")],
             [new TestVerdict("Sample.ProofA", "Checks_it", "Passed")]);
 
         Assert.Equal(MatrixVerdict.NotRun, Assert.Single(matrix.Rows).Verdict);
@@ -84,7 +84,7 @@ public class GateMatrixTests
                 new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key"),
                 new AvpProof("Wallets", "Withdraw", "stray-criterion", "S.Avp.Tests.cs", "StrayProof", "Proves_something_undeclared"),
             ],
-            [new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs")],
+            [new SliceSite("Wallets", "Withdraw", "W.cs")],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
 
         var orphan = Assert.Single(matrix.OrphanProofs);
@@ -95,12 +95,11 @@ public class GateMatrixTests
     [Fact]
     public void Any_slice_with_no_nonempty_declaration_is_reported()
     {
-        // Charge is [Critical] but its module manifest gives it an empty criteria array — the same
-        // "declares nothing" AF0031 refuses; a table with no criteria is not a declaration.
+        // A table with no criteria is not a declaration; AF0031 rejects the same gap.
         var matrix = GateMatrix.Build(
             [Manifest("Payments", "[slices.Charge]", "criteria = []")],
             proofs: [],
-            [new SliceSite("Payments", "Charge", Critical: true, "Charge.cs")],
+            [new SliceSite("Payments", "Charge", "Charge.cs")],
             verdicts: []);
 
         var undeclared = Assert.Single(matrix.UndeclaredSlices);
@@ -119,8 +118,8 @@ public class GateMatrixTests
             ],
             [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.Avp.Tests.cs", "WithdrawAvpProof", "Honors_the_key")],
             [
-                new SliceSite("Wallets", "Withdraw", Critical: false, "W.cs"),
-                new SliceSite("Payments", "Charge", Critical: false, "C.cs"),
+                new SliceSite("Wallets", "Withdraw", "W.cs"),
+                new SliceSite("Payments", "Charge", "C.cs"),
             ],
             [new TestVerdict("Sample.Tests.WithdrawAvpProof", "Honors_the_key", "Passed")]);
 

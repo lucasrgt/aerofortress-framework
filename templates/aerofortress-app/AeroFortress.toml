@@ -10,17 +10,6 @@ backend = "src/AeroFortress.Framework.Starter.Api"   # .NET vertical slices — 
 # core = "clients/core"              # agnostic ViewModel (the data door) + design-system View + i18n + client
 # apps = ["mobile", "web"]           # platform shells over the shared core
 
-[harness]
-backend = "AeroFortress.Framework.Starter.slnx"      # the framework's AF* Roslyn analyzers run via the solution build
-
-[testing]
-# Every slice, at every criticality, owes criteria + subject-bound AVP proofs. This dial controls only
-# the additional happy+sad [Journey] depth for failure paths where money or trust is at stake:
-#   "opt-in"   = default; only a [Critical] slice needs happy+sad journeys. Today's behavior.
-#   "explicit" = every slice must carry [Critical] or [NonCritical], else AF0029 errors. Mirrors AF0022.
-#   "strict"   = an undecided slice is treated as [Critical] and must prove journeys; opt out with [NonCritical].
-criticality = "opt-in"
-
 # Optional: where the aerofortress-framework framework checkout lives, when you develop against it. With this set,
 # `af doctor` compares your AeroFortress* and frontend framework package versions against the checkout
 # and fails on drift (the package-first law). Machines without the checkout (CI) skip the check.

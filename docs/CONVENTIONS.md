@@ -259,9 +259,9 @@ the two laws. The result is plain C# that happens to be hard to misuse.
   persisted broken, and the invariant cannot be bypassed by a slice that forgets to check. `AF0014` enforces
   the shape. The required private parameterless constructor is exactly the one EF Core materialises through —
   the convention and the ORM ask for the same thing, so encapsulation costs nothing at the storage boundary.
-  An entity that a `[Critical]` slice writes also declares its **concurrency posture**: a `[Timestamp]
+  An entity that a persisted write touches also declares its **concurrency posture**: a `[Timestamp]
   public byte[]? RowVersion { get; private set; }` (or `[ConcurrencyCheck]` on a domain field), so two
-  concurrent requests can't silently last-write-win each other on exactly the high-stakes operations —
+  concurrent requests can't silently last-write-win each other —
   `AF0026` (warning-tier) watches for the missing token.
 
 - **Scalar value objects are transparent on the wire.** A scalar `[ValueObject]` that crosses the API
@@ -310,7 +310,7 @@ src/<App>.Api/
     Slices/<Name>.cs              #   one slice = one operation (Input/Output/Handle/Map)
     Slices/<Name>.Tests.cs        #   tests co-located with the slice they exercise
   BuildingBlocks/                  # shared value objects (Money, Cpf) — generic, owned by no module
-  Journeys/<Name>Journey.Tests.cs  # cross-module E2E journeys (required for [Critical] slices)
+  Journeys/<Name>Journey.Tests.cs  # happy + sad E2E journeys required for every write slice
 tests/<App>.Tests/                 # thin runner: globs the co-located *.Tests.cs, provides TestApp
 ```
 
@@ -417,52 +417,30 @@ compiles them via glob. No mirror-the-architecture test tree.
   (FluentAssertions, Shouldly, NSubstitute, xUnit-native all work). The one deliberate coupling is
   the **runner: xUnit** (the categories are xUnit traits).
 - `AF0003` makes every slice carry a co-located test; the build fails without one.
-- **Acceptance verification is universal.** Every `[Slice]`, critical or not, declares at least one
-  criterion in its module's `<Module>.spec.toml` (`AF0031`) and has a subject-bound
-  `[AVP(typeof(Slice), "criterion-id")]` proof (`AF0030`). The proof runs in the official gate; a
-  disabled test is a failure (`AF0032`). `[Critical]` never decides whether a feature is tested — it
-  adds the deeper happy + sad journey obligation below.
-- **`[Critical]` slices must prove failure, not just success.** A `[Slice] [Critical]` operation —
-  one where failure costs money or trust — must be covered end-to-end on **both** paths: a happy
-  journey and at least one sad journey, each declared with `[Journey(typeof(Slice),
-  JourneyPath.Happy|Sad)]` on the `[E2E]` test. `AF0008` enforces both exist. The sad journey asserts
-  the failure status **and** that no state changed — the no-partial-state property only an end-to-end
-  test proves. Mark `[Critical]` sparingly (the few high-stakes operations); the broader set of flows
-  stays human-curated, since "which flow matters" lives in the domain, not the code.
-- **`[Journey]` is not a category — it is the proof of a `[Critical]` slice, both ways.** `[Unit]` /
-  `[Integration]` / `[E2E]` are the categories (pick one); `[Journey]` is a *marker on an `[E2E]` test*
-  binding it to the critical slice it covers. The relation is enforced in both directions: `AF0008`
-  (critical slice ⟹ has happy + sad journeys) and `AF0010` (a journey ⟹ covers a critical slice). So a
-  `[Journey]` exists exactly for a critical operation. A cross-module `[E2E]` that proves a whole *flow*
-  rather than one critical slice carries **no** `[Journey]` — e.g. the onboarding traversal. Naming follows:
-  **`*Journey.Tests.cs`** = critical-slice proofs, **`*Flow.Tests.cs`** = plain `[E2E]` flows.
-- **Criticality tracks the dangerous *sad path*, not complexity.** The test for `[Critical]` is: would
-  the failure path *failing silently* cause real harm — an auth bypass, money moving wrong, a takeover, a
-  boundary leak? `Login` is trivial code but critical (a one-character inversion is an auth bypass);
-  `CompleteOnboarding`, which only flips an `IsActive` flag with no guard, is **not** — its only failure is
-  not-found. Don't mark a slice critical because it sounds important or sits on an important flow.
-- **The criticality *policy* is a dial — how strictly a slice must decide.** Most apps stay on the default,
-  where `[Critical]` is opt-in and silence means "not critical." A team that wants criticality treated like
-  authorization — a decision on every slice, never an omission — turns the dial up in `AeroFortress.toml`:
-  ```toml
-  [testing]
-  criticality = "opt-in"   # default — only a [Critical] slice needs journeys (today's behavior)
-  #            = "explicit" # every slice must carry [Critical] or [NonCritical], else AF0029 (mirrors AF0022)
-  #            = "strict"   # an undecided slice is treated as [Critical] and must prove journeys
-  ```
-  Under `"explicit"` the new **`[NonCritical]`** marker is the reviewed downgrade — the positive,
-  challengeable counterpart to `[Critical]`, so a non-critical slice says so out loud instead of being silent.
-  Under `"strict"` an unmarked slice *is* critical (`AF0008`/`AF0010` demand its happy + sad journeys) and
-  `[NonCritical]` is the one explicit opt-out. The doctor reads the dial through MSBuild (no TOML parsing in
-  the analyzer), so the policy ships and is removed with the harness. Reach for a stricter level only when the
-  domain warrants it; the default keeps `[Critical]` the sparing, meaningful mark it is meant to be.
-- **A generator that scaffolds a `[Critical]` slice ships its journeys too.** `af g auth`
-  (`Login`/`Refresh`/`Register`) and every augment (`g auth:otp` → `VerifyPhone`) emit the matching
-  `Journeys/*.Tests.cs` beside the slice — otherwise the generated app fails `AF0008` on its first
-  `doctor`. The rule is self-enforcing: `AF0008` is exactly what makes "the augment forgot the journey"
-  impossible to ship. When a journey can't be driven purely over HTTP (an SMS or email code never crosses
-  the wire), the generated journey layers a **capturing provider** over the booted app through the
-  `SwapStores` / `WithWebHostBuilder` hook — the same test seam, with zero production change.
+- **Acceptance verification is universal.** Every `[Slice]` declares at least one criterion in its module's
+  `<Module>.spec.toml` (`AF0031`) and has a subject-bound `[AVP(typeof(Slice), "criterion-id")]` proof (`AF0030`).
+  The proof runs in the official gate; a disabled test is a failure (`AF0032`). There is no lighter slice class.
+- **Every write proves failure, not just success.** A write slice is covered end-to-end on **both** paths: a
+  happy journey and at least one sad journey, each declared with `[Journey(typeof(Slice),
+  JourneyPath.Happy|Sad)]` on the `[E2E]` test. `AF0008` derives the debt from ordinary code: persistence calls
+  and write endpoint verbs are writes; a visible `MapGet` with no write signal is a read; an unfamiliar or
+  ambiguous shape receives the stronger write bar. The implementing agent never supplies the classification.
+  The sad journey asserts the failure status **and** that no state changed.
+- **`[Journey]` is not a category — it is the proof of a write slice, both ways.** `[Unit]` / `[Integration]` /
+  `[E2E]` are the categories (pick one); `[Journey]` binds an `[E2E]` test to the write it covers. `AF0008`
+  enforces write ⇒ happy + sad journeys and `AF0010` enforces journey ⇒ write. A voluntary read traversal is a
+  plain `[E2E]` flow. Naming follows: **`*Journey.Tests.cs`** = write-slice proofs,
+  **`*Flow.Tests.cs`** = plain `[E2E]` flows.
+- **Verification has no application-controlled mode.** The proof depth above is an unconditional invariant;
+  `AeroFortress.toml` only declares topology and rejects non-topology sections. No attribute, CLI flag, manifest
+  key, skip, or exception can lower the bar. The former classification attributes are absent from the package,
+  so using one is a compiler error rather than tolerated decoration.
+- **A generator that scaffolds a write ships its journeys too.** `af g slice`, `af g auth`
+  (`Login`/`Refresh`/`Register`) and every augment (`g auth:otp` → `VerifyPhone`) emit matching
+  `Journeys/*.Tests.cs`. The generic write scaffold is deliberately red until both journeys prove their terminal
+  state. When a journey cannot be driven purely over HTTP (an SMS or email code never crosses the wire), the
+  generated journey layers a **capturing provider** over the booted app through the `SwapStores` /
+  `WithWebHostBuilder` hook — the same test seam, with zero production change.
 
 ---
 
@@ -480,9 +458,9 @@ never speculation. Keep it minimal; add only on real drift.
 | `AF0005` | `.ctx.md` is fresh — a backticked identifier it cites resolves in source, a reference, or a co-located `*.Tests.cs` (not mtime) | **shipped** | corbanx: "ai.context drifted" |
 | `AF0006` | No `IRepository` / unit-of-work abstraction in a slice | **shipped** | clean-arch bloat cut |
 | `AF0007` | File ≤ 500 LOC (EF `Migrations/` exempt — tool-emitted, append-only) | **shipped** | Rails-repo discipline |
-| `AF0008` | A `[Critical]` slice has a happy **and** a sad journey covering it | **shipped** | high-stakes ops must prove failure E2E |
+| `AF0008` | **Every shape-derived write slice has happy and sad journeys**. Persistence/write endpoint signals classify it; a proven `MapGet` is read; ambiguity fails closed as write | **shipped** | self-classification let ordinary production writes evade E2E |
 | `AF0009` | **Write-ownership**: a module writes only its own entities — a write (Add/Update/Remove/…) on another module's entity is flagged, on a `DbSet` *or* through the untyped `DbContext.Add(entity)` form; reads/joins/calls across modules are free. `.Tests.cs` exempt | **shipped** | modular monolith — write-ownership keeps a context carvable later |
-| `AF0010` | A `[Journey]` covers a `[Critical]` slice — the inverse of `AF0008`. A journey on a non-critical slice (inert metadata) is flagged: mark it `[Critical]` or use a plain `[E2E]` | **shipped** | journeys were silently inert off a critical slice |
+| `AF0010` | A `[Journey]` covers a shape-derived write slice — the inverse of `AF0008`. Use plain `[E2E]` for a voluntary read flow | **shipped** | journey metadata must map to an enforced obligation |
 | `AF0011` | **Tests live in `src/`**: a test method (`[Fact]`/`[Theory]`/`[Unit]`/`[Integration]`/`[E2E]`/`[Journey]`) authored outside a `src/` directory is flagged. The `tests/<App>.Tests` project is infrastructure only (WebApplicationFactory, DB harness, shared bootstrap); unit tests sit next to their slice, journeys under `src/.../Journeys` | **shipped** | keeps tests co-located + doctor-visible; the runner project stays pure infra |
 | `AF0012` | **Endpoint named after the slice**: a `[Slice]`'s `Map` must call `.WithName("<SliceName>")` (or `nameof`). That name is the OpenAPI `operationId` the typed client generates its hook from (`use<SliceName>`), keeping backend↔frontend 1:1. A missing `Map` is AF0001's concern, not this rule's | **shipped** | the back→front naming seam — a forgotten name drifts the generated client |
 | `AF0013` | **Value object always-valid**: a `[ValueObject]` is immutable, exposes no public constructor and no public setter, and is built only through a static smart constructor returning `Result<T>` (the `Money.From` shape) — so an invalid instance can never exist | **shipped** | anemic domain — a value must be unconstructable when invalid, not validated after the fact |
@@ -492,18 +470,17 @@ never speculation. Keep it minimal; add only on real drift.
 | `AF0017` | **Composition root is an index**: the top-level statements (`Program.cs`) wire only `AddAeroFortress` / `AddPlatform` / `AddModules` and the matching `UseAeroFortress` / `UsePlatform` / `MapModules`; any other service registration (`IServiceCollection`), pipeline step, or endpoint mapping (`Use*`/`Map*`) there is flagged and redirected to the platform or a module | **shipped** | the index rots into a dumping ground — infra creeps back into `Program.cs`, drifts, and bit-rots there unwatched |
 | `AF0018` | **Error code is a registry constant**: the `code` passed to an `Error` factory / `Validation.Check` / `Validation.Add` / `FieldError` must reference a `const` on a class named `*ErrorCodes` (e.g. `WalletsErrorCodes.NotFound`), never an inline literal | **shipped** | a code invisible to reflection can't be enumerated into the OpenAPI contract — it would reach a user untranslated; the registry keeps the set discoverable + typed end-to-end |
 | `AF0019` | **Error code constant is used**: every `const` on an `*ErrorCodes` registry must be referenced by an `Error`/`Validation` call somewhere in the compilation — the reverse of `AF0018` | **shipped** | drop a flow and leave its code behind → a dead code still ships in the OpenAPI enum + the i18n catalog; this keeps the registry the exact, live set (no orphans) |
-| `AF0020` | **A `[Journey]` asserts its post-condition**: the journey test body must contain an assertion (xUnit `Assert`, FluentAssertions `Should`, or a `Verify`/`Expect` helper) — the depth rung above `AF0008` (which proves the journey exists). Warning-tier; textual over the journey AdditionalFiles | **shipped** | an assertion-free journey is theater — it runs the path and proves nothing |
+| `AF0020` | **A `[Journey]` asserts its post-condition**: happy requires an observable-effect assertion; sad requires both rejection and unchanged-state assertion tokens. Error-tier, textual over journey AdditionalFiles | **shipped** | a journey that exists but proves no terminal state is theater |
 | `AF0021` | **A persisted or entity-owned type declares its mark**: a `DbSet<T>` whose `T` is unmarked must be `[Entity]`; a complex member of an `[Entity]` (after one nullable/collection layer) that is neither `[ValueObject]`, `[Entity]`, nor an enum must be `[ValueObject]`. The rung *beneath* AF0013/AF0014, which only fire on already-marked types — so an unmarked domain type would otherwise escape every encapsulation check. Does not flag dead/unused types or framework types | **shipped** | the pauta port shipped an anemic `User` (a table, no `[Entity]`) past a green doctor — the omission of the mark was the evasion |
 | `AF0022` | **An endpoint's authorization is a decision, never an omission**: every `[Slice]` carries an explicit posture — `.RequireAuthorization(…)` or `.AllowAnonymous()` — on its own `Map` chain or on the route group the module mounts it on (`app.MapGroup("/x").RequireAuthorization()`). `.AllowAnonymous()` is not a loophole: it is the same decision, made visible and reviewable. A missing `Map` is AF0001's concern | **shipped** | the classic silent failure — a new endpoint ships open because nobody decided anything |
 | `AF0023` | **An injected `ICurrentUser` is consulted**: a `[Slice]` `Handle` that takes an `ICurrentUser` parameter and never reads it is flagged — the caller was wired in to scope the operation, so an unread parameter is a missing ownership/role/org check, not dead code. Consult the caller or remove the parameter | **shipped** | the signature claims an authorization posture the body doesn't have — the check was meant and then silently dropped |
 | `AF0024` | **Raw SQL never absorbs runtime values as text**: a `*Raw` EF call (`FromSqlRaw`, `ExecuteSqlRaw`/`Async`, `SqlQueryRaw`) whose SQL argument interpolates or concatenates a non-literal is flagged — the SQL-injection shape. The fix is one token: `FromSql`/`ExecuteSql`/`SqlQuery` take the same interpolated string and turn every hole into a `DbParameter`. Constant SQL through `*Raw` stays legal | **shipped** | injection hides in the one raw query an app eventually needs — the safe twin costs nothing |
 | `AF0025` | **A held `Result<T>` is checked before it is unwrapped**: reading `.Value`/`.Error` on a result stored in a local or parameter with no earlier outcome consult in the same member (`IsSuccess`/`IsFailure`, an `is { IsSuccess: … }` pattern, or a `Validation.Collect` fold) is flagged — on the wrong outcome the access throws. Unwrapping *inline* on a fresh construction (`Money.From(10m).Value` in a seed/test) stays legal: it is the deliberate known-valid idiom | **shipped** | the type's number-one misuse — `result.Value` straight through, an exception where an `Error` was supposed to flow |
-| `AF0026` | **A `[Critical]` write declares its concurrency posture**: a `[Critical]` slice whose `Handle` saves changes against an entity with no visible concurrency token (no `[Timestamp]`/`[ConcurrencyCheck]` member, no `RowVersion` property) is flagged — concurrent requests are last-write-wins on exactly the operations marked high-stakes. Warning-tier: fluent-only configuration is invisible to the doctor; name the property `RowVersion` or tune the severity | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
+| `AF0026` | **Every persisted write declares its concurrency posture**: a slice whose `Handle` saves an entity with no visible token (`[Timestamp]`, `[ConcurrencyCheck]`, or `RowVersion`) is flagged. Warning-tier because fluent-only configuration is invisible | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
 | `AF0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
 | `AF0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
-| `AF0029` | **A slice decides its criticality under the explicit policy**: when `AeroFortress.toml`'s `[testing] criticality = "explicit"`, a `[Slice]` carrying neither `[Critical]` nor `[NonCritical]` is flagged — criticality becomes a decision on every slice, the mirror of `AF0022`'s posture on authorization. Inert under the default `"opt-in"` (only `[Critical]` matters) and under `"strict"` (where an undecided slice is *treated as* critical and `AF0008`/`AF0010` demand its journeys). The dial is read from the manifest through MSBuild and projected to the analyzers — no TOML parsing in the doctor | **shipped** | criticality was opt-in-only; a team wanting it considered on every slice (like auth) had no enforcement, and a forced `[NonCritical]` is reviewable where a silent absence is not |
-| `AF0030` | **A manifest-declared criterion has a subject-bound AVP proof**: `<Module>.spec.toml`'s `(module, slice, criterion)` obligation is flagged unless an `[AVP(typeof(Slice), "criterion")]` proof with that exact tuple exists in the compilation or its test `AdditionalFiles`. The legacy criterion-only marker proves nothing: one slice can never borrow another slice's proof merely because they share an id. The manifest stays the reviewable obligation; Assay.Net executes the proof | **shipped** | repo-wide id matching let one passing test pay the verification debt of unrelated features |
-| `AF0031` | **Every `[Slice]` declares at least one criterion in its spec manifest**: critical, non-critical, or undecided, a slice with no `[slices.<Name>]` table carrying a non-empty `criteria` array is flagged. Together with AF0030 this closes both directions: slice ⟹ criterion ⟹ exact executable proof. Criticality controls only the extra AF0008 journey depth | **shipped** | `[Critical]` was the cheapest-path opt-in for acceptance verification; most production features therefore declared and proved nothing |
+| `AF0030` | **A manifest-declared criterion has a subject-bound AVP proof**: `<Module>.spec.toml`'s `(module, slice, criterion)` obligation is flagged unless an `[AVP(typeof(Slice), "criterion")]` proof with that exact tuple exists. One slice can never borrow another slice's proof | **shipped** | repo-wide id matching let one passing test pay unrelated verification debt |
+| `AF0031` | **Every `[Slice]` declares at least one criterion in its spec manifest**. Together with AF0030: slice ⟹ criterion ⟹ exact executable proof | **shipped** | optional acceptance verification left most production features unproved |
 | `AF0032` | **Tests must execute**: a test carrying xUnit `Fact/Theory` `Skip`, `SkipWhen`, `SkipUnless`, or `Explicit` is flagged in compiled or AdditionalFiles source, and `af gate` also rejects every TRX `NotExecuted` outcome. A disabled or conditionally omitted test is never evidence even though `dotnet test` normally exits zero | **shipped** | generated and hand-written skipped tests made a green test process look like verified behavior |
 
 The doctor catches **structural drift**, not logic correctness. Correctness is tests +
@@ -528,20 +505,20 @@ The doctor answers "is the form right?"; the AVP proofs answer "does the behavio
    including the AF0030/AF0031 bridge) and each manifest-selected frontend harness's lint + typecheck.
 2. **Backend proof leg** — `dotnet test` over the workspace, which executes every test and every
    `[AVP]` verification; any skipped/not-executed result makes the gate red.
-3. **Frontend proof legs, with depth selected by manifest role** — every product `core` runs `npm run test`
+3. **Frontend proof legs, selected by product role** — every product `core` runs `npm run test`
    over the non-Assay partition plus direct `assay verify` over `*.assay.test.*`; every executable `frontend`
    runs those same legs plus the strict `affe-e2e-doctor` and `npm run test:e2e`. The workspace-level
    `affe-feature-e2e` leg requires every ViewModel to resolve to one of those surface flows, every backend slice
-   hook consumed by a frontend data door to be named by the linked flow, and happy+sad frontend paths for a
-   UI-consumed critical slice. A backend slice with no frontend consumer remains backend-only. A legacy explicit
-   `[harness] frontend` remains an executable surface. Product `website` declarations are surfaces too; validation
-   without gate discovery is forbidden. The filename partition makes every test execute exactly
+   hook consumed by a frontend data door to be named by the linked flow, and subject-bound happy+sad paths for
+   every visible feature. A backend slice with no frontend consumer remains backend-only. Product `website`
+   declarations are surfaces too; validation independently inventories ViewModel/flow-bearing packages, so deleting
+   a product key cannot shrink the gate. The filename partition makes every test execute exactly
    once: AVP is a real gate leg, not a duplicate second Vitest pass. A missing or placeholder script,
    manifest, runner, terminal assertion, seed, or real execution is a failure; there is no ephemeral/skip tier.
 4. **The matrix** — declarations (`*.spec.toml`) × proof sites
    (`[AVP(typeof(Slice), "id")]`) × test verdicts,
    joined per module: criterion → proof → verdict, plus the findings the gate refuses to swallow —
-   a declared criterion with no proof (the gap), a proof no manifest declares (creep), an explicitly
+   a declared criterion with no proof (the gap), a proof no manifest declares (creep), a
    slice declaring nothing, a proof that never reached a decision (a skip is never a
    pass), a malformed manifest.
 
@@ -561,6 +538,10 @@ the push. So the wiring is part of the supply, not an exercise for each app:
   (`prepare: lefthook install`) give the fast local echo — the doctor build on pre-push.
 - An app is **born gated** exactly as it is born with slices, modules and the doctor: red work
   cannot reach `main` unnoticed. Retrofitting an existing app is the same three files.
+- Manifest validation requires a checked workflow that directly invokes `af gate`. Configure the repository's
+  branch rules once to require the stable `af gate (doctor + proofs + matrix)` status and disallow bypasses. That
+  external rule is the authority an implementing LLM cannot edit in the same code change; local hooks and prompts
+  are only feedback.
 
 ### Declaring criteria — born closed, not caught later
 
@@ -569,7 +550,7 @@ The bridge is cheapest when the slice is born with it:
 ```
 af criteria list                          # the catalog menu — and what Assay.Net can actually run
 af criteria suggest CreateCheckout        # ranked archetype families for a slice, with the matched words
-af g slice Payments Charge --critical --verify idempotency-key-honored,gate-enforced-on-submission
+af g slice Payments Charge --verify idempotency-key-honored,gate-enforced-on-submission
 ```
 
 `--verify` declares the ids in `Modules/<M>/<M>.spec.toml` (creating the manifest with the house

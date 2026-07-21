@@ -4,15 +4,14 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace AeroFortress.Framework.Doctor.Tests;
 
-public class CriticalConcurrencyAnalyzerTests
+public class WriteConcurrencyAnalyzerTests
 {
     [Fact]
-    public Task Critical_write_against_a_tokened_entity_reports_nothing() =>
+    public Task Write_against_a_tokened_entity_reports_nothing() =>
         Make("Slice.cs", """
             namespace Demo.Modules.Wallets;
 
             [Slice]
-            [Critical]
             static class Deposit
             {
                 static void Handle(Demo.AppDb db)
@@ -24,13 +23,12 @@ public class CriticalConcurrencyAnalyzerTests
             """, walletExtra: "public byte[] RowVersion { get; private set; }").RunAsync();
 
     [Fact]
-    public Task Critical_write_against_a_tokenless_entity_is_flagged()
+    public Task Write_against_a_tokenless_entity_is_flagged()
     {
         var test = Make("Slice.cs", """
             namespace Demo.Modules.Wallets;
 
             [Slice]
-            [Critical]
             static class Deposit
             {
                 static void Handle(Demo.AppDb db)
@@ -41,19 +39,18 @@ public class CriticalConcurrencyAnalyzerTests
             }
             """, walletExtra: "");
         test.TestState.ExpectedDiagnostics.Add(
-            new DiagnosticResult(CriticalConcurrencyAnalyzer.DiagnosticId, DiagnosticSeverity.Warning)
-                .WithSpan("Slice.cs", 5, 14, 5, 21)
+            new DiagnosticResult(WriteConcurrencyAnalyzer.DiagnosticId, DiagnosticSeverity.Warning)
+                .WithSpan("Slice.cs", 4, 14, 4, 21)
                 .WithArguments("Deposit", "Wallet"));
         return test.RunAsync();
     }
 
     [Fact]
-    public Task Read_only_critical_slice_reports_nothing() =>
+    public Task Read_only_slice_reports_nothing() =>
         Make("Slice.cs", """
             namespace Demo.Modules.Wallets;
 
             [Slice]
-            [Critical]
             static class GetBalance
             {
                 static void Handle(Demo.AppDb db)
@@ -64,8 +61,9 @@ public class CriticalConcurrencyAnalyzerTests
             """, walletExtra: "").RunAsync();
 
     [Fact]
-    public Task Non_critical_write_is_not_this_rules_concern() =>
-        Make("Slice.cs", """
+    public Task Every_write_is_this_rules_concern()
+    {
+        var test = Make("Slice.cs", """
             namespace Demo.Modules.Wallets;
 
             [Slice]
@@ -77,9 +75,15 @@ public class CriticalConcurrencyAnalyzerTests
                     db.SaveChanges();
                 }
             }
-            """, walletExtra: "").RunAsync();
+            """, walletExtra: "");
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult(WriteConcurrencyAnalyzer.DiagnosticId, DiagnosticSeverity.Warning)
+                .WithSpan("Slice.cs", 4, 14, 4, 21)
+                .WithArguments("Deposit", "Wallet"));
+        return test.RunAsync();
+    }
 
-    private static CSharpAnalyzerTest<CriticalConcurrencyAnalyzer, DefaultVerifier> Make(
+    private static CSharpAnalyzerTest<WriteConcurrencyAnalyzer, DefaultVerifier> Make(
         string sliceFile, string sliceSource, string walletExtra) =>
         new()
         {
@@ -104,7 +108,6 @@ public class CriticalConcurrencyAnalyzerTests
                             }
                         }
                         sealed class SliceAttribute : System.Attribute { }
-                        sealed class CriticalAttribute : System.Attribute { }
                         """),
                     (sliceFile, sliceSource),
                 },
