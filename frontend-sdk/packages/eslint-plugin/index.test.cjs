@@ -7,9 +7,13 @@
 // TS parser are workspace devDependencies, so a plain require resolves them from the hoisted node_modules.
 
 const { RuleTester } = require("eslint");
+const assert = require("node:assert/strict");
 const tsParser = require("@typescript-eslint/parser");
 const plugin = require("./index.cjs");
+const manifest = require("./package.json");
 const path = require("path");
+
+assert.equal(plugin.meta.version, manifest.version, "plugin metadata must match its package version");
 
 const ruleTester = new RuleTester({
   languageOptions: {
@@ -798,6 +802,18 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
     { filename: "Foo.tsx", code: `/** @verify fires-primary-effect */\nexport const X = () => null;` },
     // The obligation IS proven: the co-located fixture assay carries the marker + defineVerification.
     { filename: path.join(AFFE033_FIX, "Proven.view.tsx"), code: `/** @verify proven-x */\nexport const X = () => null;` },
+    {
+      filename: "Asserted.assay.test.tsx",
+      code: `defineVerification(...productVerification("Cart", "adds-item", "adds the selected item", () => { expect(cart.items).toHaveLength(1); }));`,
+    },
+    {
+      filename: "RedScaffold.assay.test.tsx",
+      code: `defineVerification(...productVerification("Cart", "adds-item", "implement product proof", () => { throw new Error("red by design"); }));`,
+    },
+    {
+      filename: "TestingLibraryOracle.assay.test.tsx",
+      code: `defineVerification(...productVerification("Login", "shows-submit", "shows the sign-in action", () => { render(<Login />); screen.getByRole("button", { name: "Entrar" }); }));`,
+    },
   ],
   invalid: [
     {
@@ -817,7 +833,7 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
       code: `/** @verify single-flight */\nexport const useX = () => null;`,
       errors: [{ messageId: "missing" }],
     },
-    // The old suffix is not Vitest-discoverable; it cannot satisfy a runtime obligation.
+    // The same-subject file lacks the `.test` segment, so Vitest cannot discover it as executable evidence.
     {
       filename: path.join(AFFE033_FIX, "OldStyle.view.tsx"),
       code: `/** @verify old-file */\nexport const X = () => null;`,
@@ -834,6 +850,17 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
       filename: path.join(AFFE033_FIX, "Inert.view.tsx"),
       code: `/** @verify inert-z */\nexport const X = () => null;`,
       errors: [{ messageId: "inert" }],
+    },
+    // A second @avp marker cannot borrow an unrelated defineVerification call in the same Assay file.
+    {
+      filename: path.join(AFFE033_FIX, "Borrowed.view.tsx"),
+      code: `/** @verify borrowed-b */\nexport const X = () => null;`,
+      errors: [{ messageId: "inert" }],
+    },
+    {
+      filename: "EmptyOracle.assay.test.tsx",
+      code: `defineVerification(...productVerification("Cart", "adds-item", "claims without proving", () => { cart.add(item); }));`,
+      errors: [{ messageId: "noOracle" }],
     },
   ],
 });

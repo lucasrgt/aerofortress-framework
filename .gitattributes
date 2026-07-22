@@ -1,0 +1,7 @@
+# Node tool scripts carry a shebang (#!/usr/bin/env node). Under core.autocrlf=true a Windows checkout smudges
+# them to CRLF, and vite's shebang strip (^#!.* — `.` never matches `\r`) mishandles the CRLF form: the imported
+# .mjs then reaches V8 with an un-stripped shebang and vitest dies with "SyntaxError: Invalid or unexpected token"
+# — a whole test suite silently lost (green only by luck of a stray LF checkout, red on the next clean checkout).
+# Pin the node script sources to LF regardless of core.autocrlf so a Windows checkout can't corrupt the tool suite.
+*.mjs text eol=lf
+*.cjs text eol=lf

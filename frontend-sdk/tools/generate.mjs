@@ -38,11 +38,29 @@ export function ident(ns) {
  * co-located files — the canonical unit. Names are derived: ns "bookings", component "Bookings", collection
  * "bookings", entity "Booking", model hook "useBookingsModel", list hook "useListBookings".
  */
-export function renderFeature(nameRaw) {
+export function renderFeature(nameRaw, criteria) {
+  if (!Array.isArray(criteria) || criteria.length < 2) {
+    throw new TypeError("renderFeature() requires at least two explicit semantic criteria (happy and sad outcomes).");
+  }
+  if (criteria.some((id) => typeof id !== "string" || !/^[a-z0-9][a-z0-9._-]*$/.test(id))
+      || new Set(criteria).size !== criteria.length) {
+    throw new TypeError("renderFeature() criteria must be distinct stable lowercase ids.");
+  }
   const Plural = pascal(nameRaw); // "Bookings"
   const collection = camel(Plural); // "bookings"
   const Entity = pascal(singular(camel(nameRaw))); // "Booking"
   const lower = collection.toLowerCase(); // i18n namespace + client.gen segment
+
+  const verificationMarkers = criteria.map((id) => ` * @verify ${id}`).join("\n");
+  const assayProofs = criteria.map((id) => `/** @avp ${id} */
+defineVerification(...productVerification(
+  "${Plural}",
+  "${id}",
+  "${id.replaceAll("-", " ")}",
+  async () => {
+    throw new Error("implement the ${id} product proof against the real ${Plural} ViewModel/View");
+  },
+));`).join("\n\n");
 
   const viewModel = `import { toAsyncState, type AsyncState } from "@aerofortress/react";
 // The orval-generated typed hook for the \`list_${lower}\` slice — the ONLY data the door touches.
@@ -63,7 +81,7 @@ export interface ${Plural}Model {
 }
 
 /**
- * @verify count-matches-source
+${verificationMarkers}
  * @e2e ${lower}-happy
  * @e2e ${lower}-sad
  */
@@ -152,27 +170,12 @@ describe("${Plural}", () => {
 });
 `;
 
-  const assay = `import { dataHonesty } from "@aerofortress/assay";
-import type { DataHonestySubject } from "@aerofortress/assay/react";
+  const assay = `import { productVerification } from "@aerofortress/frontend-sdk/product-verification";
 import { defineVerification } from "@aerofortress/assay/react/vitest";
 
-/** @avp count-matches-source */
-// AVP PROOF — red by design until this subject mounts the real ${Plural}View with its providers and names
-// the generated client's exact list endpoint/response shape. Do not weaken or skip it: the verifier must
-// observe a populated source and prove the rendered count converges with it.
-const subject: DataHonestySubject = {
-  name: "${Plural}",
-  render: () => {
-    throw new Error("bind ${Plural}View + providers to the AVP data-honesty subject");
-  },
-  endpoint: { method: "GET", path: "/replace-with-${lower}-endpoint" },
-  items: { role: "listitem" },
-  emptyResponse: { ${collection}: [] },
-  countResponse: [{ id: "one", name: "One" }, { id: "two", name: "Two" }],
-  fabricationMarkers: [],
-};
-
-defineVerification(dataHonesty, subject, { label: "${Plural} · count-matches-source" });
+// AVP PROOFS — deliberately red until every declared product outcome is proven by a concrete assertion.
+// Keep internal/unit mechanics in ${Plural}.test.tsx; only user-observable acceptance behavior belongs here.
+${assayProofs}
 `;
 
   const i18n = `// Feature-scoped copy. Three locales with identical keys (AFFE011) — fill in the real strings.

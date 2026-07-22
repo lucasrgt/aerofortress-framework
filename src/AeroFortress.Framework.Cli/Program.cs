@@ -54,8 +54,11 @@ static int Usage()
           af g auth:oauth               augment auth with Google sign-up/sign-in
           af g auth:email               augment auth with email verification + password reset
           af doctor                     run the convention analyzers (build)
-          af gate                       run the full verification gate (doctor + proofs) and emit the matrix
-                                        (VERIFICATION.md + VERIFICATION.json; the exit code is the verdict)
+          af gate [--affected] [--base <rev>]
+                                        run the Git-affected proof closure (the default)
+          af gate --staged --fast      pre-commit gate rooted only in the index; defers browser/device execution
+          af gate --full               run the exhaustive audit (required before a release)
+                                        every mode runs the universal inventory and emits the honest matrix
           af test [--unit|--integration|--e2e]   run the .NET tests (fast leg)
           af mutate                     run mutation testing via Stryker (deep leg)
 

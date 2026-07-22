@@ -1,17 +1,15 @@
 # AeroFortress workspace manifest — the single source of truth for this app's topology. `af doctor`
-# validates it; `af build` / `af gen client` read it. One AeroFortress.toml per repo, at the root.
+# validates it. One AeroFortress.toml per repo, at the root.
 
 [workspace]
 name = "AeroFortress.Framework.Starter"
 
 [products.app]
 backend = "src/AeroFortress.Framework.Starter.Api"   # .NET vertical slices — the AF* analyzers gate this build
-# A AeroFortress frontend client is added under clients/ when you scaffold one:
-# core = "clients/core"              # agnostic ViewModel (the data door) + design-system View + i18n + client
-# apps = ["mobile", "web"]           # platform shells over the shared core
+# An AeroFortress frontend package is declared explicitly when added:
+# core = "clients/core"              # shared ViewModels/Views; tests + Assay, no runner of its own
+# library = "clients/ui"             # shared npm package; lint + typecheck + tests, no runner of its own
+# frontend = "clients/web"           # executable surface; additionally owes full E2E
 
-# Optional: where the aerofortress-framework framework checkout lives, when you develop against it. With this set,
-# `af doctor` compares your AeroFortress* and frontend framework package versions against the checkout
-# and fails on drift (the package-first law). Machines without the checkout (CI) skip the check.
-# [framework]
-# repo = "../aerofortress-framework"
+# Package synchronization is self-contained in the released CLI and frontend SDK. No sibling framework checkout
+# is required locally or in CI; applications only declare their product topology here.

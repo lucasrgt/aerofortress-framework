@@ -15,8 +15,8 @@
 
     <!-- Package metadata (the CLI doesn't import AeroFortress.Framework.Library.props — that turns CS1591 into an error, and a
          tool isn't a documented library surface). 1.0 removes proof modes and topology fallbacks: one manifest,
-         one complete fail-closed gate. -->
-    <Version>1.0.3</Version>
+         one complete fail-closed obligation with Git-derived incremental execution. -->
+    <Version>1.0.14</Version>
     <Authors>Lucas Tinoco</Authors>
     <Description>The AeroFortress CLI — scaffolds the convention bundle: new feature slices, entities, CRUD, and the auth flows. Install with `dotnet tool install -g aerofortress-framework-cli`; run as `af`. The companion to the AeroFortress framework packages.</Description>
     <PackageTags>aerofortress;cli;dotnet-tool;scaffolding;conventions;vertical-slice</PackageTags>
@@ -43,7 +43,7 @@
        and never knows the framework). It brings the neutral catalog (Catalog.LoadDefault) and the spec-manifest
        reader the gate and the criteria commands share with the runtime verifier. -->
   <ItemGroup>
-    <PackageReference Include="Assay.Net" Version="0.3.1" />
+    <PackageReference Include="Assay.Net" Version="0.4.0" />
     <!-- The verification matrix must distinguish real attributes from fixture/template strings. Roslyn syntax
          keeps this collector honest without compiling or semantically binding the consumer workspace. -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />

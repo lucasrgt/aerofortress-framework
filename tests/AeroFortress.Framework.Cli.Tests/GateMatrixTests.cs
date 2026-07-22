@@ -60,6 +60,20 @@ public class GateMatrixTests
     }
 
     [Fact]
+    public void An_unaffected_criterion_stays_visible_without_counterfeiting_a_pass()
+    {
+        var matrix = GateMatrix.Build(
+            [Manifest("Wallets", "[slices.Withdraw]", "criteria = [\"idempotency-key-honored\"]")],
+            [new AvpProof("Wallets", "Withdraw", "idempotency-key-honored", "W.cs", "Proof", "Holds")],
+            [new SliceSite("Wallets", "Withdraw", "W.cs")],
+            verdicts: [],
+            executedSlices: new HashSet<string>());
+
+        Assert.Equal(MatrixVerdict.NotAffected, Assert.Single(matrix.Rows).Verdict);
+        Assert.False(matrix.Blocking);
+    }
+
+    [Fact]
     public void One_passing_proof_never_hides_a_second_proof_that_did_not_run()
     {
         var matrix = GateMatrix.Build(
@@ -93,11 +107,12 @@ public class GateMatrixTests
     }
 
     [Fact]
-    public void Any_slice_with_no_nonempty_declaration_is_reported()
+    public void Any_slice_missing_from_the_manifest_is_reported()
     {
-        // A table with no criteria is not a declaration; AF0031 rejects the same gap.
+        // The manifest parser itself rejects an empty criterion list; this exercises the remaining inventory gap:
+        // a valid module manifest exists, but an independently discovered slice is absent from it.
         var matrix = GateMatrix.Build(
-            [Manifest("Payments", "[slices.Charge]", "criteria = []")],
+            [Manifest("Payments", "[slices.Refund]", "criteria = [\"returns-captured-funds\"]")],
             proofs: [],
             [new SliceSite("Payments", "Charge", "Charge.cs")],
             verdicts: []);

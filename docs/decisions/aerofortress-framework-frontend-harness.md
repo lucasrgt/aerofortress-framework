@@ -40,7 +40,7 @@ the harness.
    generated typed TanStack hook per slice. An invented endpoint is a `tsc` error (no silent
    404). The completeness gate is the compiler, not a lint rule.
 
-3. **The generator is stock, wrapped — never bespoke.** `af gen client` runs **orval**
+3. **The generator is stock, wrapped — never bespoke.** The application's `npm run gen:client` runs **orval**
    (`react-query` target) under a shipped `orval.config.ts` + a AeroFortress **mutator** (the typed
    client: `Result<T>` unwrap, auth, error→state). The opinion lives in config + convention, not
    in a fork — exactly as the back uses EF Core stock and puts the opinion in the slice + doctor.
@@ -48,8 +48,8 @@ the harness.
 
 4. **The bright line: generate the contract, scaffold the behavior.** Types and the typed
    slice-hook are *generated* (plumbing, re-emitted, never edited). The ViewModel body is
-   *scaffolded once* by `af g view <Slice>` and then owned — a visible skeleton, never
-   re-emitted. Source-gen of ViewModel behavior (and predecessor-style "smart stubs" that
+   written once and then owned — a visible skeleton, never re-emitted. Source-gen of ViewModel behavior (and
+   predecessor-style "smart stubs" that
    pre-fill logic) is **out** — it is the source-gen vector.
 
 5. **The harness is a separate, optional, doctor-removable package** — an `eslint-plugin-aerofortress`

@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { version } = require("./package.json");
 
 // eslint-plugin-aerofortress — the frontend harness (AFFE*). The front-side parallel of the backend's Roslyn analyzers
 // (AeroFortress.Framework.Doctor): it polices the MVVM seam so React Native + web screens stay wired, not mocked — the View
@@ -1727,11 +1728,65 @@ const rules = {
         unproven:
           "AFFE033: `@verify {{id}}` is declared but {{test}} carries no `@avp {{id}}` proof — add the assay JS verification tagged `@avp {{id}}` so the obligation is proven, not just claimed.",
         inert:
-          "AFFE033: {{test}} carries `@avp {{id}}` but registers no `defineVerification(...)` — a marker without an executable Assay verification is not proof.",
+          "AFFE033: {{test}} carries `@avp {{id}}` but registers no `defineVerification(...)` for that exact criterion — one Assay case cannot lend execution to unrelated markers.",
+        noOracle:
+          "AFFE033: `productVerification(...)` has no executable assertion — an AVP callback must contain an `expect`/assert oracle (or the scaffold's deliberate throw), not merely run code and return green.",
       },
     },
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
+      const isAssayProof = /\.assay\.test\.[cm]?[jt]sx?$/.test(f);
+      if (isAssayProof) {
+        const hasOracle = (callback) => {
+          let found = false;
+          walk(callback.body, (node) => {
+            if (node.type === "ThrowStatement") {
+              found = true;
+              return true;
+            }
+            if (node.type !== "CallExpression") return false;
+            const callee = node.callee;
+            if (callee.type === "Identifier" && /^(?:expect|assert|assert[A-Z].*)$/.test(callee.name)) {
+              found = true;
+              return true;
+            }
+            if (callee.type === "Identifier" && /^get(?:All)?By[A-Z]/.test(callee.name)) {
+              found = true;
+              return true;
+            }
+            if (
+              callee.type === "MemberExpression" &&
+              callee.object.type === "Identifier" &&
+              callee.object.name === "assert"
+            ) {
+              found = true;
+              return true;
+            }
+            if (
+              callee.type === "MemberExpression" &&
+              !callee.computed &&
+              callee.property.type === "Identifier" &&
+              /^get(?:All)?By[A-Z]/.test(callee.property.name)
+            ) {
+              found = true;
+              return true;
+            }
+            return false;
+          });
+          return found;
+        };
+        return {
+          CallExpression(node) {
+            if (node.callee.type !== "Identifier" || node.callee.name !== "productVerification") return;
+            const callback = node.arguments[3];
+            if (!callback || (callback.type !== "ArrowFunctionExpression" && callback.type !== "FunctionExpression")) {
+              context.report({ node, messageId: "noOracle" });
+              return;
+            }
+            if (!hasOracle(callback)) context.report({ node: callback, messageId: "noOracle" });
+          },
+        };
+      }
       if (!isView(f) && !isViewModel(f)) return {};
       // Markers are read from COMMENTS (JSDoc), never strings — so a literal "@verify" in copy never false-fires.
       const idsIn = (text, tag) => {
@@ -1764,12 +1819,29 @@ const rules = {
           // AF0030 runs over its AdditionalFiles test files.
           const proofText = testExists ? fs.readFileSync(testPath, "utf8") : "";
           const proven = idsInComments(proofText, "avp");
-          const executable = /\bdefineVerification\s*\(/.test(proofText.replace(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm, ""));
+          const executableSource = proofText.replace(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm, "");
+          const escapesRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
           for (const id of obligations) {
             if (!testExists) context.report({ node, messageId: "missing", data: { id, test: `${base}.assay.test.tsx` } });
             else if (!proven.has(id)) context.report({ node, messageId: "unproven", data: { id, test: `${base}.assay.test.tsx` } });
-            else if (!executable) context.report({ node, messageId: "inert", data: { id, test: `${base}.assay.test.tsx` } });
+            else {
+              const directRegistration = new RegExp(
+                `\\bdefineVerification\\s*\\([\\s\\S]{0,1000}?["'\`]${escapesRegex(id)}["'\`]`,
+              ).test(executableSource);
+              const subjectDeclaration = new RegExp(
+                `\/\\*[\\s\\S]*?@avp\\s+${escapesRegex(id)}\\b[\\s\\S]*?\\*\/`
+                  + "(?:\\s|\/\/[^\\r\\n]*(?:\\r?\\n|$)|\/\\*[\\s\\S]*?\\*\/)*"
+                  + "(?:export\\s+)?const\\s+([A-Za-z_$][\\w$]*)\\b",
+              ).exec(proofText);
+              const subjectRegistration = subjectDeclaration
+                ? new RegExp(
+                  `\\bdefineVerification\\s*\\([\\s\\S]{0,1000}?\\b${escapesRegex(subjectDeclaration[1])}\\b`,
+                ).test(executableSource)
+                : false;
+              const executable = directRegistration || subjectRegistration;
+              if (!executable) context.report({ node, messageId: "inert", data: { id, test: `${base}.assay.test.tsx` } });
+            }
           }
         },
       };
@@ -1853,7 +1925,7 @@ const rules = {
 };
 
 const plugin = {
-  meta: { name: "eslint-plugin-aerofortress", version: "1.0.2" },
+  meta: { name: "eslint-plugin-aerofortress", version },
   rules,
   configs: {},
 };

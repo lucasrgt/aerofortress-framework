@@ -5,6 +5,8 @@ import { SAMPLE_API_BASE } from "../examples/sample-app/frontend/core/src/api";
 
 const MISSING_WALLET = "99999999-9999-4999-8999-999999999999";
 
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
 beforeEach(() => {

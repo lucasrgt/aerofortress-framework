@@ -39,6 +39,13 @@ export function extractE2eObligations(source) {
   )];
 }
 
+/** Acceptance criteria declared by a ViewModel through `@verify <criterion-id>`. */
+export function extractVerificationCriteria(source) {
+  return [...new Set(
+    [...source.matchAll(/@verify\s+([a-z0-9][a-z0-9._-]*)\b/gi)].map((match) => match[1]),
+  )];
+}
+
 function sliceDeclarations(sources) {
   const declarations = [];
   for (const source of sources) {
@@ -100,7 +107,7 @@ export function extractBackendSliceObligations(source) {
 /**
  * Check the complete feature -> flow mapping.
  * @param {{ path: string, source: string }[]} viewModels
- * @param {{ id?: string, path?: string, features?: string[], backendSlices?: string[], __surface?: string }[]} flows
+ * @param {{ id?: string, path?: string, features?: string[], criteria?: { id?: string, evidence?: string }[], backendSlices?: string[], __surface?: string }[]} flows
  * @param {string[]} slices
  * @param {{ path: string, source: string }[]} infrastructure
  */
@@ -143,19 +150,24 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
 
   let linked = 0;
   let complete = 0;
+  let criteria = 0;
+  let coveredCriteria = 0;
   const hookConsumers = new Map();
   for (const viewModel of viewModels) {
     const feature = basename(viewModel.path).replace(/\.viewModel\.tsx?$/i, "");
+    const verificationCriteria = extractVerificationCriteria(viewModel.source);
+    criteria += verificationCriteria.length;
     for (const hook of sliceHooks(viewModel.source, slices)) {
       const consumers = hookConsumers.get(hook) ?? new Set();
       consumers.add(feature);
       hookConsumers.set(hook, consumers);
     }
     const obligations = extractE2eObligations(viewModel.source);
+    const featureOwnedFlows = flows.filter((flow) => flow.features?.includes(feature));
     if (obligations.length === 0) {
       messages.push(`${viewModel.path}: ${feature} declares no \`@e2e <flow-id>\` browser/device journey`);
       gaps += 1;
-      continue;
+      if (featureOwnedFlows.length === 0) continue;
     }
 
     const resolvedFlows = [];
@@ -168,13 +180,21 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
         resolvedFlows.push(flow);
       }
     }
-    if (resolvedFlows.length === 0) continue;
-    const subjectFlows = resolvedFlows.filter((flow) => flow.features?.includes(feature));
+    const subjectFlows = featureOwnedFlows;
+    for (const flow of subjectFlows) {
+      if (obligations.includes(flow.id)) continue;
+      messages.push(
+        `${viewModel.path}: feature-owned flow "${flow.id}" must be declared with @e2e ${flow.id}; `
+          + "flow ownership is bidirectional and cannot sit outside the ViewModel's verification inventory",
+      );
+      gaps += 1;
+    }
     for (const flow of resolvedFlows) {
       if (flow.features?.includes(feature)) continue;
       messages.push(`${viewModel.path}: linked flow "${flow.id}" does not declare features:["${feature}"]`);
       gaps += 1;
     }
+    if (subjectFlows.length === 0) continue;
     if (subjectFlows.length > 0) linked += 1;
 
     const paths = new Set(subjectFlows.map((flow) => flow.path));
@@ -184,6 +204,53 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
       gaps += 1;
     }
     if (paths.has("happy") && paths.has("sad")) complete += 1;
+
+    if (verificationCriteria.length > 0) {
+      const provenCriteria = new Set();
+      const criterionOwners = new Map();
+      for (const flow of subjectFlows) {
+        if (!Array.isArray(flow.criteria) || flow.criteria.length === 0) {
+          messages.push(
+            `${viewModel.path}: subject flow "${flow.id}" declares no criteria; `
+              + "happy/sad labels are a floor, not semantic proof",
+          );
+          gaps += 1;
+          continue;
+        }
+        for (const entry of flow.criteria) {
+          const criterion = typeof entry?.id === "string" ? entry.id : "";
+          if (!verificationCriteria.includes(criterion)) {
+            messages.push(
+              `${viewModel.path}: flow "${flow.id}" claims undeclared criterion "${criterion}"; `
+                + `declare @verify ${criterion} and its co-located @avp Assay proof`,
+            );
+            gaps += 1;
+            continue;
+          }
+          const previousOwner = criterionOwners.get(criterion);
+          if (previousOwner) {
+            messages.push(
+              `${viewModel.path}: @verify ${criterion} is claimed by both "${previousOwner}" and "${flow.id}"; `
+                + "one semantic criterion must have one executable E2E proof case",
+            );
+            gaps += 1;
+            continue;
+          }
+          criterionOwners.set(criterion, flow.id);
+          provenCriteria.add(criterion);
+        }
+      }
+      for (const criterion of verificationCriteria) {
+        if (provenCriteria.has(criterion)) {
+          coveredCriteria += 1;
+          continue;
+        }
+        messages.push(
+          `${viewModel.path}: @verify ${criterion} has an Assay obligation but no subject E2E flow cites it in criteria`,
+        );
+        gaps += 1;
+      }
+    }
 
   }
 
@@ -246,7 +313,7 @@ export function checkFeatureE2e(viewModels, flows, slices, infrastructure = []) 
     }
   }
 
-  return { features: viewModels.length, linked, complete, gaps, messages };
+  return { features: viewModels.length, linked, complete, criteria, coveredCriteria, gaps, messages };
 }
 
 function walk(root, predicate) {
@@ -308,7 +375,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const result = checkFeatureE2e(viewModels, flows, slices, infrastructure);
     console.log(
       `AFFE-FEATURE-E2E: ${result.linked}/${result.features} ViewModel feature(s) linked; `
-        + `${result.complete} complete happy+sad feature(s); ${result.gaps} coverage gap(s).`,
+        + `${result.complete} complete happy+sad feature(s); `
+        + `${result.coveredCriteria}/${result.criteria} AVP/Assay criterion/criteria covered; `
+        + `${result.gaps} coverage gap(s).`,
     );
     for (const message of result.messages) console.log(`  - ${message}`);
     process.exit(result.gaps > 0 ? 1 : 0);

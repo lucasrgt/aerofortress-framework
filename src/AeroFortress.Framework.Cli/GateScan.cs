@@ -23,6 +23,18 @@ internal sealed record AvpProof(
 /// <param name="File">The slice file, relative to the workspace root.</param>
 internal sealed record SliceSite(string Module, string Name, string File);
 
+/// <summary>A slice-bound backend journey, used to include its test class in an affected proof run.</summary>
+/// <param name="Subject">The slice named by <c>typeof(...)</c>.</param>
+/// <param name="File">The journey file, relative to the workspace root.</param>
+/// <param name="ClassName">The namespace-qualified declaring class.</param>
+/// <param name="Method">The journey method carrying the binding.</param>
+internal sealed record JourneyProof(string Subject, string File, string ClassName, string Method);
+
+/// <summary>A discoverable C# test class and its source file.</summary>
+/// <param name="File">The test file, relative to the workspace root.</param>
+/// <param name="ClassName">The namespace-qualified declaring class.</param>
+internal sealed record CSharpTestSite(string File, string ClassName);
+
 /// <summary>One test method's outcome from a TRX result file, keyed the way proofs are matched.</summary>
 /// <param name="ClassName">The fully-qualified test class from the TRX definition.</param>
 /// <param name="Method">The test method name.</param>
@@ -126,6 +138,75 @@ internal static class GateScan
         return slices;
     }
 
+    /// <summary>Collect every method carrying a canonical slice-bound <c>[Journey]</c> declaration.</summary>
+    public static IReadOnlyList<JourneyProof> ScanJourneys(string root)
+    {
+        var journeys = new List<JourneyProof>();
+        foreach (var file in Walk(root, "*.cs"))
+        {
+            var text = File.ReadAllText(file);
+            if (!text.Contains("Journey", StringComparison.Ordinal))
+                continue;
+
+            var syntax = CSharpSyntaxTree.ParseText(text).GetRoot();
+            foreach (var method in syntax.DescendantNodes().OfType<MethodDeclarationSyntax>())
+            {
+                foreach (var attribute in method.AttributeLists.SelectMany(list => list.Attributes)
+                             .Where(attribute => IsAttribute(attribute, "Journey")))
+                {
+                    if (!TryReadSubject(attribute, out var subject))
+                        continue;
+                    var declaringClass = method.Ancestors().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+                    if (declaringClass is null)
+                        continue;
+                    var fileNamespace = NamespaceOf(declaringClass);
+                    journeys.Add(new JourneyProof(
+                        subject,
+                        Relative(root, file),
+                        Qualified(fileNamespace, ClassOf(method)),
+                        method.Identifier.ValueText));
+                }
+            }
+        }
+
+        return journeys;
+    }
+
+    /// <summary>Collect classes that contain an executable xUnit, AVP, or Journey method.</summary>
+    public static IReadOnlyList<CSharpTestSite> ScanTestClasses(string root)
+    {
+        var sites = new List<CSharpTestSite>();
+        foreach (var file in Walk(root, "*.cs"))
+        {
+            var text = File.ReadAllText(file);
+            if (!text.Contains("[Fact", StringComparison.Ordinal)
+                && !text.Contains("[Theory", StringComparison.Ordinal)
+                && !text.Contains("[AVP", StringComparison.Ordinal)
+                && !text.Contains("[Journey", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var syntax = CSharpSyntaxTree.ParseText(text).GetRoot();
+            foreach (var declaration in syntax.DescendantNodes().OfType<ClassDeclarationSyntax>())
+            {
+                var executable = declaration.Members.OfType<MethodDeclarationSyntax>()
+                    .Any(method => method.AttributeLists.SelectMany(list => list.Attributes).Any(attribute =>
+                        IsAttribute(attribute, "Fact") || IsAttribute(attribute, "Theory")
+                        || IsAttribute(attribute, "AVP") || IsAttribute(attribute, "Journey")));
+                if (!executable)
+                    continue;
+                var fileNamespace = NamespaceOf(declaration);
+                sites.Add(new CSharpTestSite(
+                    Relative(root, file),
+                    Qualified(fileNamespace, string.Join("+", declaration.AncestorsAndSelf()
+                        .OfType<ClassDeclarationSyntax>().Reverse().Select(type => type.Identifier.ValueText)))));
+            }
+        }
+
+        return sites;
+    }
+
     /// <summary>Parse every <c>*.trx</c> in <paramref name="resultsDirectory"/> into per-method outcomes.</summary>
     public static IReadOnlyList<TestVerdict> ParseTrxDirectory(string resultsDirectory)
     {
@@ -191,6 +272,20 @@ internal static class GateScan
             return false;
         criterionId = literal.Token.ValueText;
         return criterionId.Length > 0;
+    }
+
+    private static bool TryReadSubject(AttributeSyntax attribute, out string subject)
+    {
+        subject = "";
+        var arguments = attribute.ArgumentList?.Arguments;
+        if (arguments is null || arguments.Value.Count == 0
+            || arguments.Value[0].Expression is not TypeOfExpressionSyntax typeOf)
+        {
+            return false;
+        }
+
+        subject = SimpleTypeName(typeOf.Type.ToString());
+        return subject.Length > 0;
     }
 
     private static string SimpleTypeName(string type) =>

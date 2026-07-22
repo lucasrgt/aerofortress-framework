@@ -53,26 +53,28 @@ describe("renderFeature", () => {
   });
 
   it("emits the five co-located files of the unit", () => {
-    const files = renderFeature("bookings");
+    const files = renderFeature("bookings", ["lists-authoritative-bookings", "reveals-list-failure"]);
     expect(Object.keys(files).sort()).toEqual(
       ["Bookings.assay.test.tsx", "Bookings.test.tsx", "Bookings.view.tsx", "Bookings.viewModel.ts", "bookings.i18n.ts"].sort(),
     );
   });
 
   it("wires the spine: AsyncState door, <Resource> view, renderHook test, 3 locales", () => {
-    const files = renderFeature("bookings");
+    const files = renderFeature("bookings", ["lists-authoritative-bookings", "reveals-list-failure"]);
     const vm = files["Bookings.viewModel.ts"];
     expect(vm).toContain("AsyncState<Booking[]>");
     expect(vm).toContain("useListBookings");
     expect(vm).toContain('i18n.t("bookings:error")');
     expect(files["Bookings.view.tsx"]).toContain("<Resource");
     expect(files["Bookings.test.tsx"]).toContain("renderHook");
-    expect(vm).toContain("@verify count-matches-source");
+    expect(vm).toContain("@verify lists-authoritative-bookings");
+    expect(vm).toContain("@verify reveals-list-failure");
     expect(vm).toContain("@e2e bookings-happy");
     expect(vm).toContain("@e2e bookings-sad");
-    expect(files["Bookings.test.tsx"]).not.toContain("@avp count-matches-source");
-    expect(files["Bookings.assay.test.tsx"]).toContain("@avp count-matches-source");
-    expect(files["Bookings.assay.test.tsx"]).toContain("defineVerification(dataHonesty");
+    expect(files["Bookings.test.tsx"]).not.toContain("@avp");
+    expect(files["Bookings.assay.test.tsx"]).toContain("@avp lists-authoritative-bookings");
+    expect(files["Bookings.assay.test.tsx"]).toContain("@avp reveals-list-failure");
+    expect(files["Bookings.assay.test.tsx"]).toContain("defineVerification(...productVerification(");
     const i18n = files["bookings.i18n.ts"];
     for (const locale of ["ptBR", "esES", "enUS"]) expect(i18n).toContain(`export const ${locale}`);
   });
@@ -81,7 +83,7 @@ describe("renderFeature", () => {
     // Write under the repo (cwd) so the flat-config `files` globs match and test-colocated resolves the sibling.
     const dir = mkdtempSync(join(process.cwd(), "tools", ".scaffold-tmp-"));
     try {
-      const files = renderFeature("bookings");
+      const files = renderFeature("bookings", ["lists-authoritative-bookings", "reveals-list-failure"]);
       for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
 
       const linter = new Linter();

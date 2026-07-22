@@ -56,7 +56,7 @@ public class AuthGeneratorTests
         var apiProject = File.ReadAllText(Path.Combine(api, "Shop.Api.csproj"));
         Assert.Contains("<AdditionalFiles Include=\"**\\*.spec.toml\" />", apiProject);
         var testProject = File.ReadAllText(Path.Combine(solution, "tests", "Shop.Tests", "Shop.Tests.csproj"));
-        Assert.Contains("PackageReference Include=\"Assay.Net\" Version=\"0.3.1\"", testProject);
+        Assert.Contains("PackageReference Include=\"Assay.Net\" Version=\"0.4.0\"", testProject);
         Assert.Contains("PackageReference Include=\"AeroFortress.Framework.Testing.InMemory\"", testProject);
     }
 

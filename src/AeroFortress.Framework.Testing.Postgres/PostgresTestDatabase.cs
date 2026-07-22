@@ -11,9 +11,10 @@ namespace AeroFortress.Framework.Testing.Postgres;
 /// <c>migrateTemplate</c> delegate migrates a single template database; each store a test asks for is a
 /// database <em>cloned</em> from that template (<c>CREATE DATABASE … TEMPLATE</c>) — the per-test isolation
 /// the in-memory store gives, on the real engine, without re-migrating per test. A <em>keyed</em> store lets
-/// two contexts share one database (the "data written by one request is read by the next" pattern). Pooling
-/// is off so each context's connections close on dispose and hundreds of throwaway databases never exhaust
-/// the server's slots. Graduated from the hostpoint pilot's <c>TestDatabase</c>.
+/// two contexts share one database (the "data written by one request is read by the next" pattern). Each clone
+/// receives a tiny, aggressively pruned pool: this reuses sockets within a test without retaining hundreds of
+/// clone pools or exhausting Windows' ephemeral ports across a large suite. Graduated from the hostpoint pilot's
+/// <c>TestDatabase</c>.
 /// </summary>
 /// <example>
 /// The app wraps one instance in its own static accessor:
@@ -50,6 +51,8 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
     // does not cancel the server-side CREATE DATABASE, so retrying would launch a second concurrent clone and make
     // the contention worse.
     private const int SetupCommandTimeoutSeconds = 300;
+    private const int CloneMaximumPoolSize = 4;
+    private const int ClonePoolLifetimeSeconds = 1;
 
     /// <summary>Declare the suite's database. Nothing starts until the first store is asked for.</summary>
     /// <param name="migrateTemplate">Migrates the template database the clones are cut from; receives its
@@ -105,6 +108,7 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
     /// process exits without disposing.</summary>
     public async ValueTask DisposeAsync()
     {
+        NpgsqlConnection.ClearAllPools();
         await _container.DisposeAsync().ConfigureAwait(false);
         _gate.Dispose();
     }
@@ -177,10 +181,21 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
         }
     }
 
-    // Pooling off: connections close on dispose, so hundreds of throwaway databases never exhaust the server,
-    // and a cloned template has no lingering session blocking the next CREATE DATABASE ... TEMPLATE.
+    // A unique pool exists per clone because the database is part of Npgsql's pool key. Keeping pooling off avoids
+    // server-slot retention but creates a fresh TCP socket for nearly every EF command; a large Windows suite then
+    // exhausts the finite ephemeral-port range while closed sockets remain in TIME_WAIT. A tiny pool reuses sockets
+    // during one test, while the one-second idle/pruning policy reaps pools fast enough that old clones do not retain
+    // server sessions. The template pool is explicitly cleared before the first clone, so it never blocks TEMPLATE.
     internal static string IsolatedConnectionString(string maintenanceConnection, string database) =>
-        new NpgsqlConnectionStringBuilder(maintenanceConnection) { Database = database, Pooling = false }.ConnectionString;
+        new NpgsqlConnectionStringBuilder(maintenanceConnection)
+        {
+            Database = database,
+            Pooling = true,
+            MinPoolSize = 0,
+            MaxPoolSize = CloneMaximumPoolSize,
+            ConnectionIdleLifetime = ClonePoolLifetimeSeconds,
+            ConnectionPruningInterval = ClonePoolLifetimeSeconds,
+        }.ConnectionString;
 
     private string ConnectionFor(string database) => IsolatedConnectionString(_maintenanceConnection, database);
 }

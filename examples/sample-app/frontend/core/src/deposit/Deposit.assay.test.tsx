@@ -37,4 +37,17 @@ const depositSubject: ActionEffectSubject = {
   singleFlight: true,
 };
 
-defineVerification(actionEffect, depositSubject);
+defineVerification(actionEffect, depositSubject, {
+  // The product owns the semantic contract and keeps CI deterministic: the error must identify the failed
+  // operation and tell the person what to do next. Assay supplies the model-oracle slot, never the answer.
+  judge: (request) => {
+    const text = (request.evidence as { text: string }).text.toLowerCase();
+    const pass = text.includes("couldn't complete the deposit") && text.includes("try again");
+    return {
+      pass,
+      reason: pass
+        ? "names the failed deposit and a retry step"
+        : "error lacks the deposit/retry contract",
+    };
+  },
+});

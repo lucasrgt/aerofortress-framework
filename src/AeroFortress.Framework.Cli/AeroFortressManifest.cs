@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace AeroFortress.Framework.Cli;
@@ -10,18 +11,21 @@ internal enum FrontendPackageRole
     /// <summary>A shared application core owes executable unit/integration and Assay proofs.</summary>
     Core,
 
+    /// <summary>A reusable workspace library owes executable unit/integration and Assay proofs.</summary>
+    Library,
+
     /// <summary>An executable user surface also owes the E2E contract and real browser/device execution.</summary>
     Surface,
 }
 
 /// <summary>A frontend package selected from the workspace manifest and the proof depth it owes.</summary>
 /// <param name="Path">The absolute package root.</param>
-/// <param name="Role">Whether the package is a shared core or an executable surface.</param>
+/// <param name="Role">Whether the package is an application core, reusable library, or executable surface.</param>
 internal sealed record FrontendPackage(string Path, FrontendPackageRole Role);
 
 /// <summary>
 /// Reads + validates the workspace manifest, <c>AeroFortress.toml</c> — the single source of truth for an app's
-/// topology (which dirs are the backend, the frontend core, the platform apps; which harness gates the
+/// topology (which dirs are the backend, the frontend core, and the executable surfaces; which harness gates the
 /// build). The manifest was the spine the monorepo design promised but the CLI never read; this is the
 /// first reader so <c>af doctor</c> can confirm a project HAS one and that the paths it declares exist.
 ///
@@ -54,16 +58,19 @@ internal static class AeroFortressManifest
         var text = File.ReadAllText(path);
         var messages = new List<string>();
 
-        if (!Regex.IsMatch(text, @"^\s*\[workspace\]", RegexOptions.Multiline))
+        var workspaceSection = Regex.Match(
+            text,
+            @"(?ms)^\s*\[workspace\]\s*(?<body>.*?)(?=^\s*\[|\z)");
+        if (!workspaceSection.Success)
             messages.Add($"{FileName}: missing a [workspace] section");
-        else if (!Regex.IsMatch(text, @"^\s*name\s*=", RegexOptions.Multiline))
+        else if (!Regex.IsMatch(workspaceSection.Groups["body"].Value, @"^\s*name\s*=", RegexOptions.Multiline))
             messages.Add($"{FileName}: [workspace] declares no name");
 
         // Every product path must resolve on disk, so the manifest can't drift from the real tree. Frontend and
         // website paths name executable package roots; core may name a directory inside its owning package.
         foreach (Match m in Regex.Matches(
             text,
-            @"^\s*(backend|core|frontend|website)\s*=\s*""([^""]+)""",
+            @"^\s*(backend|core|library|frontend|website)\s*=\s*""([^""]+)""",
             RegexOptions.Multiline))
         {
             var kind = m.Groups[1].Value;
@@ -79,6 +86,8 @@ internal static class AeroFortressManifest
                 CheckBackendDevEnv(full, rel, messages);
             if (kind is "frontend" or "website" && !File.Exists(Path.Combine(full, "package.json")))
                 messages.Add($"{FileName}: {kind} path '{rel}' has no package.json");
+            if (kind is "core" or "library" && OwningPackage(root, rel) is null)
+                messages.Add($"{FileName}: {kind} path '{rel}' has no owning package.json");
         }
 
         CheckManifestSections(text, messages);
@@ -90,7 +99,7 @@ internal static class AeroFortressManifest
 
     /// <summary>
     /// Discover the package roots the frontend harness must gate. Product
-    /// <c>frontend</c>/<c>website</c>/<c>core</c> paths resolve to their owning package while retaining their proof
+    /// <c>frontend</c>/<c>website</c>/<c>core</c>/<c>library</c> paths resolve to their owning package while retaining their proof
     /// depth. A core runs tests + Assay; either executable surface kind additionally runs E2E.
     /// Manifest validation independently rejects undisclosed frontend packages, so deleting a declaration cannot
     /// make a proof surface disappear from the release verdict.
@@ -105,21 +114,38 @@ internal static class AeroFortressManifest
                 .Select(declaration => new
                 {
                     Path = OwningPackage(root, declaration.RelativePath),
-                    Role = declaration.Kind == "core"
-                        ? FrontendPackageRole.Core
-                        : FrontendPackageRole.Surface,
+                    Role = declaration.Kind switch
+                    {
+                        "core" => FrontendPackageRole.Core,
+                        "library" => FrontendPackageRole.Library,
+                        _ => FrontendPackageRole.Surface,
+                    },
                 })
                 .Where(package => package.Path is not null)
                 .GroupBy(package => package.Path!, StringComparer.OrdinalIgnoreCase)
                 .Select(group => new FrontendPackage(
                     group.Key,
-                    group.Any(package => package.Role == FrontendPackageRole.Surface)
-                        ? FrontendPackageRole.Surface
-                        : FrontendPackageRole.Core))
+                    group.Max(package => package.Role)))
                 .ToList();
             return declared;
         }
         return [];
+    }
+
+    /// <summary>Return every distinct backend root declared by the workspace topology.</summary>
+    public static IReadOnlyList<string> BackendPaths(string root)
+    {
+        var path = Path.Combine(root, FileName);
+        if (!File.Exists(path))
+            return [];
+
+        return Regex.Matches(
+                File.ReadAllText(path),
+                @"^\s*backend\s*=\s*""([^""]+)""",
+                RegexOptions.Multiline)
+            .Select(match => Path.GetFullPath(Path.Combine(root, match.Groups[1].Value)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static string? OwningPackage(string root, string relativePath)
@@ -151,7 +177,7 @@ internal static class AeroFortressManifest
         {
             foreach (Match entry in Regex.Matches(
                          section.Groups["body"].Value,
-                         @"^\s*(frontend|website|core)\s*=\s*""([^""]+)""",
+                         @"^\s*(frontend|website|core|library)\s*=\s*""([^""]+)""",
                          RegexOptions.Multiline))
             {
                 declarations.Add(new FrontendDeclaration(entry.Groups[1].Value, entry.Groups[2].Value));
@@ -167,12 +193,33 @@ internal static class AeroFortressManifest
     /// </summary>
     private static void CheckManifestSections(string text, List<string> messages)
     {
-        foreach (Match section in Regex.Matches(text, @"^\s*\[([^\]\r\n]+)\]", RegexOptions.Multiline))
+        foreach (Match section in Regex.Matches(
+                     text,
+                     @"(?ms)^\s*\[(?<name>[^\]\r\n]+)\]\s*(?<body>.*?)(?=^\s*\[|\z)"))
         {
-            var name = section.Groups[1].Value;
-            if (name == "workspace" || name == "framework" || name.StartsWith("products.", StringComparison.Ordinal))
+            var name = section.Groups["name"].Value;
+            string[] allowedKeys;
+            if (name == "workspace")
+                allowedKeys = ["name"];
+            else if (name == "framework")
+                allowedKeys = ["repo"];
+            else if (name.StartsWith("products.", StringComparison.Ordinal))
+                allowedKeys = ["backend", "core", "library", "frontend", "website"];
+            else
+            {
+                messages.Add($"{FileName}: unsupported section [{name}] — the manifest only declares topology; verification has no configurable mode.");
                 continue;
-            messages.Add($"{FileName}: unsupported section [{name}] — the manifest only declares topology; verification has no configurable mode.");
+            }
+
+            foreach (Match entry in Regex.Matches(
+                         section.Groups["body"].Value,
+                         @"^\s*(?<key>[A-Za-z][A-Za-z0-9_.-]*)\s*=",
+                         RegexOptions.Multiline))
+            {
+                var key = entry.Groups["key"].Value;
+                if (!allowedKeys.Contains(key, StringComparer.Ordinal))
+                    messages.Add($"{FileName}: unsupported key '{key}' in [{name}] — the manifest only declares topology.");
+            }
         }
     }
 
@@ -189,14 +236,66 @@ internal static class AeroFortressManifest
             .Select(path => path!)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var package in DiscoverFrontendProofPackages(root))
+        var inventoried = DiscoverFrontendProofPackages(root)
+            .Concat(DiscoverWorkspacePackages(root))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (var package in inventoried)
         {
             if (declared.Contains(package))
                 continue;
 
             messages.Add(
-                $"{FileName}: frontend proof package '{Path.GetRelativePath(root, package)}' is not declared by a "
-              + "[products.*] frontend, website, or core key — undeclared packages cannot disappear from the gate.");
+                $"{FileName}: workspace/proof package '{Path.GetRelativePath(root, package)}' is not declared by a "
+              + "[products.*] frontend, website, core, or library key — undeclared packages cannot disappear from the gate.");
+        }
+    }
+
+    private static IReadOnlyList<string> DiscoverWorkspacePackages(string root)
+    {
+        var packageJson = Path.Combine(root, "package.json");
+        if (!File.Exists(packageJson))
+            return [];
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(packageJson));
+            if (!document.RootElement.TryGetProperty("workspaces", out var workspaces))
+                return [];
+            var entries = workspaces.ValueKind == JsonValueKind.Array
+                ? workspaces
+                : workspaces.ValueKind == JsonValueKind.Object
+                  && workspaces.TryGetProperty("packages", out var packages)
+                    ? packages
+                    : default;
+            if (entries.ValueKind != JsonValueKind.Array)
+                return [];
+
+            var candidates = EnumerateFiles(root, "package.json")
+                .Select(Path.GetDirectoryName).Where(path => path is not null)
+                .Select(path => path!).Where(path => !string.Equals(path, root, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in entries.EnumerateArray().Where(entry => entry.ValueKind == JsonValueKind.String))
+            {
+                var pattern = (entry.GetString() ?? "").Replace('\\', '/').Trim('/');
+                if (pattern.Length == 0)
+                    continue;
+                var regex = "^" + Regex.Escape(pattern)
+                    .Replace(@"\*\*", ".*", StringComparison.Ordinal)
+                    .Replace(@"\*", "[^/]+", StringComparison.Ordinal) + "$";
+                foreach (var candidate in candidates)
+                {
+                    var relative = Path.GetRelativePath(root, candidate).Replace('\\', '/');
+                    if (Regex.IsMatch(relative, regex, RegexOptions.IgnoreCase))
+                        selected.Add(candidate);
+                }
+            }
+
+            return selected.ToList();
+        }
+        catch (JsonException)
+        {
+            return [];
         }
     }
 
@@ -276,7 +375,7 @@ internal static class AeroFortressManifest
 
         var invocation = Regex.Match(
             withoutComments,
-            @"(?im)^\s*-?\s*run\s*:\s*(?<command>(?:af(?:\.exe)?\s+gate\b|dotnet\s+run\b[^\r\n]*--\s+gate\b)[^\r\n]*)");
+            @"(?im)^\s*-?\s*run\s*:\s*(?<command>(?:af(?:\.exe)?\s+gate\b|dotnet\s+tool\s+run\s+af\s+gate\b|dotnet\s+run\b[^\r\n]*--\s+gate\b)[^\r\n]*)");
         return invocation.Success
             && !Regex.IsMatch(invocation.Groups["command"].Value, @"(?:&&|\|\||;|\s\|\s)");
     }

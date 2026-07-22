@@ -56,6 +56,25 @@ public class WriteJourneyAnalyzerTests
         return test.RunAsync();
     }
 
+    [Theory]
+    [InlineData("ExecuteUpdateAsync")]
+    [InlineData("ExecuteDeleteAsync")]
+    [InlineData("ExecuteSqlInterpolatedAsync")]
+    public Task A_set_based_persistence_call_makes_even_a_get_mapped_slice_a_write(string method)
+    {
+        var source = SavingGetSlice.Replace("SaveChanges", method);
+        var test = Make(source, "");
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult(WriteJourneyAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+                .WithSpan("Deposit.cs", 4, 14, 4, 21)
+                .WithArguments("Deposit", "Happy"));
+        test.TestState.ExpectedDiagnostics.Add(
+            new DiagnosticResult(WriteJourneyAnalyzer.DiagnosticId, DiagnosticSeverity.Error)
+                .WithSpan("Deposit.cs", 4, 14, 4, 21)
+                .WithArguments("Deposit", "Sad"));
+        return test.RunAsync();
+    }
+
     [Fact]
     public Task An_ambiguous_slice_is_fail_closed_as_a_write()
     {
@@ -130,7 +149,13 @@ public class WriteJourneyAnalyzerTests
                             public void MapPost() { }
                             public void MapCustom() { }
                         }
-                        public sealed class Database { public void SaveChanges() { } }
+                        public sealed class Database
+                        {
+                            public void SaveChanges() { }
+                            public void ExecuteUpdateAsync() { }
+                            public void ExecuteDeleteAsync() { }
+                            public void ExecuteSqlInterpolatedAsync() { }
+                        }
                         """),
                     ("Deposit.cs", source),
                 },

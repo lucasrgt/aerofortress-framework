@@ -11,18 +11,23 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 |---|---|---|
 | Unit | `AFFE005` (every ViewModel has a co-located `renderHook` test) | eslint, per-file |
 | Integration | `AFFE006` (every View has a co-located `render()` test) | eslint, per-file |
-| AVP | `AFFE033` (every ViewModel declares `@verify`; the exact co-located `*.assay.test.tsx` registers the matching `@avp` verification) | eslint + `npm run test:avp` |
-| **E2E** | `AFFE035` + **`feature-e2e-coverage.mjs`** (every ViewModel links a flow; every UI-consumed backend slice is named by that flow) + **`e2e-doctor.mjs`** (every flow has an enabled case, terminal assertion, and runner) | eslint + workspace gate + surface gate |
+| AVP | `AFFE033` (every ViewModel declares its `@verify` set; the exact co-located `*.assay.test.tsx` registers a matching `@avp` + `defineVerification` for every id) | eslint + `npm run test:avp` |
+| **E2E** | `AFFE035` + **`feature-e2e-coverage.mjs`** (every ViewModel links flows whose `criteria` cover its AVP/Assay set; every UI-consumed backend slice is named) + **`e2e-doctor.mjs`** (every flow has an enabled case, terminal assertion, and runner) | eslint + workspace gate + surface gate |
 
-E2E remains flow-level, but coverage is now enforced in both directions. Every ViewModel declares one or more
-`@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces. Every
+E2E remains flow-level, but coverage is now enforced in both directions. Every ViewModel declares every one of
+its `@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
+also fails when a flow claims that ViewModel through `features` without the reciprocal `@e2e`. Every
 UI-consumed slice hook must appear in at least one subject flow belonging to one of its actual consumer features;
 shared queries are proved once, not once per importer. Session/guard infrastructure retains happy+sad evidence.
 An unavoidable literal raw call in infrastructure declares its identity beside the call as
 `@backendSlice Refresh POST /account/refresh`; missing, stale, or unknown declarations are gaps, and the declared
 slice also owes happy+sad real-browser evidence. ViewModels continue to use generated hooks exclusively.
-Every flow owns exactly one ViewModel, and every ViewModel needs subject-bound
-`happy` and `sad` flows. A web flow naming backend slices declares its checked-in OpenAPI file as
+Every flow owns exactly one ViewModel and names `{ id, evidence }` `criteria` from that ViewModel's `@verify` set.
+Its exact case must visibly assert each distinct evidence marker; one criterion belongs to one case and one
+assertion cannot pay several criteria. The union must cover the complete set; unknown, missing, reused, or
+criterion-free claims fail. Every ViewModel also needs subject-bound `happy` and `sad` flows as the minimum path
+floor, not as a fixed definition of completeness.
+A web flow naming backend slices declares its checked-in OpenAPI file as
 `backendContract`, then its exact case collects page responses with `observeBackend()` and closes the ledger with
 `expectBackendSlices()` or the bounded `waitForBackendSlices()` when parallel requests can settle after the terminal
 UI. The expected names must exactly match `backendSlices`; happy flows require 2xx evidence
@@ -33,9 +38,14 @@ cannot install request interception, import mock/stub support, or call the API d
 The check follows relative local imports recursively, so moving that bypass into a support helper is still red.
 The conventional `src/storybook/` development surface is outside this production inventory; arbitrary source
 directories remain scanned, so this is a fixed convention rather than a configurable coverage exclusion.
-`checkE2e(root)` then
-proves every declared flow has an enabled spec/case, terminal assertion, and real runner. A missing/empty manifest
-is red. See the
+`checkE2e(root)` then proves every declared flow has an enabled spec/case, terminal assertion, and its canonical
+target-derived runner: Playwright config for `target:web`, the complete `maestro test e2e` script for
+`target:native`. Empty convention directories are not runner evidence. There is no configurable runner
+field; Cypress and Detox configurations fail as noncanonical rather than creating alternate release paths.
+The CLI also compares those web `spec/case` obligations with `playwright test --list`, so runner configuration
+cannot collect only a convenient subset. `af gate` separately requires `test:e2e` to contain the unfiltered full
+runner; native specs use Maestro YAML and `maestro test e2e`. Setup belongs in runner configuration/global setup.
+A missing/empty manifest is red. See the
 Hostpoint dogfood's `scripts/affe-e2e-doctor.mjs` (a thin CLI over `checkE2e`) + `playwright.config.ts`.
 
 Minimal real-backend setup:
@@ -61,7 +71,9 @@ journeys through co-located `[Journey(typeof(Slice), Happy|Sad)]` tests, while f
 which writes actually have a UI surface. The doctor requires both backend paths for every UI-bound write and
 reports unreferenced writes as valid backend-only behavior. There is no optional file-name link for an agent to
 omit or redirect. The *endpoint* grain is already closed by generated types, endpoint coverage, and the observed
-browser ledger.
+browser ledger. The backend argument is the API source root; a directory with no `[Slice]` declarations fails
+closed, so pointing at a tests/journeys leaf cannot manufacture a zero-write green report. A genuinely read-only
+API remains valid because its GET slices still prove that the inventory root is real.
 
 When those endpoints are shared by multiple frontend surfaces, endpoint coverage also consumes the union of their
 source roots:
@@ -69,6 +81,10 @@ source roots:
 ```
 affe-endpoint-coverage app-core/src/client.gen/api.ts app-core/src operator/src partner/src
 ```
+
+A generated hook or imperative operation counts only when a legal data door value-imports that exact symbol from
+`client.gen`. This covers on-demand downloads/lookups without letting a similarly named local callback manufacture
+coverage.
 
 When one backend serves multiple executable surfaces, pass every independently-gated manifest; parity is computed
 over their union without pretending operator or partner journeys belong to the consumer app:
@@ -90,14 +106,15 @@ which rules gate, which are a revealed backlog, and which are already clean. See
 ## Scaffold a feature unit
 
 ```
-npm run scaffold -- <plural-name> [targetDir]
-# e.g.  npm run scaffold -- bookings sample/bookings
+npm run scaffold -- <plural-name> --verify <happy-id,sad-id,...> [targetDir]
+# e.g. npm run scaffold -- bookings --verify lists-authoritative-bookings,reveals-list-failure sample/bookings
 ```
 
 Emits the five co-located files of the canonical unit — `<Feature>.viewModel.ts`, `<Feature>.view.tsx`,
 `<Feature>.test.tsx`, `<Feature>.assay.test.tsx`, `<feature>.i18n.ts` — with names derived from the feature name.
-The Assay subject is red by design until it mounts the real View and endpoint; the other four files are the
-blessed `sample/items` shape with substitutions, so their structure **passes every AFFE rule and typechecks by construction**
+Every explicitly chosen Assay criterion is red by design until its concrete product assertion is implemented;
+there is no generic default, and the scaffold requires distinct happy/sad outcome criteria. The other four files
+are the blessed `sample/items` shape with substitutions, so their structure **passes every AFFE rule and typechecks by construction**
 (`generate.test.ts` writes a unit to disk and lints it with the real rules to prove the emitter and the harness
 agree). Its generated `@e2e <feature>-happy` is deliberately unresolved until the owning surface adds the real
 flow, spec, and terminal proof. Then refine the entity fields, wire the slice in `@/client.gen`, and fill the copy.

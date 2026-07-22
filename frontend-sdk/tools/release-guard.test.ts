@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RELEASE_UNITS, violations } from "./release-guard.mjs";
+import { canonicalDrift, RELEASE_UNITS, violations } from "./release-guard.mjs";
 
 describe("release-guard", () => {
   it("flags a unit that changed without a version bump", () => {
@@ -24,5 +24,12 @@ describe("release-guard", () => {
       "eslint-plugin-aerofortress",
       "@aerofortress/frontend-sdk",
     ]);
+  });
+
+  it("accepts the externally released Assay protocol in the synchronization table", () => {
+    expect(canonicalDrift(
+      [{ name: "@aerofortress/assay", version: "0.4.0" }],
+      () => { throw new Error("external package has no framework manifest"); },
+    )).toEqual([]);
   });
 });

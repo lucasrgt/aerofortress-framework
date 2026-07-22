@@ -20,4 +20,19 @@ public class GateCommandTests
 
         Assert.DoesNotContain("--no-build", arguments);
     }
+
+    [Fact]
+    public void The_affected_filter_is_derived_from_the_impact_plan()
+    {
+        var impact = new BackendImpact(
+            false,
+            new HashSet<string> { "LoginProof", "AuthJourney" },
+            new HashSet<string> { "Account/Login" });
+
+        var arguments = GateCommand.ProofArguments(["App.slnx"], 0, "evidence", impact);
+
+        var filter = arguments[Array.IndexOf(arguments, "--filter") + 1];
+        Assert.Contains("FullyQualifiedName~LoginProof", filter);
+        Assert.Contains("FullyQualifiedName~AuthJourney", filter);
+    }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The e2e tier of the frontend doctor (canonical, runner-agnostic + target-aware). A project declares journeys in
+// The e2e tier of the frontend doctor (canonical and target-derived). A project declares journeys in
 // `e2e/flows.json`, and this doctor proves every listed journey has an enabled implementation file, a terminal
 // assertion, and a runner for its target. `feature-e2e-coverage.mjs` closes the inverse direction: every ViewModel
 // links a flow, and every backend slice consumed by the UI is named by a linked journey.
@@ -8,8 +8,8 @@
 // SINGLE TIER, by design: being in `flows.json` IS the bar — there are no skipped/ephemeral sub-tiers. A listed
 // flow with no executable spec is a blocking gap, not a backlog item dressed as coverage.
 //
-// The runner is the swappable slot (the "RSpec"): Playwright is the blessed default for WEB, Maestro/Detox for
-// NATIVE. A flow declares its `target` (web|native) and a `spec` path to its implementation (a `.spec.ts` / `.yaml`).
+// A flow declares its `target` (web|native), which selects its runner without another decision: Playwright for WEB
+// and Maestro for NATIVE. Its `spec` therefore has the matching visible form (`.spec.ts` / `.yaml`).
 // `checkE2e(root)` is pure (no process.exit) so a CLI, a test, or `af doctor` decides what to do with it.
 //
 // DEPTH, not just existence (AFFE-JOURNEY-002). A spec existing does NOT mean the journey is covered — a spec can
@@ -19,28 +19,48 @@
 // AFTER entry to prove the journey reached its end. The doctor reads the spec and flags it when the terminal is
 // undeclared or never referenced. These are reported as `depthGaps` (warn-tier), kept SEPARATE from the hard
 // existence `gaps`; both are blocking because a journey that only reaches its door is not an E2E proof.
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Known runners → how to detect each (config file or convention dir). Add a runner here, not in consumers.
+// Canonical runners are derived from the target. Alternative configs are detected separately and rejected so one
+// surface cannot maintain a second, weaker execution path beside its release proof.
 const RUNNER_DETECT = {
   playwright: { files: ["playwright.config.ts", "playwright.config.js", "playwright.config.mjs"], dirs: [] },
-  cypress: { files: ["cypress.config.ts", "cypress.config.js", "cypress.config.mjs"], dirs: [] },
-  maestro: { files: [], dirs: [".maestro", "maestro"] },
-  detox: { files: [".detoxrc.js", ".detoxrc.json", ".detoxrc"], dirs: [] },
 };
-const WEB_RUNNERS = new Set(["playwright", "cypress"]);
-const NATIVE_RUNNERS = new Set(["maestro", "detox"]);
+const NONCANONICAL_RUNNER_DETECT = {
+  cypress: { files: ["cypress.config.ts", "cypress.config.js", "cypress.config.mjs", "cypress.config.cjs"] },
+  detox: { files: [".detoxrc.js", ".detoxrc.json", ".detoxrc"] },
+};
 const FLOW_KEYS = new Set([
-  "area", "backendContract", "backendOutcome", "backendSlices", "case", "features", "id", "name", "path",
-  "spec", "target", "terminal",
+  "area", "backendContract", "backendOutcome", "backendSlices", "case", "criteria", "features", "id", "name",
+  "path", "spec", "target", "terminal",
 ]);
 
 /** The e2e runners a project has configured (e.g. ["playwright", "maestro"]). */
 export function detectRunners(root) {
-  return Object.entries(RUNNER_DETECT)
+  const configured = Object.entries(RUNNER_DETECT)
     .filter(([, { files, dirs }]) => files.some((f) => existsSync(join(root, f))) || dirs.some((d) => existsSync(join(root, d))))
+    .map(([name]) => name);
+  if (hasCompleteMaestroScript(root)) configured.push("maestro");
+  return configured;
+}
+
+function hasCompleteMaestroScript(root) {
+  try {
+    const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    const command = packageJson?.scripts?.["test:e2e"];
+    return typeof command === "string"
+      && /(?:^|&&\s*)maestro\s+test\s+(?:\.?[\\/]?e2e|\.?[\\/]?maestro)\s*(?=$|&&)/i.test(command);
+  } catch {
+    return false;
+  }
+}
+
+function detectNoncanonicalRunners(root) {
+  return Object.entries(NONCANONICAL_RUNNER_DETECT)
+    .filter(([, { files }]) => files.some((file) => existsSync(join(root, file))))
     .map(([name]) => name);
 }
 
@@ -77,7 +97,7 @@ function classifySource(spec, source) {
  * Each flow: `{ id, name, path, area?, target, spec, case?, backendSlices?, backendContract?, backendOutcome?, terminal }` where `id` is the stable
  * ViewModel linkage key, `path` is happy|sad, `spec` is relative to root, and optional `case` names one test in a
  * shared spec. `terminal` is the testID/route the proof asserts after entry.
- * Target-aware: a target:native flow needs a native runner (.maestro/ or detox); a target:web flow needs Playwright.
+ * Target-derived: a target:native flow needs Maestro; a target:web flow needs Playwright.
  */
 export function checkE2e(root) {
   const emptyExecution = { "ci-gated": 0, "front-only": 0, "seed-pending": 0, disabled: 0, native: 0 };
@@ -100,11 +120,29 @@ export function checkE2e(root) {
   const execution = { ...emptyExecution };
   const seedPending = [];
   const runners = detectRunners(root);
-  const hasWeb = runners.some((r) => WEB_RUNNERS.has(r));
-  const hasNative = runners.some((r) => NATIVE_RUNNERS.has(r));
+  const noncanonicalRunners = detectNoncanonicalRunners(root);
+  const hasWeb = runners.includes("playwright");
+  const hasNative = runners.includes("maestro");
   if (runners.length === 0) {
-    messages.push("no e2e runner configured (playwright.config.* / .maestro/ / .detoxrc*)");
+    messages.push("no canonical e2e runner configured (target:web requires playwright.config.*; target:native requires `maestro test e2e`)");
     gaps++;
+  }
+  for (const runner of noncanonicalRunners) {
+    messages.push(`noncanonical ${runner} configuration is present; target:web uses Playwright and target:native uses Maestro`);
+    gaps++;
+  }
+  if (hasWeb) {
+    const configFile = RUNNER_DETECT.playwright.files
+      .map((file) => join(root, file))
+      .find((file) => existsSync(file));
+    const config = configFile ? stripComments(readFileSync(configFile, "utf8")) : "";
+    if (/\breuseExistingServer\s*:\s*true\b/.test(config)) {
+      messages.push(
+        "Playwright hardcodes reuseExistingServer: true — a gate could attach to a stale or unrelated process; "
+        + "use the standard !process.env.CI guard or disable reuse",
+      );
+      gaps++;
+    }
   }
 
   let flows;
@@ -125,6 +163,19 @@ export function checkE2e(root) {
 
   if (flows.length === 0) {
     messages.push("e2e/flows.json declares no flows — an empty checklist proves nothing");
+    gaps++;
+  }
+
+  const declaredTargets = new Set(flows
+    .filter((flow) => flow && typeof flow === "object" && !Array.isArray(flow))
+    .map((flow) => flow.target)
+    .filter((target) => target === "web" || target === "native"));
+  if (hasWeb && !declaredTargets.has("web")) {
+    messages.push("Playwright is configured but e2e/flows.json declares no target:web proof");
+    gaps++;
+  }
+  if (hasNative && !declaredTargets.has("native")) {
+    messages.push("Maestro is configured but e2e/flows.json declares no target:native proof");
     gaps++;
   }
 
@@ -162,6 +213,34 @@ export function checkE2e(root) {
       gaps++;
     }
 
+    const criteria = Array.isArray(flow.criteria) ? flow.criteria : [];
+    const criterionIds = criteria.map((criterion) => criterion?.id);
+    const criterionEvidence = criteria.map((criterion) => criterion?.evidence);
+    if (flow.criteria !== undefined
+        && (!Array.isArray(flow.criteria)
+          || flow.criteria.some((criterion) => !criterion
+            || typeof criterion !== "object"
+            || Array.isArray(criterion)
+            || Object.keys(criterion).some((key) => key !== "id" && key !== "evidence")
+            || typeof criterion.id !== "string"
+            || !/^[a-z0-9][a-z0-9._-]*$/.test(criterion.id)
+            || typeof criterion.evidence !== "string"
+            || !criterion.evidence.trim())
+          || new Set(criterionIds).size !== criterionIds.length
+          || new Set(criterionEvidence).size !== criterionEvidence.length)) {
+      messages.push(
+        `journey "${name}" has invalid or duplicate criteria; use distinct { id, evidence } entries`,
+      );
+      gaps++;
+    }
+    if ((flow.features?.length ?? 0) > 0 && (!Array.isArray(flow.criteria) || flow.criteria.length === 0)) {
+      messages.push(
+        `journey "${name}" proves a ViewModel but declares no AVP/Assay criteria; `
+          + "happy/sad labels alone are not semantic coverage",
+      );
+      gaps++;
+    }
+
     if (flow.backendSlices !== undefined
         && (!Array.isArray(flow.backendSlices)
           || flow.backendSlices.some((slice) => typeof slice !== "string" || !/^[A-Za-z_]\w*$/.test(slice))
@@ -181,6 +260,13 @@ export function checkE2e(root) {
     }
     if (flow.target !== "web" && flow.target !== "native") {
       messages.push(`journey "${name}" must declare target:web or target:native`);
+      gaps++;
+    }
+    if (flow.target === "web" && !/\.(?:spec|test)\.[cm]?[jt]sx?$/i.test(spec)) {
+      messages.push(`journey "${name}" is target:web and must name a Playwright .spec/.test JavaScript or TypeScript file`);
+      gaps++;
+    } else if (flow.target === "native" && !/\.ya?ml$/i.test(spec)) {
+      messages.push(`journey "${name}" is target:native and must name a Maestro .yaml/.yml flow`);
       gaps++;
     }
 
@@ -212,11 +298,20 @@ export function checkE2e(root) {
       messages.push(`journey "${name}" names case "${caseName}" but ${spec} declares no enabled test with that title`);
       gaps++;
     }
+    for (const criterion of criteria) {
+      if (typeof criterion?.id !== "string" || typeof criterion?.evidence !== "string") continue;
+      if (assertsTerminal(caseSource ?? specSource, criterion.evidence.trim())) continue;
+      messages.push(
+        `journey "${name}" claims criterion "${criterion.id}" but its case never asserts the declared `
+          + `evidence \`${criterion.evidence}\``,
+      );
+      gaps++;
+    }
     if (flow.target === "native" && !hasNative) {
-      messages.push(`journey "${name}" is target:native but no native runner (.maestro/ or detox) is configured`);
+      messages.push(`journey "${name}" is target:native but the canonical \`maestro test e2e\` runner is not configured`);
       gaps++;
     } else if (flow.target === "web" && !hasWeb) {
-      messages.push(`journey "${name}" is target:web but no web runner (playwright) is configured`);
+      messages.push(`journey "${name}" is target:web but the canonical Playwright runner (playwright.config.*) is not configured`);
       gaps++;
     }
 
@@ -310,6 +405,69 @@ export function checkE2e(root) {
   }
 
   return { runners, flows: flows.length, gaps, depthGaps, execution, seedPending, messages };
+}
+
+/** Parse Playwright's stable `--list` lines into file/title pairs. */
+export function parsePlaywrightList(output) {
+  return output.split(/\r?\n/).flatMap((line) => {
+    const match = line.match(/(?:^|\s)›\s+(.+?):\d+:\d+\s+›\s+(.+)$/)
+      ?? line.match(/^\s*(.+?):\d+:\d+\s+›\s+(.+)$/);
+    if (!match) return [];
+    return [{ spec: match[1].replaceAll("\\", "/").replace(/^\.\//, ""), title: match[2].trim() }];
+  });
+}
+
+/**
+ * Check that every declared web flow is in the runner's collected inventory. This closes config-side narrowing:
+ * a checked-in test ignored by `testIgnore`, `testMatch`, or a drifted `testDir` is not release evidence.
+ */
+export function checkListedWebFlows(flows, listed) {
+  const messages = [];
+  for (const flow of flows.filter((candidate) => candidate && candidate.target === "web" && typeof candidate.spec === "string")) {
+    const expectedSpec = flow.spec.replaceAll("\\", "/").replace(/^\.\//, "");
+    const candidates = listed.filter((test) =>
+      test.spec === expectedSpec || expectedSpec.endsWith(`/${test.spec}`) || test.spec.endsWith(`/${expectedSpec}`));
+    if (candidates.length === 0) {
+      messages.push(`${flow.id ?? flow.name ?? expectedSpec}: ${flow.spec} is absent from Playwright's collected test inventory`);
+      continue;
+    }
+    if (typeof flow.case === "string" && flow.case.trim()
+        && !candidates.some((test) => test.title === flow.case || test.title.endsWith(` › ${flow.case}`))) {
+      messages.push(`${flow.id ?? flow.name ?? expectedSpec}: case "${flow.case}" is absent from Playwright's collected test inventory`);
+    }
+  }
+  return messages;
+}
+
+/** Collect and compare the actual Playwright inventory without starting the application stack. */
+export function checkPlaywrightInventory(root) {
+  let flows;
+  try {
+    flows = JSON.parse(readFileSync(join(root, "e2e", "flows.json"), "utf8"));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(flows) || !flows.some((flow) => flow?.target === "web")) return [];
+
+  const onWindows = process.platform === "win32";
+  const executable = onWindows ? (process.env.ComSpec ?? "cmd.exe") : "npx";
+  const arguments_ = onWindows
+    ? ["/d", "/s", "/c", "npx --no-install playwright test --list"]
+    : ["--no-install", "playwright", "test", "--list"];
+  const run = spawnSync(executable, arguments_, {
+    cwd: root,
+    encoding: "utf8",
+    // Collection imports spec modules but never starts globalSetup, webServer, or a browser. Let modules whose
+    // top-level guard normally requires the real preflight load for inventory purposes; the release execution
+    // still receives PW_API_READY only from the canonical successful probe.
+    env: { ...process.env, AF_E2E_INVENTORY: "1", PW_API_READY: "1" },
+    shell: false,
+  });
+  if (run.status !== 0) {
+    const detail = (run.stderr || run.stdout || run.error?.message || "runner exited without output").trim();
+    return [`Playwright could not collect the release inventory: ${detail}`];
+  }
+  return checkListedWebFlows(flows, parsePlaywrightList(run.stdout ?? ""));
 }
 
 function stripComments(source) {
@@ -509,6 +667,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(2);
   }
   const result = checkE2e(root);
+  const inventoryMessages = result.runners.includes("playwright") ? checkPlaywrightInventory(root) : [];
   const execution = result.execution;
   console.log(
     `AFFE-E2E: ${result.flows} curated journey(s) `
@@ -518,7 +677,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       + `${result.depthGaps} depth gap(s).`,
   );
   for (const message of result.messages) console.log(`  - ${message}`);
+  for (const message of inventoryMessages) console.log(`  - ${message}`);
   if (result.seedPending.length)
     console.log(`  - seed-pending: ${result.seedPending.join(", ")}`);
-  process.exit(result.gaps > 0 || result.depthGaps > 0 ? 1 : 0);
+  process.exit(result.gaps > 0 || result.depthGaps > 0 || inventoryMessages.length > 0 ? 1 : 0);
 }

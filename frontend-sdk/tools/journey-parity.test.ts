@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  backendInventoryError,
   checkJourneyParity,
   extractBackendJourneyInventory,
   parseFlowManifests,
@@ -24,7 +25,13 @@ describe("journey parity", () => {
     ]);
 
     expect(inventory.writes).toEqual(["CreateOrder"]);
+    expect(inventory.slices).toEqual(["CreateOrder", "ListOrders"]);
     expect([...inventory.paths.get("CreateOrder")!]).toEqual(["happy", "sad"]);
+  });
+
+  it("rejects a misconfigured backend root while allowing a genuinely read-only slice inventory", () => {
+    expect(backendInventoryError(extractBackendJourneyInventory([]))).toContain("no [Slice]");
+    expect(backendInventoryError(extractBackendJourneyInventory([slice("ListOrders", "Get")]))).toBeNull();
   });
 
   it("requires both backend paths for a UI-bound write", () => {

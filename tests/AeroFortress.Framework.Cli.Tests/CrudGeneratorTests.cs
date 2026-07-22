@@ -42,7 +42,7 @@ public class CrudGeneratorTests
             Assert.Contains($"[AVP(typeof({slice}), \"{criterion}\")]", proof);
         }
 
-        Assert.Contains("PackageReference Include=\"Assay.Net\" Version=\"0.3.1\"",
+        Assert.Contains("PackageReference Include=\"Assay.Net\" Version=\"0.4.0\"",
             File.ReadAllText(Path.Combine(tests, "Shop.Tests.csproj")));
     }
 

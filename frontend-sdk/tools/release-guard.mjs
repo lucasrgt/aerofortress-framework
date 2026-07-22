@@ -62,6 +62,7 @@ const CANONICAL_MANIFESTS = Object.freeze({
   "@aerofortress/react": "frontend-sdk/packages/aerofortress-react/package.json",
   "eslint-plugin-aerofortress": "frontend-sdk/packages/eslint-plugin/package.json",
 });
+const EXTERNALLY_VERSIONED = new Set(["@aerofortress/assay"]);
 
 /**
  * The canonical table must agree with the packages it describes: FRONTEND_PACKAGE_VERSIONS ships INSIDE
@@ -74,6 +75,7 @@ const CANONICAL_MANIFESTS = Object.freeze({
  */
 export function canonicalDrift(canonical, readManifest) {
   return canonical.flatMap(({ name, version }) => {
+    if (EXTERNALLY_VERSIONED.has(name)) return [];
     const path = CANONICAL_MANIFESTS[name];
     if (!path) return [`release-guard: ${name} is in FRONTEND_PACKAGE_VERSIONS but has no known manifest path.`];
     const actual = JSON.parse(readManifest(path)).version;

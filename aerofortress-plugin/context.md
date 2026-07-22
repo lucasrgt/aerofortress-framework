@@ -27,8 +27,8 @@ Hard rules the orchestrator must respect:
 - Every ViewModel carries its co-located Assay proof and exact happy/sad frontend E2E links. A
   browser flow naming backend slices runs against the real API without request interception.
 - Error codes are registry constants, copy lives in i18n — never literals.
-- A feature is done only when `af gate` is green; `af doctor` or a filtered test command alone is
-  diagnostic, never release evidence.
+- A feature is done only when `af gate --affected` is green; `af doctor` or a caller-filtered test command alone is
+  diagnostic. A release additionally requires `af gate --full`.
 
 Deep reference (annotations, CLI, all doctor rules, conventions, decisions) lives in this
 plugin's docs — query the network (slug `aerofortress-framework`) before assuming.

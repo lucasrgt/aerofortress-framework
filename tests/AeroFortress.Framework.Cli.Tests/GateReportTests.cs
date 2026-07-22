@@ -48,6 +48,8 @@ public class GateReportTests
             [new FrontendGateLeg("web", FrontendPackageRole.Surface, Tests: 0, Avp: 1, FeatureE2e: 0, E2eShape: 0, E2e: 0)])));
         Assert.True(GateReport.Green(clean, new GateLegs(0, 0,
             [new FrontendGateLeg("core", FrontendPackageRole.Core, Tests: 0, Avp: 0, FeatureE2e: 0, E2eShape: null, E2e: null)])));
+        Assert.True(GateReport.Green(clean, new GateLegs(0, 0,
+            [new FrontendGateLeg("ui", FrontendPackageRole.Library, Tests: 0, Avp: 0, FeatureE2e: 0, E2eShape: null, E2e: null)])));
         Assert.False(GateReport.Green(clean, new GateLegs(0, 0,
             [new FrontendGateLeg("core", FrontendPackageRole.Core, Tests: 0, Avp: 0, FeatureE2e: 1, E2eShape: null, E2e: null)])));
     }
@@ -63,7 +65,19 @@ public class GateReportTests
 
         Assert.Contains("exit codes (`0` = pass)", markdown);
         Assert.Contains("| Tests exit | AVP exit | Feature E2E exit |", markdown);
-        Assert.Contains("| web | surface |", markdown);
+        Assert.Contains("| web | surface · full |", markdown);
+    }
+
+    [Fact]
+    public void Reusable_packages_are_reported_as_libraries_without_owing_e2e()
+    {
+        var markdown = GateReport.Markdown(
+            SampleMatrix(passing: true),
+            new GateLegs(0, 0,
+                [new FrontendGateLeg("ui", FrontendPackageRole.Library, 0, 0, 0, null, null)]),
+            DateTimeOffset.UnixEpoch);
+
+        Assert.Contains("| ui | library · full |", markdown);
     }
 
     // A one-module matrix carrying one declared criterion and one stray (undeclared) proof, so both the row

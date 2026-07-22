@@ -59,7 +59,8 @@ Co-located next to the slice (`Deposit.Tests.cs` beside `Deposit.cs`), categoriz
 template clone per test, pooled). Every shape-derived write proves both paths with isolated
 `*Journey.Tests.cs` E2E cases: happy reaches its terminal state; sad proves rejection AND unchanged
 state. Read/write is derived from ordinary code and ambiguity receives the write bar. No marker,
-manifest mode, skip, or agent judgment can weaken the obligation; `af gate` must execute every proof.
+manifest mode, skip, or agent judgment can weaken the obligation. `af gate --affected` executes the complete
+Git-derived closure; `af gate --full` executes every proof before release. Unaffected is never reported as pass.
 
 ## ctx.md (per module — the business "why")
 

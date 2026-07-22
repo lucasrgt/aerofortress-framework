@@ -5,6 +5,7 @@ import {
   extractBackendSliceObligations,
   extractE2eObligations,
   extractSlices,
+  extractVerificationCriteria,
   isIgnoredSourceDirectory,
   sliceHooks,
 } from "./feature-e2e-coverage.mjs";
@@ -19,6 +20,95 @@ describe("feature E2E coverage", () => {
   it("extracts stable unique obligations", () => {
     expect(extractE2eObligations("/** @e2e login-happy\n * @e2e login-happy\n * @e2e login-sad */"))
       .toEqual(["login-happy", "login-sad"]);
+  });
+
+  it("extracts stable unique AVP/Assay criteria", () => {
+    expect(extractVerificationCriteria("/** @verify saves-order\n * @verify saves-order\n * @verify rejects-empty */"))
+      .toEqual(["saves-order", "rejects-empty"]);
+  });
+
+  it("requires subject flows to cover the complete AVP/Assay criterion set", () => {
+    const source = [
+      "/** @e2e login-happy",
+      " * @e2e login-sad",
+      " * @verify authenticates-valid-credentials",
+      " * @verify rejects-invalid-credentials */",
+    ].join("\n");
+    const missing = checkFeatureE2e([{ path: "src/Login.viewModel.ts", source }], [
+      {
+        id: "login-happy", path: "happy", features: ["Login"],
+        criteria: [{ id: "authenticates-valid-credentials", evidence: "/home" }],
+      },
+      { id: "login-sad", path: "sad", features: ["Login"], criteria: [] },
+    ], []);
+    expect(missing.coveredCriteria).toBe(1);
+    expect(missing.criteria).toBe(2);
+    expect(missing.gaps).toBe(2);
+    expect(missing.messages.join(" ")).toContain("declares no criteria");
+    expect(missing.messages.join(" ")).toContain("rejects-invalid-credentials");
+
+    const complete = checkFeatureE2e([{ path: "src/Login.viewModel.ts", source }], [
+      {
+        id: "login-happy", path: "happy", features: ["Login"],
+        criteria: [{ id: "authenticates-valid-credentials", evidence: "/home" }],
+      },
+      {
+        id: "login-sad", path: "sad", features: ["Login"],
+        criteria: [{ id: "rejects-invalid-credentials", evidence: "invalid" }],
+      },
+    ], []);
+    expect(complete.coveredCriteria).toBe(2);
+    expect(complete.gaps).toBe(0);
+  });
+
+  it("does not let happy and sad cases borrow the same semantic criterion", () => {
+    const source = [
+      "/** @e2e checkout-happy",
+      " * @e2e checkout-sad",
+      " * @verify checkout-works */",
+    ].join("\n");
+
+    const result = checkFeatureE2e([{ path: "src/Checkout.viewModel.ts", source }], [
+      {
+        id: "checkout-happy", path: "happy", features: ["Checkout"],
+        criteria: [{ id: "checkout-works", evidence: "complete" }],
+      },
+      {
+        id: "checkout-sad", path: "sad", features: ["Checkout"],
+        criteria: [{ id: "checkout-works", evidence: "rejected" }],
+      },
+    ], []);
+
+    expect(result.gaps).toBe(1);
+    expect(result.messages.join(" ")).toContain("one executable E2E proof case");
+  });
+
+  it("does not let a feature-owned flow sit outside the ViewModel verification inventory", () => {
+    const source = [
+      "/** @e2e checkout-happy",
+      " * @e2e checkout-sad",
+      " * @verify completes-checkout",
+      " * @verify rejects-declined-payment */",
+    ].join("\n");
+
+    const result = checkFeatureE2e([{ path: "src/Checkout.viewModel.ts", source }], [
+      {
+        id: "checkout-happy", path: "happy", features: ["Checkout"],
+        criteria: [{ id: "completes-checkout", evidence: "receipt" }],
+      },
+      {
+        id: "checkout-sad", path: "sad", features: ["Checkout"],
+        criteria: [{ id: "rejects-declined-payment", evidence: "declined" }],
+      },
+      {
+        id: "checkout-refund-happy", path: "happy", features: ["Checkout"],
+        criteria: [{ id: "refunds-approved-charge", evidence: "refunded" }],
+      },
+    ], []);
+
+    expect(result.gaps).toBe(2);
+    expect(result.messages.join(" ")).toContain("must be declared with @e2e checkout-refund-happy");
+    expect(result.messages.join(" ")).toContain("undeclared criterion \"refunds-approved-charge\"");
   });
 
   it("discovers slices from their structural marker", () => {

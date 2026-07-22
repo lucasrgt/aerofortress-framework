@@ -45,6 +45,28 @@ public class FrameworkSyncTests
     }
 
     [Fact]
+    public void A_stale_assay_host_fails_even_when_framework_packages_are_current()
+    {
+        var app = NewApp();
+        WriteCsproj(app, "Shop.Tests.csproj", "Assay.Net", StaleVersion);
+
+        var outcome = FrameworkSync.Check(app);
+
+        Assert.False(outcome.InSync);
+        Assert.Contains(outcome.Messages,
+            message => message.Contains("Assay.Net") && message.Contains(FrameworkPackageVersions.Assay));
+    }
+
+    [Fact]
+    public void The_required_assay_host_passes()
+    {
+        var app = NewApp();
+        WriteCsproj(app, "Shop.Tests.csproj", "Assay.Net", FrameworkPackageVersions.Assay);
+
+        Assert.True(FrameworkSync.Check(app).InSync);
+    }
+
+    [Fact]
     public void A_retired_plugin_copy_fails_even_without_a_frontend()
     {
         var app = NewApp();
@@ -81,6 +103,19 @@ public class FrameworkSyncTests
 
         Assert.NotEmpty(refs);
         Assert.All(refs, reference => Assert.Equal(FrameworkPackageVersions.Framework, reference.Version));
+    }
+
+    [Fact]
+    public void Template_assay_reference_matches_the_protocol_host()
+    {
+        var refs = Directory
+            .EnumerateFiles(Path.Combine(RepoRoot(), "templates"), "*.csproj", SearchOption.AllDirectories)
+            .SelectMany(path => Regex.Matches(File.ReadAllText(path), @"Include=""Assay\.Net""\s+Version=""([^""]+)""")
+                .Select(match => match.Groups[1].Value))
+            .ToList();
+
+        Assert.NotEmpty(refs);
+        Assert.All(refs, version => Assert.Equal(FrameworkPackageVersions.Assay, version));
     }
 
     private const string StaleVersion = "0.0.1-stale";

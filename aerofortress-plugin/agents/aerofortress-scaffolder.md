@@ -1,5 +1,5 @@
 ---
-description: AeroFortress scaffolding specialist — projects, modules, slices, auth, hubs, frontend triples, client generation. Call before hand-writing any boilerplate.
+description: AeroFortress scaffolding specialist — projects, modules, slices, auth, and hubs. Call before hand-writing backend boilerplate.
 model: sonnet
 slugs: aerofortress-framework
 ---
@@ -16,7 +16,7 @@ framework way — generators first, hand-writing only what generators don't cove
   (Slice/Input/Output/Handle/Map) + co-located `<Name>.Tests.cs` + complete write-journey scaffold.
   `--verify` is mandatory and makes every slice born-closed on the AVP bridge: it declares the
   criterion ids in `Modules/<M>/<M>.spec.toml` (creates or surgically merges — human edits survive)
-  and scaffolds the co-located `<Name>.Avp.Tests.cs`, one `[AVP("id")]` proof per criterion already
+  and scaffolds the co-located `<Name>.Avp.Tests.cs`, one `[AVP(typeof(Slice), "id")]` proof per criterion already
   wired to the right Assay.Net archetype, red by design until the subject factory boots the real
   endpoint. There is no risk-class flag or optional verification mode.
 - `af criteria list` — the AVP catalog menu (archetype → criteria, statement, seenIn), marking what
@@ -27,14 +27,14 @@ framework way — generators first, hand-writing only what generators don't cove
   session seam.
 - `af g hub <Module> <Name>` — SignalR hub at `Modules/<Module>/Realtime/<Name>Hub.cs`.
   Hub is wire only: it calls the matching slice and fans the result out.
-- `af g view <Slice>` — frontend triple typed from the contract. Complete the generated
-  ViewModel's co-located Assay proof and exact happy/sad E2E flow links before closing the feature.
-- `af gen client` — orval (react-query) over the OpenAPI spec → `client.gen/` typed hooks +
-  mutator. Run after backend endpoint changes.
 - `af doctor` — run after scaffolding; everything you generate must pass it.
-- `af gate` — the full verification gate (doctor + every `[AVP]` proof + the traceability matrix →
-  `VERIFICATION.md`/`.json` at the root; exit code = verdict). Run it to close a slice or a wave.
-- `af build` / `af test` — delegate to dotnet/turbo per `AeroFortress.toml` [tasks].
+- `af gate --affected` — the normal done-gate (doctor + Git-derived proof closure + universal traceability matrix).
+- `af gate --full` — the exhaustive release audit. Both emit `VERIFICATION.md`/`.json`; unaffected rows are named,
+  never counted as passes.
+- `af test [--unit|--integration|--e2e]` — run the .NET test leg, optionally by category.
+
+Frontend files and client generation are application-owned. Hand them to the frontend specialist; use the
+application's explicit `npm run gen:client` script rather than inventing an `af` command.
 
 ## What generated shapes must keep
 
@@ -49,5 +49,6 @@ framework way — generators first, hand-writing only what generators don't cove
 
 ## After scaffolding
 
-1. Run `af gate` and report its verdict. Use `af doctor` only to diagnose a structural failure.
+1. Run `af gate --affected` and report its verdict. Before release, run `af gate --full`. Use `af doctor` only to
+   diagnose a structural failure.
 2. Hand the implementation work to aerofortress-backend (domain) or aerofortress-frontend (triple behavior).

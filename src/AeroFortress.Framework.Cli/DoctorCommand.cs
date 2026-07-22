@@ -29,19 +29,52 @@ internal static class DoctorCommand
         foreach (var message in sync.Messages)
             Console.Error.WriteLine($"  {message}");
 
-        Console.WriteLine("af doctor — backend conventions (build)...");
-        var code = Tooling.Dotnet("build", rest);
+        var legs = new List<Func<int>>
+        {
+            () =>
+            {
+                Console.WriteLine("af doctor — backend conventions (build)...");
+                return Tooling.Dotnet("build", rest);
+            },
+        };
+
+        foreach (var client in FrontendTargets(Directory.GetCurrentDirectory()))
+        {
+            var captured = client;
+            legs.Add(() =>
+            {
+                Console.WriteLine($"af doctor — frontend lint ({Path.GetFileName(captured.Path)})...");
+                return FrontendScriptContract.Run(captured.Path, "lint");
+            });
+            legs.Add(() =>
+            {
+                Console.WriteLine($"af doctor — frontend typecheck ({Path.GetFileName(captured.Path)})...");
+                return FrontendScriptContract.Run(captured.Path, "typecheck");
+            });
+        }
+
+        // Doctor legs are independent, read-only checks. A bounded fan-out avoids making a large monorepo pay their
+        // sum serially while respecting the two-core hosted runner and keeping node/compiler memory predictable.
+        var degree = Math.Max(2, Math.Min(4, Environment.ProcessorCount));
+        using var slots = new SemaphoreSlim(degree, degree);
+        var tasks = legs.Select(leg => Task.Run(() =>
+        {
+            slots.Wait();
+            try
+            {
+                return leg();
+            }
+            finally
+            {
+                slots.Release();
+            }
+        })).ToArray();
+        Task.WaitAll(tasks);
+        var code = tasks.Max(task => task.Result);
         if (manifest.Present && !manifest.Valid)
             code = Math.Max(code, 1);
         if (sync.Gating && !sync.InSync)
             code = Math.Max(code, 1);
-
-        foreach (var client in FrontendTargets(Directory.GetCurrentDirectory()))
-        {
-            Console.WriteLine($"af doctor — frontend conventions ({Path.GetFileName(client.Path)}: eslint + tsc)...");
-            code = Math.Max(code, FrontendScriptContract.Run(client.Path, "lint"));
-            code = Math.Max(code, FrontendScriptContract.Run(client.Path, "typecheck"));
-        }
 
         Console.WriteLine(code == 0 ? "doctor: conventions pass." : "doctor: violations reported above.");
         return code;

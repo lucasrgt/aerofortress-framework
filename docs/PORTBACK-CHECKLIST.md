@@ -24,9 +24,7 @@ AF0006 (no-repository) · AF0007 (file ≤500) · AF0020 (journey asserts its po
 `OrderedLifecycle<TState>` helper · `AeroFortress.toml` scaffolded by `af new` + read/validated by the doctor.
 
 **Deferred follow-up (each blocked on a real dependency, not skipped):**
-the frontend generator (unblocks monorepo scaffold, `af gen client`, the e2e-support harness home +
-Tier A2 skip-in-gate) · the Tier B4 seam-rule feasibility spike · `@aerofortress/react` publish (needs a build
-pipeline + an outward npm/registry step) · periodic mutation-depth audit. The
+frontend application scaffolding · the Tier B4 seam-rule feasibility spike · periodic mutation-depth audit. The
 AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pilot rule.
 
 ---
@@ -40,10 +38,9 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   deferred frontend generator):_ scaffolding the monorepo plumbing (`package.json` workspaces, `turbo.json`,
   `lefthook.yml`, `clients/`) and making `AeroFortress.toml` *generate* the workspace/turbo config.
   - hostpoint: `AeroFortress.toml`, root `package.json`, `turbo.json`, `lefthook.yml`
-- [ ] **`af gen client` (the "wired guarantee").** The frontend harness rests on a generated
-  typed client so an invented endpoint is a `tsc` error — but **orval is not even a dependency**, there
-  is no `orval.config.ts`, no `af gen client`. The AFFE rules police a client nothing generates.
-  _FRAMEWORK-GAP._ (`docs/decisions/aerofortress-framework-frontend-harness.md` §3 vs `frontend-sdk/tools/generate.mjs:47`)
+- [x] **App-owned stock client generation (the "wired guarantee").** Applications expose
+  `npm run gen:client` over orval and their checked-in OpenAPI/config; contract freshness and generated-hook
+  consumption are framework-gated. The framework does not advertise a second task-orchestrator surface.
 - [x] **`AFFE008` endpoint-coverage — claimed "shipped", absent.** _Done:_ implemented as
   `frontend-sdk/tools/endpoint-coverage.mjs` (pure `extractHooks` + `checkEndpointCoverage` core + CLI
   tail) with a vitest twin; the doc claim now points at the real tool. _was FRAMEWORK-GAP (truthfulness)._
@@ -76,9 +73,9 @@ AMBIGUOUS items (IUserScoped, etc.) stay parked per the framework's own ≥3-pil
   aligns the entity/interface with the test. Did NOT port `IParticipation` (1-pilot, AMBIGUOUS).
   _Follow-up:_ the `crud` test scaffold seeds `new() { OrgId = org }` (cross-org isolation), which needs
   a settable OrgId — a seed-helper is required before crud entities can also go `private set`.
-- [ ] **`af` CLI conductor + `af g view` front-door.** `MONOREPO-ARCHITECTURE.md` promises
-  `build`/`gen:client` reading `[tasks]`; the ViewModel scaffold exists as a `.mjs` but isn't wired
-  into the .NET CLI. _FRAMEWORK-GAP._
+- [x] **Remove the imaginary task orchestrator.** `AeroFortress.toml` is topology-only; task sections and platform
+  arrays are rejected rather than retained as inert configuration. Real build/codegen commands remain visible in
+  project and package scripts.
 - [x] **`OrderedLifecycle<TState>` helper.** _Done:_ `src/AeroFortress.Framework.Abstractions/OrderedLifecycle.cs` —
   `Reached` (cursor ≥ step) + `Advance` (no-skip/no-regress), generic over `TState : struct, Enum`, with a
   new `tests/AeroFortress.Framework.Abstractions.Tests` project (4 green, wired into `AeroFortress.Framework.slnx`). Replaces the
@@ -125,7 +122,7 @@ app adopting the spine unions themselves (blocked on `@aerofortress/react` publi
   pilot's most repeated per-feature toll._
 - [x] **Testcontainers Postgres harness with template-database cloning.**
   (`hostpoint/tests/Hostpoint.Tests/TestDatabase.cs`) One container, one migration into a template DB,
-  then `CREATE DATABASE … TEMPLATE` per test/keyed group, pooling off. `AeroFortress.Framework.Testing` ships only the
+  then `CREATE DATABASE … TEMPLATE` per test/keyed group, with a tiny aggressively pruned pool. `AeroFortress.Framework.Testing` ships only the
   WebApplicationFactory harness + InMemory; the real-database leg every serious pilot needs lives in
   the app. Candidate: `AeroFortress.Framework.Testing.Postgres`. _FRAMEWORK-GAP._
 - [x] **Rate-limiting wired to the error envelope.** The pilot wires ASP.NET's limiter and renders 429
@@ -156,8 +153,7 @@ app adopting the spine unions themselves (blocked on `@aerofortress/react` publi
 - [x] **Mutator/`configureClient` template.** The orval mutator (`aerofortress-client.ts`: auth injection,
   base-URL port, `Result` envelope) + boot-time `configureClient()` exist only in the pilot; the SDK's
   `generate.mjs` scaffolds features against a client whose mutator nothing scaffolds. Folds into the
-  tracked **`af gen client`** item — listed here so the mutator template isn't forgotten when that
-  lands.
+  app-owned stock client-generation path; listed here so the mutator template remains part of that contract.
 - [~] **Reverse drift (pilot behind framework).** The hostpoint `eslint-plugin-aerofortress` mirror is
   v0.3.0 — missing AFFE021/022 and the hardened AFFE002/011/013/016/018 — and the app forks
   `AsyncState` locally while not using the spine's `SessionState`/`requiredParam`/`combineAsyncStates`
@@ -232,6 +228,6 @@ real screen; `window.confirm` replaced by the app-owned `Dialog`). Gate: lint 0 
 2. Truthfulness: AFFE008 tool + AFFE015 port — stop the framework lying about what it ships.
 3. Contained analyzers: AF0006, AF0007, the journey-body AF0020.
 4. Tenancy scaffold hardening + OrderedLifecycle helper.
-5. e2e real-backend guard + skip-in-gate.
-6. Foundation: `AeroFortress.toml` scaffold + manifest reader; `af gen client`.
+5. E2E real-backend guard + unconditional execution in the gate.
+6. Foundation: `AeroFortress.toml` scaffold + closed manifest reader + app-owned stock client generation.
 7. `@aerofortress/react` publish-readiness; then rewrite the pilot's 5 scripts as thin SDK CLIs.

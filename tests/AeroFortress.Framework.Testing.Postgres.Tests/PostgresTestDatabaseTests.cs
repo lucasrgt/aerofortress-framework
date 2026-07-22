@@ -4,18 +4,24 @@ namespace AeroFortress.Framework.Testing.Postgres.Tests;
 
 // The container-and-clone path needs Docker, so it is exercised by the pilots (the hostpoint suite runs it on
 // every CI pass). What is pinned here is the connection-string derivation — the part whose regression would be
-// silent: a clone that keeps pooling on exhausts the server's slots mid-suite, hundreds of tests in.
+// silent: an unbounded or long-lived clone pool exhausts the server's slots, while pooling off exhausts Windows'
+// ephemeral sockets in a large suite. The bounded, aggressively pruned middle is the production invariant.
 public class PostgresTestDatabaseTests
 {
     private const string Maintenance = "Host=localhost;Port=55432;Database=postgres;Username=postgres;Password=postgres";
 
     [Fact]
-    public void A_clone_connection_targets_the_clone_with_pooling_off()
+    public void A_clone_connection_targets_the_clone_with_a_tiny_pruned_pool()
     {
         var connection = PostgresTestDatabase.IsolatedConnectionString(Maintenance, "t_abc");
 
         Assert.Contains("Database=t_abc", connection);
-        Assert.Contains("Pooling=False", connection);
+        var settings = new Npgsql.NpgsqlConnectionStringBuilder(connection);
+        Assert.True(settings.Pooling);
+        Assert.Equal(0, settings.MinPoolSize);
+        Assert.Equal(4, settings.MaxPoolSize);
+        Assert.Equal(1, settings.ConnectionIdleLifetime);
+        Assert.Equal(1, settings.ConnectionPruningInterval);
     }
 
     [Fact]

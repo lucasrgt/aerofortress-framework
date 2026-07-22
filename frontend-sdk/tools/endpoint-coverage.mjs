@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// AFFE008 — back->front endpoint coverage. Every app-facing generated hook (`use<Slice>`) should be consumed by at
-// least one ViewModel; one with no consumer is a "loose endpoint" — the backend slice exists but no screen wired it.
+// AFFE008 — back->front endpoint coverage. Every app-facing generated operation should be consumed through its
+// generated hook (`use<Slice>`) or imperative function (`slice`) by at least one ViewModel; one with no consumer is
+// a "loose endpoint" — the backend slice exists but no screen wired it.
 // This is a WARNING, never a build failure: the front->back direction (a UI calling an endpoint that does not exist)
 // is the hard gate and it is free from `tsc` (the hook isn't generated, so it can't compile). back->front only
 // reveals "backend done, UI not wired." Non-app endpoints never reach the client (orval's audience filter drops
@@ -15,6 +16,22 @@ import { fileURLToPath } from "node:url";
 /** App-facing generated hook names (`use<Name>`) declared in the generated client source. */
 export function extractHooks(clientText) {
   return [...clientText.matchAll(/export\s+(?:function|const)\s+(use[A-Z]\w*)/g)].map((m) => m[1]);
+}
+
+/** Value symbols actually imported from a generated client module by the legal data doors. */
+export function extractGeneratedImports(wiredText) {
+  const imports = new Set();
+  const declarations = wiredText.matchAll(
+    /\bimport\s+(?!type\b)\{([^}]*)\}\s+from\s+["'][^"']*client\.gen(?:\/[^"']*)?["']/g,
+  );
+  for (const declaration of declarations) {
+    for (const raw of declaration[1].split(",")) {
+      const specifier = raw.trim();
+      if (!specifier || specifier.startsWith("type ")) continue;
+      imports.add(specifier.split(/\s+as\s+/)[0].trim());
+    }
+  }
+  return imports;
 }
 
 /**
@@ -36,7 +53,12 @@ export function isDataDoor(filePath) {
  */
 export function checkEndpointCoverage(hooks, wiredText) {
   const unique = [...new Set(hooks)];
-  const loose = unique.filter((h) => !new RegExp(`\\b${h}\\b`).test(wiredText)).sort();
+  const imports = extractGeneratedImports(wiredText);
+  const loose = unique.filter((hook) => {
+    const operation = hook.slice(3);
+    const imperative = operation.charAt(0).toLowerCase() + operation.slice(1);
+    return !imports.has(hook) && !imports.has(imperative);
+  }).sort();
   const messages = loose.length
     ? [`${loose.length} loose endpoint(s) — a backend slice with no screen wired yet (warning):`, ...loose.map((h) => `  - ${h}`)]
     : [];
@@ -80,7 +102,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     .map((p) => readFileSync(p, "utf8"))
     .join("\n");
   const r = checkEndpointCoverage(hooks, wiredText);
-  console.log(`AFFE008 endpoint coverage: ${r.wired}/${r.total} app-facing hooks wired by a ViewModel.`);
+  console.log(`AFFE008 endpoint coverage: ${r.wired}/${r.total} app-facing operations wired by a ViewModel.`);
   for (const m of r.messages) console.log(`  ${m}`);
   process.exit(0); // warning-only — front->back (tsc) is the hard gate
 }

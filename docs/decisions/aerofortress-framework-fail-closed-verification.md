@@ -1,7 +1,7 @@
 # Decision: verification is complete, shape-derived, and fail-closed
 
 **Status:** accepted and implemented.
-**Date:** 2026-07-21.
+**Date:** 2026-07-22.
 
 ## Context
 
@@ -25,9 +25,13 @@ Verification has no application-controlled mode.
 3. A sad backend journey proves both rejection and unchanged post-state. A happy journey proves an observable
    effect. Disabled or not-executed tests are failures.
 4. Every ViewModel carries a co-located executable Assay proof and at least two distinct `@e2e` obligations. Surface
-   flow entries name their exact feature in `features` and collectively prove happy and sad behavior. Every consumed
-   backend hook is named by a linked flow.
-5. Every declared release flow executes. Parallelism and sharding may change where it runs, never whether it runs.
+   flow entries name their exact feature in `features`, cite the `{ id, evidence }` criteria they prove, visibly
+   assert distinct evidence for each, cover the feature's complete `@verify`/Assay set, and collectively prove
+   happy and sad behavior as a minimum path floor. A criterion belongs to one executable case, so paths cannot
+   borrow each other's proof. Every consumed backend hook is named by a linked flow.
+5. Every declared flow is executable and remains in the universal inventory. Ordinary commit/push/PR gates execute
+   the Git-derived transitive impact closure; `af gate --full` executes the exhaustive inventory before a release.
+   An unaffected proof is reported as such, never relabeled as a pass.
 6. `AeroFortress.toml` declares topology only. The schema is closed; frontend packages containing ViewModels or a
    flow registry are inventoried from disk and must be declared as products. There is no fallback discovery path.
 7. A checked GitHub workflow directly runs `af gate`. Repository branch rules must require its stable status and
@@ -50,15 +54,23 @@ bar, so uncertainty never lowers proof.
 - Subject binding prevents one generic proof from paying several features' debt.
 - Independent filesystem inventory prevents deleting a manifest line from hiding a frontend.
 - Skip/focus syntax, missing runners, placeholder scripts, missing terminals, and `NotExecuted` verdicts are red.
+- Package scripts cannot hide a narrowed runner: the release command must be unfiltered and Playwright collection
+  must contain every declared web `spec/case` before the stack is started.
+- Runner selection is derived rather than configured: `target:web` means Playwright and `target:native` means
+  Maestro. Cypress/Detox configuration and a target/engine mismatch are blocking gaps.
 - CI wiring is validated locally; required branch status is the external enforcement boundary.
+- Runtime selection comes from the Git index/revision delta and the subject bindings already required by the
+  framework. The application cannot author a risk label or test filter. Unknown/shared changes widen to a full
+  surface, and unavailable Git ancestry widens to full.
 
 Prompt instructions remain useful guidance, but none is relied upon for the verdict.
 
 ## Consequences and limits
 
-The suite grows monotonically. The response is test isolation, parallel workers, and deterministic sharding — not
-an omitted tier. Fast pull-request feedback may run shards concurrently; the required status aggregates all of
-them before merge.
+The proof inventory grows monotonically; ordinary execution does not. Pre-commit uses `--staged --fast`, pre-push
+and pull requests use `--affected`, and releases use `--full`. Shared infrastructure and ambiguous dependencies
+widen rather than guess. Sharding remains available for the exhaustive audit, but is not required to pay the cost
+of unrelated tests on every small change.
 
 Static rules can enforce proof identity, shape, execution, and a structural assertion floor. They cannot prove that
 an assertion is semantically strong. Review and occasional mutation testing remain depth audits, but neither can

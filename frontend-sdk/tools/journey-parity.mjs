@@ -11,6 +11,7 @@ const IGNORED_DIRECTORIES = new Set([".git", ".aerofortress", "bin", "node_modul
 
 /** Derive write slices and their executable journey paths from ordinary C# sources. */
 export function extractBackendJourneyInventory(sources) {
+  const slices = new Set();
   const writes = new Set();
   const paths = new Map();
   for (const source of sources) {
@@ -19,6 +20,7 @@ export function extractBackendJourneyInventory(sources) {
     )].filter((match) => /\bSlice(?:Attribute)?\b/.test(match[1]));
     for (let index = 0; index < declarations.length; index++) {
       const declaration = declarations[index];
+      slices.add(declaration[2]);
       const body = source.slice(declaration.index, declarations[index + 1]?.index ?? source.length);
       if (/\bMap(?:Post|Put|Patch|Delete)\s*\(/.test(body)) writes.add(declaration[2]);
     }
@@ -31,7 +33,14 @@ export function extractBackendJourneyInventory(sources) {
       paths.set(match[1], slicePaths);
     }
   }
-  return { writes: [...writes].sort(), paths };
+  return { slices: [...slices].sort(), writes: [...writes].sort(), paths };
+}
+
+/** A configured backend root must contain slices; zero writes is valid only for a genuinely read-only API. */
+export function backendInventoryError(inventory) {
+  return inventory.slices.length === 0
+    ? "backend root contains no [Slice] declarations — point journey parity at the API source root, not a tests/journeys leaf"
+    : null;
 }
 
 /**
@@ -113,6 +122,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
 
   const inventory = extractBackendJourneyInventory(walk(backendRoot).map((file) => readFileSync(file, "utf8")));
+  const inventoryError = backendInventoryError(inventory);
+  if (inventoryError) {
+    console.log(`AFFE-JOURNEY: ${inventoryError}.`);
+    process.exit(1);
+  }
   const result = checkJourneyParity(inventory, frontendFlows);
   console.log(
     `AFFE-JOURNEY: ${inventory.writes.length} backend write slice(s), ${result.uiBound.length} UI-bound, `

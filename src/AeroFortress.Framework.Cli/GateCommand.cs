@@ -17,29 +17,84 @@ internal static class GateCommand
     /// <summary>The machine-facing matrix artifact, written at the workspace root.</summary>
     public const string JsonArtifact = "VERIFICATION.json";
 
-    /// <summary>Run the full gate from the current directory; 0 only when every leg and the matrix hold.</summary>
-    /// <param name="rest">Extra arguments forwarded to the build and test legs (e.g. a solution path).</param>
+    /// <summary>Run the Git-affected gate by default, or the explicitly requested staged/full variant.</summary>
+    /// <param name="rest">Gate options and arguments forwarded to the build/test legs.</param>
     public static int Run(string[] rest)
     {
         var root = Directory.GetCurrentDirectory();
-        Console.WriteLine("af gate — form (doctor) ∧ proof (tests) ∧ the traceability matrix.");
-        var doctor = DoctorCommand.Run(rest);
+        if (!GateOptions.TryParse(rest, out var options, out var error))
+        {
+            Console.Error.WriteLine($"af gate: {error}.");
+            return 2;
+        }
 
-        Console.WriteLine("af gate — proofs (dotnet test)...");
+        var changes = GitChanges.Read(root, options);
+        var effectiveFull = options.Mode == GateMode.Full || !changes.Reliable;
+        if (!changes.Reliable)
+            Console.Error.WriteLine($"af gate: impact discovery is uncertain ({changes.Message}); widening to full.");
+
+        var manifests = GateScan.DiscoverManifests(root);
+        var proofs = GateScan.ScanProofs(root);
+        var slices = GateScan.ScanSlices(root);
+        var journeys = GateScan.ScanJourneys(root);
+        var targets = DoctorCommand.FrontendTargets(root);
+        GateImpactPlan impact;
+        if (effectiveFull)
+        {
+            impact = new GateImpactPlan(
+                new BackendImpact(true, new HashSet<string>(), new HashSet<string>()),
+                targets.Select(target => new FrontendImpact(target) { Full = true }).ToList(),
+                ["explicit or fail-closed full gate"]);
+        }
+        else
+        {
+            impact = GateImpact.Build(
+                root,
+                changes.Files,
+                slices,
+                proofs,
+                journeys,
+                GateScan.ScanTestClasses(root),
+                targets);
+        }
+
+        var scope = effectiveFull ? "full" : options.Mode == GateMode.Staged ? "staged" : "affected";
+        if (options.Fast)
+            scope += "-fast";
+        Console.WriteLine($"af gate ({scope}) — form ∧ Git-derived proof closure ∧ traceability.");
+        if (!effectiveFull)
+            Console.WriteLine($"af gate — {changes.Files.Count} changed path(s) root the impact graph.");
+        foreach (var reason in impact.Reasons)
+            Console.WriteLine($"  select: {reason}");
+
+        var forwarded = options.ToolArguments.ToArray();
+        var doctor = DoctorCommand.Run(forwarded);
+
         var results = Path.Combine(Path.GetTempPath(), "af-gate-" + Guid.NewGuid().ToString("N"));
-        var tests = Tooling.Dotnet("test", ProofArguments(rest, doctor, results));
-        var verdicts = GateScan.ParseTrxDirectory(results);
+        var tests = 0;
+        IReadOnlyList<TestVerdict> verdicts = [];
+        if (impact.Backend.RunsTests)
+        {
+            Console.WriteLine("af gate — backend proofs (dotnet test)...");
+            tests = Tooling.Dotnet("test", ProofArguments(forwarded, doctor, results, impact.Backend));
+            verdicts = GateScan.ParseTrxDirectory(results);
+        }
+        else
+        {
+            Console.WriteLine("af gate — backend proofs: not affected.");
+        }
         var skippedTests = verdicts.Count(verdict => verdict.Outcome == "NotExecuted");
         TryDelete(results);
 
-        var frontend = FrontendGate.Run(root, DoctorCommand.FrontendTargets(root));
+        var frontend = FrontendGate.Run(root, targets, impact.Frontends, options.Fast);
 
         var matrix = GateMatrix.Build(
-            GateScan.DiscoverManifests(root),
-            GateScan.ScanProofs(root),
-            GateScan.ScanSlices(root),
-            verdicts);
-        var legs = new GateLegs(doctor, tests, frontend, skippedTests);
+            manifests,
+            proofs,
+            slices,
+            verdicts,
+            impact.Backend.Full ? null : impact.Backend.AffectedSlices);
+        var legs = new GateLegs(doctor, tests, frontend, skippedTests, scope);
 
         GateReport.WriteConsole(matrix, legs, Console.Out);
         File.WriteAllText(Path.Combine(root, MarkdownArtifact), GateReport.Markdown(matrix, legs, DateTimeOffset.Now));
@@ -58,7 +113,11 @@ internal static class GateCommand
     }
 
     /// <summary>Build the proof-run arguments, reusing a doctor build only when it actually passed.</summary>
-    internal static string[] ProofArguments(string[] rest, int doctorExit, string resultsDirectory)
+    internal static string[] ProofArguments(
+        string[] rest,
+        int doctorExit,
+        string resultsDirectory,
+        BackendImpact? impact = null)
     {
         var arguments = new List<string>(rest);
         if (doctorExit == 0 && !arguments.Contains("--no-build", StringComparer.OrdinalIgnoreCase))
@@ -67,6 +126,11 @@ internal static class GateCommand
         arguments.Add("trx");
         arguments.Add("--results-directory");
         arguments.Add(resultsDirectory);
+        if (impact is { Full: false } && impact.Filters.Count > 0)
+        {
+            arguments.Add("--filter");
+            arguments.Add(string.Join('|', impact.Filters.Order().Select(filter => $"FullyQualifiedName~{filter}")));
+        }
         return [.. arguments];
     }
 

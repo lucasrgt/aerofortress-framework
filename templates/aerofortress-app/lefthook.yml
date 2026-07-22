@@ -1,10 +1,11 @@
-# Git hooks via lefthook — the local echo of the CI gate, so a violation is caught at the keyboard,
-# not in review. Wired by `npx lefthook install`, which the root package.json's `prepare` script runs
-# on `npm install`. Bypass with `git push --no-verify` when you must — CI's `af gate` is the backstop
-# that cannot be skipped.
-pre-push:
-  parallel: true
+# Git hooks via lefthook. The index roots the fast commit check; commits being pushed root the complete affected
+# proof closure. The CLI owns selection, so no feature annotation or caller-authored filter can weaken either.
+pre-commit:
   commands:
-    backend-doctor: # the AF* convention analyzers run inside the build — the fast form check
-      glob: "**/*.cs"
-      run: dotnet build -v q -nologo
+    affected-fast:
+      run: dotnet tool run af gate --staged --fast
+
+pre-push:
+  commands:
+    affected-release:
+      run: dotnet tool run af gate --affected --base origin/main

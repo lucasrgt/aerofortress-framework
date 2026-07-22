@@ -409,7 +409,7 @@ compiles them via glob. No mirror-the-architecture test tree.
     `services.UseIsolatedInMemory<WalletsDb>()`.
   - *A real database* — reference `AeroFortress.Framework.Testing.Postgres`: one `PostgresTestDatabase` (a single
     Testcontainers Postgres, one migrated **template** database, an isolated `CREATE DATABASE …
-    TEMPLATE` clone per test, pooling off) wrapped in the app's own static accessor; register its
+    TEMPLATE` clone per test, with a tiny aggressively pruned connection pool) wrapped in the app's own static accessor; register its
     connection in `SwapStores`. Keyed stores let two contexts share one database (the
     "written-by-one-request, read-by-the-next" pattern). The in-memory package never enters the
     graph. (Graduated from the hostpoint pilot's `TestDatabase`.)
@@ -423,8 +423,9 @@ compiles them via glob. No mirror-the-architecture test tree.
 - **Every write proves failure, not just success.** A write slice is covered end-to-end on **both** paths: a
   happy journey and at least one sad journey, each declared with `[Journey(typeof(Slice),
   JourneyPath.Happy|Sad)]` on the `[E2E]` test. `AF0008` derives the debt from ordinary code: persistence calls
-  and write endpoint verbs are writes; a visible `MapGet` with no write signal is a read; an unfamiliar or
-  ambiguous shape receives the stronger write bar. The implementing agent never supplies the classification.
+  and write endpoint verbs are writes; set-based EF updates/deletes and raw/interpolated SQL execution count even
+  without `SaveChanges`. A visible `MapGet` with no write signal is a read; an unfamiliar or ambiguous shape
+  receives the stronger write bar. The implementing agent never supplies the classification.
   The sad journey asserts the failure status **and** that no state changed.
 - **`[Journey]` is not a category — it is the proof of a write slice, both ways.** `[Unit]` / `[Integration]` /
   `[E2E]` are the categories (pick one); `[Journey]` binds an `[E2E]` test to the write it covers. `AF0008`
@@ -500,12 +501,15 @@ same floor via `build/AeroFortress.Framework.Library.props`.
 ## The gate — `af gate` and the verification matrix
 
 The doctor answers "is the form right?"; the AVP proofs answer "does the behavior hold?".
-`af gate` is the one deterministic command that answers both and writes the evidence down:
+`af gate` is the deterministic, change-aware command that answers both and writes the evidence down. Proof
+**obligation** is universal; runtime **execution** is selected from Git impact:
 
 1. **Doctor legs** — manifest validation, framework sync, the backend build (every AF* rule,
    including the AF0030/AF0031 bridge) and each manifest-selected frontend harness's lint + typecheck.
-2. **Backend proof leg** — `dotnet test` over the workspace, which executes every test and every
-   `[AVP]` verification; any skipped/not-executed result makes the gate red.
+2. **Backend proof leg** — the default/`--affected` form expands changed slices and test files to their unit,
+   `[AVP]`, and `[Journey]` classes and supplies the resulting filter itself. `--staged --fast` roots that selection
+   in the index; `--full` executes every test. A caller-authored `--filter` is rejected, and any selected
+   skipped/not-executed result makes the gate red.
 3. **Frontend proof legs, selected by product role** — every product `core` runs `npm run test`
    over the non-Assay partition plus direct `assay verify` over `*.assay.test.*`; every executable `frontend`
    runs those same legs plus the strict `affe-e2e-doctor` and `npm run test:e2e`. The workspace-level
@@ -513,15 +517,29 @@ The doctor answers "is the form right?"; the AVP proofs answer "does the behavio
    hook consumed by a frontend data door to be named by the linked flow, and subject-bound happy+sad paths for
    every visible feature. A backend slice with no frontend consumer remains backend-only. Product `website`
    declarations are surfaces too; validation independently inventories ViewModel/flow-bearing packages, so deleting
-   a product key cannot shrink the gate. The filename partition makes every test execute exactly
-   once: AVP is a real gate leg, not a duplicate second Vitest pass. A missing or placeholder script,
-   manifest, runner, terminal assertion, seed, or real execution is a failure; there is no ephemeral/skip tier.
+   a product key cannot shrink the gate. The filename partition makes every selected test execute exactly
+   once: AVP is a real gate leg, not a duplicate second Vitest pass. `test:e2e` must contain the unfiltered full
+   runner rather than an opaque wrapper or file/grep selector, and the doctor compares every manifest `spec/case`
+   with Playwright's collected inventory before execution. A missing or placeholder script, narrowed config,
+   manifest, runner, terminal assertion, seed, or real execution is a failure; there is no omitted-proof tier.
+   Affected execution uses ViewModel names, flow `features`, and `backendSlices` to select co-located Assays and the
+   exact Playwright/Maestro specs. Ambiguous/shared frontend changes widen to the whole package or workspace.
 4. **The matrix** — declarations (`*.spec.toml`) × proof sites
    (`[AVP(typeof(Slice), "id")]`) × test verdicts,
    joined per module: criterion → proof → verdict, plus the findings the gate refuses to swallow —
    a declared criterion with no proof (the gap), a proof no manifest declares (creep), a
    slice declaring nothing, a proof that never reached a decision (a skip is never a
-   pass), a malformed manifest.
+   pass), a malformed manifest. In affected runs, valid unselected rows are explicitly `not-affected`; they are
+   non-blocking inventory rows and never counted as passes.
+
+Execution modes are closed and framework-owned:
+
+- `af gate` / `af gate --affected --base <revision>` — complete transitive proof closure for a push or PR;
+- `af gate --staged --fast` — index-rooted pre-commit feedback; browser/device execution is deferred;
+- `af gate --full` — exhaustive audit, mandatory before release and optionally configured for main/manual/nightly.
+
+If Git ancestry is missing, a changed production file cannot be mapped, or shared build/test infrastructure
+changes, the selector widens to full. Application annotations and arbitrary test filters never participate.
 
 Artifacts, written at the workspace root: **`VERIFICATION.md`** (human — commit it; a reviewer reads
 the proof state without running anything) and **`VERIFICATION.json`** (machine — CI and the harness
@@ -534,9 +552,9 @@ A gate nobody is forced to run is opt-in by human memory — and a pilot proved 
 a whole module landed on `main` with every one of its tests red, silently, because nothing watched
 the push. So the wiring is part of the supply, not an exercise for each app:
 
-- **`af new` scaffolds the enforcement**: `.github/workflows/ci.yml` runs `af gate` on every push
-  and PR (the backstop that cannot be skipped), and `lefthook.yml` + the root `package.json`
-  (`prepare: lefthook install`) give the fast local echo — the doctor build on pre-push.
+- **`af new` scaffolds the enforcement**: `.github/workflows/ci.yml` runs the affected gate on every push and PR
+  and exposes a manual full audit. `lefthook.yml` runs the staged-fast gate before commit and the complete affected
+  closure before push. `.config/dotnet-tools.json` pins the CLI version used by hooks and CI.
 - An app is **born gated** exactly as it is born with slices, modules and the doctor: red work
   cannot reach `main` unnoticed. Retrofitting an existing app is the same three files.
 - Manifest validation requires a checked workflow that directly invokes `af gate`. Configure the repository's
@@ -601,7 +619,7 @@ planned), a knowledge-graph dump for the LLM (planned).
   component standard, in separate repos — the kit ships the standard, not the plugins.
 - **No source-gen of UI behavior, no realtime *on by default*, no multi-app sprawl.** (The
   aerocoding-2 failure modes — designed out.) *Nuance:* the frontend is scaffolded-once-and-owned
-  + enforced, never re-generated (`af g view`); real-time is **opt-in** via `af g hub` (see
+  + enforced, never re-generated; real-time is **opt-in** via `af g hub` (see
   §"Real-time — hubs"). The failure mode is the sprawl/source-gen, not the capability.
 - **No runtime framework you inherit from.** Conventions + analyzer, not base classes.
 

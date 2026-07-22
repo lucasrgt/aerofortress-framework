@@ -26,8 +26,29 @@ internal static class FrameworkSync
     {
         var messages = new List<string>();
         CheckBackendPackageVersions(root, messages);
+        CheckAssayPackageVersion(root, messages);
         CheckVendoredFrontendCopies(root, messages);
         return new Outcome(Gating: true, InSync: messages.Count == 0, Messages: messages);
+    }
+
+    // Assay is part of the verification protocol, not an arbitrary test dependency. Letting a pilot retain an
+    // older host would reintroduce false-green semantics even while the current framework gate appears healthy.
+    private static void CheckAssayPackageVersion(string root, List<string> messages)
+    {
+        var expected = FrameworkPackageVersions.Assay;
+        var stale = Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
+            .Where(IsConsumerFile)
+            .SelectMany(p => Regex.Matches(File.ReadAllText(p), @"Include=""Assay\.Net""\s+Version=""([^""]+)""")
+                .Where(m => m.Groups[1].Value != expected)
+                .Select(m => $"Assay.Net {m.Groups[1].Value} in {Path.GetFileName(p)}"))
+            .Distinct()
+            .ToList();
+
+        if (stale.Count > 0)
+            messages.Add(
+                $"framework-sync: this doctor requires Assay.Net {expected} but the app references "
+                + string.Join(", ", stale)
+                + $" — bump Assay.Net to {expected}, restore, and run the proofs with the fail-closed protocol host");
     }
 
     // The app's AeroFortress.Framework.* references must match the version this doctor ships for. The expectation

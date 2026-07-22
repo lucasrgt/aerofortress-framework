@@ -28,7 +28,11 @@ internal static class Tooling
     // Run an external tool (npm, npx) in a working directory, inheriting stdio — for the frontend leg of the
     // doctor, which shells out to the TS-world harness (eslint + tsc). On Windows the npm/npx shims are .cmd,
     // so they go through cmd.exe; elsewhere the executable is invoked directly.
-    public static int Run(string exe, string[] args, string workingDirectory)
+    public static int Run(
+        string exe,
+        string[] args,
+        string workingDirectory,
+        IReadOnlyDictionary<string, string?>? environment = null)
     {
         var windows = OperatingSystem.IsWindows();
         var info = new ProcessStartInfo(windows ? "cmd.exe" : exe)
@@ -43,6 +47,9 @@ internal static class Tooling
         }
         foreach (var arg in args)
             info.ArgumentList.Add(arg);
+        if (environment is not null)
+            foreach (var (name, value) in environment)
+                info.Environment[name] = value;
 
         using var process = Process.Start(info);
         if (process is null)

@@ -25,11 +25,10 @@
   `[ValueObject]`. Omission of the mark was the evasion (a pilot shipped an anemic `User`);
   marks become the only way to model state.
 
-- **Monorepo architecture**: `backends/` + `frontends/` with per-product core and platform
-  shells (mobile = RN/Expo, os = react-dom admin, consumer web = RN-web ~95% shared + Astro
-  for public/SEO). `shared/kernel` for auth/session/spine/ports; `shared/ui-*` promoted only at
-  ≥2 products. Ports & adapters for platform capabilities. `AeroFortress.toml` single source of
-  topology, doctor-validated.
+- **Monorepo architecture**: ordinary backend, core, library, and executable frontend packages, each named
+  explicitly in `[products.*]`. Root npm workspaces are independently inventoried, so an unmarked shared package
+  cannot fall outside the gate. Multiple surfaces use multiple product sections; there is no platform array.
+  `AeroFortress.toml` is topology-only and doctor-validated.
 
 - **Core mission**: scaffolding + the doctor + AI-context discipline (ctx.md). The framework is
   the skeleton and its enforcement — apps bring their own libraries and business logic; vendors

@@ -90,6 +90,7 @@ public class AeroFortressManifestTests
         Directory.CreateDirectory(backend);
         WriteLaunchSettings(backend, environment: "Development", applicationUrl: "http://localhost:8080");
         Directory.CreateDirectory(Path.Combine(root, "clients", "core"));
+        File.WriteAllText(Path.Combine(root, "clients", "package.json"), "{}");
         File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
             [workspace]
             name = "MyApp"
@@ -168,6 +169,28 @@ public class AeroFortressManifestTests
             && message.Contains("no configurable mode"));
     }
 
+    [Theory]
+    [InlineData("workspace", "scope", "@myapp")]
+    [InlineData("products.app", "apps", "[\"web\"]")]
+    [InlineData("framework", "channel", "\"preview\"")]
+    public void Unknown_manifest_keys_are_rejected_in_closed_sections(string section, string key, string value)
+    {
+        var root = NewDir();
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), $$"""
+            [workspace]
+            name = "MyApp"
+
+            [{{section}}]
+            {{key}} = {{value}}
+            """);
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, message => message.Contains($"unsupported key '{key}'")
+            && message.Contains($"[{section}]"));
+    }
+
     [Fact]
     public void A_frontend_proof_package_omitted_from_products_is_reported()
     {
@@ -207,6 +230,26 @@ public class AeroFortressManifestTests
 
         Assert.True(outcome.Valid);
         Assert.Empty(outcome.Messages);
+    }
+
+    [Fact]
+    public void A_core_path_without_an_owning_package_is_reported()
+    {
+        var root = NewDir();
+        Directory.CreateDirectory(Path.Combine(root, "clients", "core"));
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "MyApp"
+
+            [products.app]
+            core = "clients/core"
+            """);
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, message => message.Contains("clients/core")
+            && message.Contains("owning package.json"));
     }
 
     [Fact]
@@ -261,6 +304,53 @@ public class AeroFortressManifestTests
 
         Assert.False(outcome.Valid);
         Assert.Contains(outcome.Messages, message => message.Contains("af gate") && message.Contains("workflow"));
+    }
+
+    [Fact]
+    public void A_repo_pinned_dotnet_tool_gate_is_a_direct_required_invocation()
+    {
+        var root = NewDir(withGateWorkflow: false);
+        var workflows = Path.Combine(root, ".github", "workflows");
+        Directory.CreateDirectory(workflows);
+        File.WriteAllText(Path.Combine(workflows, "ci.yml"),
+            "on: [pull_request]\njobs:\n  gate:\n    steps:\n      - run: dotnet tool run af gate --affected --base origin/main\n");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), "[workspace]\nname=\"MyApp\"\n");
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.True(outcome.Valid);
+    }
+
+    [Fact]
+    public void An_npm_workspace_package_cannot_remain_outside_the_product_topology()
+    {
+        var root = NewDir();
+        Directory.CreateDirectory(Path.Combine(root, "clients/ui"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{\"workspaces\":[\"clients/*\"]}");
+        File.WriteAllText(Path.Combine(root, "clients/ui/package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), "[workspace]\nname=\"MyApp\"\n");
+
+        var outcome = AeroFortressManifest.Validate(root);
+
+        Assert.False(outcome.Valid);
+        Assert.Contains(outcome.Messages, message => message.Contains("clients\\ui") || message.Contains("clients/ui"));
+    }
+
+    [Fact]
+    public void A_declared_library_is_gated_without_owing_its_own_e2e_runner()
+    {
+        var root = NewDir();
+        Directory.CreateDirectory(Path.Combine(root, "clients/ui"));
+        File.WriteAllText(Path.Combine(root, "package.json"), "{\"workspaces\":[\"clients/*\"]}");
+        File.WriteAllText(Path.Combine(root, "clients/ui/package.json"), "{}");
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"),
+            "[workspace]\nname=\"MyApp\"\n[products.ui]\nlibrary=\"clients/ui\"\n");
+
+        var outcome = AeroFortressManifest.Validate(root);
+        var package = Assert.Single(AeroFortressManifest.FrontendPackages(root));
+
+        Assert.True(outcome.Valid);
+        Assert.Equal(FrontendPackageRole.Library, package.Role);
     }
 
     [Fact]

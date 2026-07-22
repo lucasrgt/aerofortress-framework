@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { checkE2e, classifySpec } from "./e2e-doctor.mjs";
+import {
+  checkE2e,
+  checkListedWebFlows,
+  classifySpec,
+  parsePlaywrightList,
+} from "./e2e-doctor.mjs";
 
 // The e2e doctor enforces "completeness via curated checklist": a curated flow with no spec is a gap; a fully
 // covered manifest is clean. Absence, skips, pending seed data and shallow flows are all blocking.
@@ -19,6 +24,108 @@ function writeContract(dir: string, operationIds = ["Login", "Me"]) {
 }
 
 describe("checkE2e", () => {
+  it("rejects a Playwright config that always reuses an existing server", () => {
+    const dir = tmp();
+    try {
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "playwright.config.ts"), "export default { webServer: { reuseExistingServer: true } };");
+      writeFileSync(
+        join(dir, "e2e", "login.spec.ts"),
+        'test("login", async ({ page }) => { await page.goto("/login"); await expect(page).toHaveURL("/home"); });',
+      );
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "login", name: "login", path: "happy", target: "web", terminal: "/home",
+        spec: "e2e/login.spec.ts", case: "login", features: ["Login"],
+        criteria: [{ id: "authenticates-valid-credentials", evidence: "/home" }],
+      }]));
+
+      const result = checkE2e(dir);
+      expect(result.gaps).toBe(1);
+      expect(result.messages.join(" ")).toContain("stale or unrelated process");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("requires ViewModel journeys to name the AVP/Assay criteria they prove", () => {
+    const dir = tmp();
+    try {
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};");
+      writeFileSync(
+        join(dir, "e2e", "login.spec.ts"),
+        'test("login", async ({ page }) => { await page.goto("/login"); await expect(page).toHaveURL("/home"); });',
+      );
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "login", name: "login", path: "happy", target: "web", terminal: "/home",
+        spec: "e2e/login.spec.ts", case: "login", features: ["Login"],
+      }]));
+
+      const missing = checkE2e(dir);
+      expect(missing.gaps).toBeGreaterThan(0);
+      expect(missing.messages.join(" ")).toContain("declares no AVP/Assay criteria");
+
+      const flows = JSON.parse(readFileSync(join(dir, "e2e", "flows.json"), "utf8"));
+      flows[0].criteria = [{ id: "authenticates-valid-credentials", evidence: "/home" }];
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify(flows));
+      expect(checkE2e(dir).gaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("requires every criterion to name distinct evidence asserted by its exact case", () => {
+    const dir = tmp();
+    try {
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};");
+      writeFileSync(
+        join(dir, "e2e", "checkout.spec.ts"),
+        'test("checkout", async ({ page }) => { await expect(page).toHaveURL("/complete"); });',
+      );
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "checkout", name: "checkout", path: "happy", target: "web", terminal: "/complete",
+        spec: "e2e/checkout.spec.ts", case: "checkout", features: ["Checkout"],
+        criteria: [{ id: "charges-once", evidence: "receipt" }],
+      }]));
+
+      const missing = checkE2e(dir);
+      expect(missing.gaps).toBe(1);
+      expect(missing.messages.join(" ")).toContain("never asserts the declared evidence");
+
+      const flows = JSON.parse(readFileSync(join(dir, "e2e", "flows.json"), "utf8"));
+      flows[0].criteria = [{ id: "charges-once", evidence: "/complete" }];
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify(flows));
+      expect(checkE2e(dir).gaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects legacy string criteria and one assertion reused by multiple criteria", () => {
+    const dir = tmp();
+    try {
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};");
+      writeFileSync(
+        join(dir, "e2e", "checkout.spec.ts"),
+        'test("checkout", async ({ page }) => { await expect(page).toHaveURL("/complete"); });',
+      );
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "checkout", name: "checkout", path: "happy", target: "web", terminal: "/complete",
+        spec: "e2e/checkout.spec.ts", case: "checkout", features: ["Checkout"],
+        criteria: ["legacy", { id: "charges-once", evidence: "/complete" },
+          { id: "shows-receipt", evidence: "/complete" }],
+      }]));
+
+      const result = checkE2e(dir);
+      expect(result.gaps).toBeGreaterThan(0);
+      expect(result.messages.join(" ")).toContain("distinct { id, evidence } entries");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("blocks when there is no e2e/flows.json", () => {
     const dir = tmp();
     try {
@@ -78,10 +185,10 @@ describe("checkE2e", () => {
     }
   });
 
-  it("is runner-agnostic — a target:native Maestro flow (.maestro/ + .yaml) is clean too", () => {
+  it("derives Maestro from target:native and accepts its canonical YAML flow", () => {
     const dir = tmp();
     try {
-      mkdirSync(join(dir, ".maestro"));
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ scripts: { "test:e2e": "maestro test e2e" } }));
       mkdirSync(join(dir, "e2e"));
       writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
         { id: "login", name: "login", path: "happy", target: "native", terminal: "Home", spec: "e2e/login.yaml" },
@@ -106,7 +213,92 @@ describe("checkE2e", () => {
       writeFileSync(join(dir, "e2e", "cold.yaml"), "appId: com.example\n- launchApp\n- assertVisible: Home\n");
       const r = checkE2e(dir);
       expect(r.gaps).toBeGreaterThan(0);
-      expect(r.messages.join(" ")).toContain("native runner");
+      expect(r.messages.join(" ")).toContain("canonical `maestro test e2e` runner");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not accept an empty Maestro directory as runner configuration", () => {
+    const dir = tmp();
+    try {
+      mkdirSync(join(dir, ".maestro"));
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        { id: "login", name: "login", path: "happy", target: "native", terminal: "Home", spec: "e2e/login.yaml" },
+      ]));
+      writeFileSync(join(dir, "e2e", "login.yaml"), "appId: com.example\n- launchApp\n- assertVisible: Home\n");
+
+      const result = checkE2e(dir);
+
+      expect(result.runners).not.toContain("maestro");
+      expect(result.gaps).toBeGreaterThan(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a canonical runner with no flow for its target", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      writeFileSync(join(dir, "package.json"), JSON.stringify({ scripts: { "test:e2e": "playwright test && maestro test e2e" } }));
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        { id: "welcome", name: "welcome", path: "happy", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
+      ]));
+      writeFileSync(join(dir, "e2e", "welcome.spec.ts"), 'await expect(page).toHaveURL("/home");\n');
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBeGreaterThan(0);
+      expect(result.messages.join(" ")).toContain("no target:native proof");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ["cypress.config.ts", "export default {};", "cypress"],
+    [".detoxrc.js", "module.exports = {};", "detox"],
+  ])("rejects noncanonical runner configuration %s", (config, source, runner) => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      writeFileSync(join(dir, config), source);
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        { id: "welcome", name: "welcome", path: "happy", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
+      ]));
+      writeFileSync(join(dir, "e2e", "welcome.spec.ts"), 'await expect(page).toHaveURL("/home");\n');
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBeGreaterThan(0);
+      expect(result.messages.join(" ")).toContain(`noncanonical ${runner}`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ["web", "e2e/welcome.yaml", "Playwright"],
+    ["native", "e2e/welcome.spec.ts", "Maestro"],
+  ])("rejects a %s flow implemented in the other target's format", (target, spec, runner) => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, ".maestro"));
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        { id: "welcome", name: "welcome", path: "happy", target, terminal: "Home", spec },
+      ]));
+      writeFileSync(join(dir, spec), "await expect(page).toHaveURL('Home');\n");
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBeGreaterThan(0);
+      expect(result.messages.join(" ")).toContain(runner);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -585,11 +777,41 @@ describe("checkE2e", () => {
 
       const result = checkE2e(dir);
 
-      expect(result.gaps).toBe(2);
+      expect(result.gaps).toBe(3);
       expect(result.messages.join(" ")).toContain("must be an object");
+      expect(result.messages.join(" ")).toContain("Playwright");
       expect(result.messages.join(" ")).toContain("has no spec");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("Playwright release inventory", () => {
+  it("parses projected and default-project specs with nested titles", () => {
+    const listed = parsePlaywrightList([
+      "Listing tests:",
+      "  [chromium] › login.spec.ts:7:5 › account › signs in",
+      "  marketing.spec.ts:3:1 › public marketing remains navigable",
+      "Total: 2 tests in 2 files",
+    ].join("\n"));
+
+    expect(listed).toEqual([
+      { spec: "login.spec.ts", title: "account › signs in" },
+      { spec: "marketing.spec.ts", title: "public marketing remains navigable" },
+    ]);
+  });
+
+  it("rejects a manifest case omitted by runner configuration", () => {
+    const flows = [
+      { id: "login-happy", target: "web", spec: "e2e/login.spec.ts", case: "signs in" },
+      { id: "logout-happy", target: "web", spec: "e2e/logout.spec.ts", case: "signs out" },
+    ];
+    const listed = [{ spec: "login.spec.ts", title: "account › signs in" }];
+
+    const messages = checkListedWebFlows(flows, listed);
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain("logout.spec.ts is absent");
   });
 });

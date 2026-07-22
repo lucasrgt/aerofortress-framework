@@ -7,11 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AeroFortress.Framework.Abstractions" Version="3.0.2" />
-    <PackageReference Include="AeroFortress.Framework.AspNetCore" Version="3.0.2" />
+    <PackageReference Include="AeroFortress.Framework.Abstractions" Version="3.0.4" />
+    <PackageReference Include="AeroFortress.Framework.AspNetCore" Version="3.0.4" />
     <!-- The doctor rides along as a build analyzer. Remove it and the app still compiles and runs
          (Law 2) — you only lose the enforcement. -->
-    <PackageReference Include="AeroFortress.Framework.Doctor" Version="3.0.2" PrivateAssets="all" />
+    <PackageReference Include="AeroFortress.Framework.Doctor" Version="3.0.4" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

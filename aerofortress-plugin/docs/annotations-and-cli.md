@@ -31,9 +31,13 @@
   journeys + manifest declaration + exact AVP proof scaffold. The criterion list is mandatory.
 - `af g auth` — auth module (Login/Refresh/Register + journeys), Identity entity, session seam.
 - `af g hub <Module> <Name>` — SignalR hub at `Modules/<Module>/Realtime/<Name>Hub.cs` (hub is wire: calls the slice, fans out).
-- `af g view <Slice>` — frontend triple typed from the contract.
-- `af gen client` — orval (react-query) → `client.gen/` hooks + mutator. Hook name = slice name via `.WithName(...)`.
 - `af doctor` — diagnostic structural check: Roslyn AF* + AeroFortress.toml validation + frontend AFFE*.
-- `af gate` — the only done verdict: doctor + every backend/frontend test + AVP/Assay + real E2E
-  + traceability matrix. Missing, skipped, focused, mocked-as-real, or not-executed proofs fail.
-- `af build` / `af test` — dotnet + turbo per `[tasks]` in AeroFortress.toml.
+- `af gate` / `--affected --base <rev>` — the default done verdict: doctor + universal inventory + the complete
+  Git-affected AVP/Assay/Journey/E2E closure. Missing, skipped, focused, mocked-as-real, or selected-but-not-executed
+  proofs fail; caller-authored test filters are rejected.
+- `af gate --staged --fast` — index-rooted pre-commit feedback; browser/device execution waits for pre-push/CI.
+- `af gate --full` — exhaustive release audit over every declared proof.
+- `af test [--unit|--integration|--e2e]` — the .NET test leg, optionally filtered by category.
+
+Typed client generation is an explicit application package script (`npm run gen:client`) over its own OpenAPI and
+orval configuration. The CLI advertises no frontend generator or task-orchestrator command.

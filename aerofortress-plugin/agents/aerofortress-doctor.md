@@ -48,7 +48,10 @@ shape is wrong; fix the shape.
   red, never excluded.
 - AFFE033: add `@verify` to the ViewModel and satisfy it only in its exact co-located
   `*.assay.test.*` using `defineVerification(...)`.
-- AFFE035/AFFE-JOURNEY: bind every ViewModel to distinct happy/sad `flows.json` entries. Every UI-consumed hook
+- AFFE035/AFFE-JOURNEY: bind every ViewModel's complete `@verify`/Assay criterion set through distinct
+  `{ id, evidence }` criteria on its exact case; require that case to visibly assert every evidence marker and
+  reject one criterion claimed by multiple cases. Bind these to subject `flows.json` entries; happy/sad remains
+  the minimum path floor. Every UI-consumed hook
   appears in at least one flow owned by one of its actual consumer features; shared hooks are proved once.
   Literal raw infrastructure calls declare `@backendSlice Slice METHOD /path` and retain happy+sad proofs.
   Backend-bound web cases observe page responses against their checked-in OpenAPI contract, assert the exact slice

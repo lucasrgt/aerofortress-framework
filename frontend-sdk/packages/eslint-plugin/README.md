@@ -38,7 +38,7 @@ plugin and the app still builds; you only lose enforcement.
 | `controller-field-state` | AFFE032 | A controlled field reads and surfaces its `fieldState` error. |
 | `verify-has-avp-proof` | AFFE033 | Every ViewModel declares `@verify`; its exact co-located Assay suite carries the matching `@avp` executable proof. |
 | `no-disabled-tests` | AFFE034 | Test/spec files contain no skipped, conditional, todo, or focused declarations. |
-| `feature-has-e2e-flow` | AFFE035 | Every ViewModel declares at least one stable `@e2e <flow-id>`; the workspace doctor resolves it to an executable surface journey. |
+| `feature-has-e2e-flow` | AFFE035 | Every ViewModel declares distinct happy and sad `@e2e <flow-id>` obligations; the workspace doctor resolves both to executable surface journeys. |
 
 ### Routing rules — both routers, one shape
 

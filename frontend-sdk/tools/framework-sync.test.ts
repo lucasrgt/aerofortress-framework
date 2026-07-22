@@ -12,8 +12,9 @@ describe("framework-sync", () => {
         path: "clients/app/package.json",
         packages: {
           "@aerofortress/frontend-sdk": `^${canonical.find((entry) => entry.name === "@aerofortress/frontend-sdk")?.version}`,
-          "eslint-plugin-aerofortress": "^1.0.3",
-          "@aerofortress/react": "~1.0.3",
+          "@aerofortress/assay": `^${canonical.find((entry) => entry.name === "@aerofortress/assay")?.version}`,
+          "eslint-plugin-aerofortress": `^${canonical.find((entry) => entry.name === "eslint-plugin-aerofortress")?.version}`,
+          "@aerofortress/react": `~${canonical.find((entry) => entry.name === "@aerofortress/react")?.version}`,
         },
       }],
       hasFrontend: true,
@@ -38,6 +39,7 @@ describe("framework-sync", () => {
     expect(result.status).toBe("drifted");
     expect(result.messages.join("\n")).toContain("0.10.0");
     expect(result.messages.join("\n")).toContain("@aerofortress/react");
+    expect(result.messages.join("\n")).toContain("@aerofortress/assay");
   });
 
   it("rejects the retired in-repo plugin mirror", () => {

@@ -105,7 +105,7 @@ explosion (a generator that metastasized into a full-SaaS meta-framework + front
 - **No vendor adapters in core.** Ship the *standard* a component follows, not the plugins.
 - **No source-gen of UI behavior, no realtime *on by default*, no multi-app sprawl.** The
   aerocoding failure modes — designed out. *Nuance (so this never reads as a ban):* the frontend
-  is scaffolded-once-and-owned + enforced, never re-generated (`af g view`); real-time is **opt-in**
+  is written once, owned by the app, and enforced, never re-generated; real-time is **opt-in**
   via `af g hub` (CONVENTIONS.md §"Real-time — hubs"). The failure mode is the sprawl/source-gen,
   not the capability.
 - **No runtime framework you inherit from.** Conventions + analyzers, not base classes.

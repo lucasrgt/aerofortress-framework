@@ -30,9 +30,9 @@ Topology is declared in `AeroFortress.toml` (the single source of truth; `af doc
 - **Frontend** — add a React client under `clients/` (`af g`); the published
   `eslint-plugin-aerofortress` `AFFE*` harness gates it.
 - **Doctor**: `af doctor` runs both legs.
-- **Done-gate**: `af gate` (doctor + every test incl. the `[AVP]` proofs + the traceability
-  matrix) — wired from birth into CI (`.github/workflows/ci.yml`) and echoed locally by lefthook
-  (`npm install` wires the hooks). A change is done when the gate is green; never merge red.
+- **Done-gate**: `af gate --affected` (doctor + the Git-derived transitive proof closure + the universal
+  traceability inventory) — wired from birth into CI and echoed locally by lefthook. `af gate --full` is the
+  exhaustive release audit. A change is done when its affected gate is green; never release without a full green.
 
 ---
 
@@ -142,11 +142,16 @@ A badly-wired route **fails the build**.
 ## Build & verify — green before you are done
 
 ```
-af gate        # validates AeroFortress.toml, then runs every backend/frontend proof and the traceability matrix
+af gate --staged --fast           # pre-commit: index-rooted, browser/device deferred
+af gate --affected --base <rev>   # push/PR: every transitively affected backend/frontend proof
+af gate --full                    # release: exhaustive audit
 ```
 
-(Or the explicit commands in `AeroFortress.toml [tasks]`.) Never leave the workspace red. If the doctor is red,
-**fix the code — never suppress a rule.** A rule fires on a real defect class; the fix *is* the convention.
+Every mode validates the complete proof inventory. The application cannot supply a risk label or test filter;
+ambiguous/shared changes widen to a full surface, and unselected rows are `not-affected`, never counterfeit passes.
+
+Never leave the workspace red. If the doctor is red, **fix the code — never suppress a rule.** A rule fires on a
+real defect class; the fix *is* the convention.
 
 ---
 

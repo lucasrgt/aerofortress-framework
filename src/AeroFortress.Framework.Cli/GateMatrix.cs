@@ -12,6 +12,9 @@ internal enum MatrixVerdict
     /// <summary>A proof site exists but no decided test outcome was found — a skip is never a pass.</summary>
     NotRun,
 
+    /// <summary>The obligation exists, but the Git-derived impact closure did not select its subject.</summary>
+    NotAffected,
+
     /// <summary>The criterion is declared but no <c>[AVP]</c> site proves it (the AF0030 gap).</summary>
     NoProof,
 }
@@ -70,11 +73,11 @@ internal sealed class GateMatrix
     public IReadOnlyList<ManifestFile> MalformedManifests { get; }
 
     /// <summary>
-    /// Whether the matrix alone fails the gate: any non-pass verdict, orphan proof, undeclared
-    /// slice or malformed manifest. (A declared slice with no class stays informational.)
+    /// Whether the matrix alone fails the gate: any selected non-pass verdict, orphan proof, undeclared
+    /// slice or malformed manifest. Not-affected rows remain inventory, never counterfeit passes.
     /// </summary>
     public bool Blocking =>
-        Rows.Any(r => r.Verdict != MatrixVerdict.Pass)
+        Rows.Any(r => r.Verdict is not (MatrixVerdict.Pass or MatrixVerdict.NotAffected))
         || OrphanProofs.Count > 0
         || UndeclaredSlices.Count > 0
         || MalformedManifests.Count > 0;
@@ -84,11 +87,16 @@ internal sealed class GateMatrix
     /// <param name="proofs">Every subject-bound <c>[AVP]</c> site in source.</param>
     /// <param name="slices">Every <c>[Slice]</c> class in source.</param>
     /// <param name="verdicts">Every test outcome from the run's TRX files.</param>
+    /// <param name="executedSlices">
+    /// Optional affected scope as <c>Module/Slice</c> keys. Null means a full run; unselected rows remain visible as
+    /// <see cref="MatrixVerdict.NotAffected"/> and do not borrow an old or unrelated pass.
+    /// </param>
     public static GateMatrix Build(
         IReadOnlyList<ManifestFile> manifests,
         IReadOnlyList<AvpProof> proofs,
         IReadOnlyList<SliceSite> slices,
-        IReadOnlyList<TestVerdict> verdicts)
+        IReadOnlyList<TestVerdict> verdicts,
+        IReadOnlySet<string>? executedSlices = null)
     {
         var parsed = manifests.Where(m => m.Manifest is not null).ToList();
         var proofsByObligation = proofs
@@ -111,7 +119,10 @@ internal sealed class GateMatrix
                     var sites = proofsByObligation.TryGetValue((manifest.Module, slice, criterion), out var found)
                         ? found
                         : [];
-                    var verdict = sites.Count == 0 ? MatrixVerdict.NoProof : DecideVerdict(sites, verdicts);
+                    var selected = executedSlices is null || executedSlices.Contains(manifest.Module + "/" + slice);
+                    var verdict = sites.Count == 0
+                        ? MatrixVerdict.NoProof
+                        : selected ? DecideVerdict(sites, verdicts) : MatrixVerdict.NotAffected;
                     rows.Add(new MatrixRow(manifest.Module, slice, criterion, sites, verdict));
                 }
             }

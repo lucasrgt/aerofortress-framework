@@ -2,7 +2,7 @@
 # Wallets — acceptance criteria (Clockwork spec)
 
 > The per-feature criterion manifest for the Wallets slices (Deposit, Withdraw). Each id is the AVP
-> catalog id bound by `[Verify("id")]` in production and proven by `[AVP("id")]` beside the slice; the
+> catalog id declared in the module manifest and proven by `[AVP(typeof(Slice), "id")]` beside the slice; the
 > frontend pair is `@verify`/`@avp`. The harness's Clockwork matrix reads this file to close the
 > spec↔code bijection: a declared criterion with no obligation is a *gap*, an obligation no manifest
 > declares is *creep*. Changes are deltas — add/modify/remove a criterion line keyed on its id.

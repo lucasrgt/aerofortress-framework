@@ -2,7 +2,9 @@
 
 Demonstrates the AeroFortress monorepo shape end to end (the same architecture in `docs/MONOREPO-ARCHITECTURE.md`):
 
-- **`AeroFortress.toml`** — the workspace manifest: one source of truth for the topology (backend + core + per-platform apps).
+- **[root `AeroFortress.toml`](../../AeroFortress.toml)** — declares this runnable backend in the framework's real
+  release gate. The frontend below is a framework-owned fixture, not a deployable surface pretending to have a
+  browser/device runner.
 - **`backend/`** — the .NET API (`Sample.Api`) + its co-located tests (`Sample.Tests`), vertical slices under the
   `AF*` Roslyn analyzers.
 - **`frontend/core/`** — the **platform-agnostic** layer: the ViewModel (the single data door), the
@@ -15,7 +17,7 @@ The View is written **once** (agnostic) in `core`; only the `@/ui` implementatio
 
 ## Verification
 
-- **Backend** — `dotnet test examples/sample-app/backend/Sample.Tests` (21 tests, green).
+- **Backend** — `dotnet test examples/sample-app/backend/Sample.Tests` (32 tests, green).
 - **Frontend core + web** — the framework's vitest (run `npm run check` in `frontend-sdk/`) mounts the core's View
   against the **web** `@/ui` in jsdom — wired, not mocked.
 - **Mobile** — built with the consumer's Expo/Metro toolchain (which provides `react-native`), like a real app's

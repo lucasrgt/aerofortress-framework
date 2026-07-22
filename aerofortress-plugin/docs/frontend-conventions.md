@@ -65,9 +65,14 @@ screens; the design layer holds the floor (label wiring, role="alert", aria-busy
 
 ## Visible E2E
 
-Every ViewModel declares distinct `@e2e` ids for happy and sad behavior. Executable surfaces bind
-those ids in `e2e/flows.json` with `features: ["ExactFeatureBasename"]`, an enabled exact case, and a
-terminal assertion. Every UI-consumed generated hook appears in `backendSlices` on at least one flow owned by an
+Every ViewModel declares the E2E ids needed to prove its semantic `@verify` set, with distinct happy and sad
+behavior as the minimum path floor. Executable surfaces bind those ids in `e2e/flows.json` with
+`features: ["ExactFeatureBasename"]`, exact `{ id, evidence }` criteria with distinct evidence asserted by that
+enabled case, and a terminal assertion. One semantic criterion belongs to one case; happy and sad never share it.
+The flow target fixes the engine: `target:web` is Playwright and `target:native` is Maestro. There is no runner
+field or Cypress/Detox alternative for an agent to choose.
+The subject flows must cover the complete AVP/Assay criterion set. Every UI-consumed generated hook appears in
+`backendSlices` on at least one flow owned by an
 actual consumer feature; shared hooks are proved once. A web backend-bound case
 declares `backendContract`, observes real page responses through
 `@aerofortress/frontend-sdk/playwright-backend`, and asserts the exact `backendSlices`; global setup probes

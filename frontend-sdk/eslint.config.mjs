@@ -89,6 +89,7 @@ export default [
       // `@verify <id>` obligation on a View/ViewModel must have a co-located executable Assay proof. Error-tier.
       "aerofortress/verify-has-avp-proof": "error",
       "aerofortress/no-disabled-tests": "error",
+      "aerofortress/feature-has-e2e-flow": "error",
       // curated community kit (mirrors pleiades/corbanx)
       "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
       "sonarjs/no-identical-functions": "warn",
