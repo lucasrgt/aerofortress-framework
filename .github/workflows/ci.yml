@@ -17,9 +17,9 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
-      # Dogfood the public release gate instead of duplicating its build/test legs. This also exercises the
-      # declarations × subject-bound proofs × TRX verdict matrix on Linux for every framework change.
-      - run: dotnet run --project src/AeroFortress.Framework.Cli/AeroFortress.Framework.Cli.csproj -c Release -- gate AeroFortress.Framework.slnx -c Release
+      # The framework's own suite is small enough to stay exhaustive. This avoids a same-branch push comparing
+      # against its freshly updated origin/HEAD and exercises every declaration × proof × TRX join on Linux.
+      - run: dotnet run --project src/AeroFortress.Framework.Cli/AeroFortress.Framework.Cli.csproj -c Release -- gate --full AeroFortress.Framework.slnx -c Release
 
   frontend:
     name: frontend-sdk (typecheck + lint + test)
