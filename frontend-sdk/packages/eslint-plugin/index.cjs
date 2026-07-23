@@ -1705,7 +1705,8 @@ const rules = {
     },
   },
 
-  // AFFE033 — a `@verify` obligation has its `@avp` proof. The front-side of the backend's AF0030 (the
+  // AFFE033 — every `@verify` obligation has its `@avp` proof, and every proof belongs to an obligation. The
+  // front-side of the backend's AF0030 (the
   // manifest↔AVP bridge), and the closing leg of AeroFortress Clockwork on the frontend: a View/ViewModel that
   // declares `@verify <criterion-id>` (the AVP acceptance obligation — the JSDoc twin of the backend
   // manifest criterion) must have a co-located `*.assay.test.tsx` carrying `@avp <criterion-id>` and registering a
@@ -1719,7 +1720,7 @@ const rules = {
       type: "problem",
       docs: {
         description:
-          "Every `@verify <id>` on a View/ViewModel has a matching executable `@avp <id>` proof in its co-located *.assay.test.tsx.",
+          "Every `@verify <id>` on a View/ViewModel has exactly one matching executable `@avp <id>` proof in its co-located *.assay.test.tsx.",
       },
       messages: {
         undeclared:
@@ -1730,12 +1731,27 @@ const rules = {
           "AFFE033: `@verify {{id}}` is declared but {{test}} carries no `@avp {{id}}` proof — add the assay JS verification tagged `@avp {{id}}` so the obligation is proven, not just claimed.",
         inert:
           "AFFE033: {{test}} carries `@avp {{id}}` but registers no `defineVerification(...)` for that exact criterion — one Assay case cannot lend execution to unrelated markers.",
+        orphan:
+          "AFFE033: {{test}} carries `@avp {{id}}` but its co-located View/ViewModel declares no matching `@verify {{id}}` obligation — declare the criterion on the subject so E2E coverage cannot ignore this proof.",
         noOracle:
           "AFFE033: `productVerification(...)` has no executable assertion — an AVP callback must contain an `expect`/assert oracle (or the scaffold's deliberate throw), not merely run code and return green.",
       },
     },
     create(context) {
       const f = context.filename.replace(/\\/g, "/");
+      const idsIn = (text, tag) => {
+        const ids = new Set();
+        const re = new RegExp(`@${tag}\\s+([\\w.-]+)`, "g");
+        let m;
+        while ((m = re.exec(text)) !== null) ids.add(m[1]);
+        return ids;
+      };
+      const idsInComments = (text, tag) => {
+        const ids = new Set();
+        const comments = text.match(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm) ?? [];
+        for (const comment of comments) for (const id of idsIn(comment, tag)) ids.add(id);
+        return ids;
+      };
       const isAssayProof = /\.assay\.test\.[cm]?[jt]sx?$/.test(f);
       if (isAssayProof) {
         const hasOracle = (callback) => {
@@ -1786,23 +1802,36 @@ const rules = {
             }
             if (!hasOracle(callback)) context.report({ node: callback, messageId: "noOracle" });
           },
+          "Program:exit"(node) {
+            const sourceCode = context.sourceCode ?? context.getSourceCode();
+            const proofs = new Set();
+            for (const comment of sourceCode.getAllComments()) {
+              for (const id of idsIn(comment.value, "avp")) proofs.add(id);
+            }
+            if (proofs.size === 0) return;
+
+            const base = path.basename(context.filename).replace(/\.assay\.test\.[cm]?[jt]sx?$/, "");
+            const directory = path.dirname(context.filename);
+            const obligations = new Set();
+            for (const suffix of [".viewModel.ts", ".viewModel.tsx", ".view.ts", ".view.tsx"]) {
+              const subjectPath = path.join(directory, `${base}${suffix}`);
+              if (!fs.existsSync(subjectPath)) continue;
+              const subjectText = fs.readFileSync(subjectPath, "utf8");
+              for (const id of idsInComments(subjectText, "verify")) obligations.add(id);
+            }
+            for (const id of proofs) {
+              if (obligations.has(id)) continue;
+              context.report({
+                node,
+                messageId: "orphan",
+                data: { id, test: path.basename(context.filename) },
+              });
+            }
+          },
         };
       }
       if (!isView(f) && !isViewModel(f)) return {};
       // Markers are read from COMMENTS (JSDoc), never strings — so a literal "@verify" in copy never false-fires.
-      const idsIn = (text, tag) => {
-        const ids = new Set();
-        const re = new RegExp(`@${tag}\\s+([\\w.-]+)`, "g");
-        let m;
-        while ((m = re.exec(text)) !== null) ids.add(m[1]);
-        return ids;
-      };
-      const idsInComments = (text, tag) => {
-        const ids = new Set();
-        const comments = text.match(/\/\*[\s\S]*?\*\/|^\s*\/\/.*$/gm) ?? [];
-        for (const comment of comments) for (const id of idsIn(comment, tag)) ids.add(id);
-        return ids;
-      };
       return {
         "Program:exit"(node) {
           const sourceCode = context.sourceCode ?? context.getSourceCode();

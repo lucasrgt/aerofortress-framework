@@ -805,6 +805,11 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
     { filename: "Foo.tsx", code: `/** @verify fires-primary-effect */\nexport const X = () => null;` },
     // The obligation IS proven: the co-located fixture assay carries the marker + defineVerification.
     { filename: path.join(AFFE033_FIX, "Proven.view.tsx"), code: `/** @verify proven-x */\nexport const X = () => null;` },
+    // The reverse edge holds too: a proof whose subject declares the same obligation is visible to E2E coverage.
+    {
+      filename: path.join(AFFE033_FIX, "Proven.assay.test.tsx"),
+      code: `/** @avp proven-x */\ndefineVerification(...productVerification("Proven", "proven-x", "proves x", () => { expect(true).toBe(true); }));`,
+    },
     {
       filename: "Asserted.assay.test.tsx",
       code: `defineVerification(...productVerification("Cart", "adds-item", "adds the selected item", () => { expect(cart.items).toHaveLength(1); }));`,
@@ -864,6 +869,12 @@ ruleTester.run("verify-has-avp-proof", plugin.rules["verify-has-avp-proof"], {
       filename: "EmptyOracle.assay.test.tsx",
       code: `defineVerification(...productVerification("Cart", "adds-item", "claims without proving", () => { cart.add(item); }));`,
       errors: [{ messageId: "noOracle" }],
+    },
+    // An executable Assay without the subject-side obligation would run but disappear from the E2E inventory.
+    {
+      filename: path.join(AFFE033_FIX, "Orphan.assay.test.tsx"),
+      code: `/** @avp orphan-y */\ndefineVerification(...productVerification("Orphan", "orphan-y", "proves an undeclared criterion", () => { expect(true).toBe(true); }));`,
+      errors: [{ messageId: "orphan" }],
     },
   ],
 });

@@ -36,7 +36,7 @@ plugin and the app still builds; you only lose enforcement.
 | `no-navigation-cast` | AFFE030 | Navigation targets cannot escape typed routes through `as never`/`as any`/`as unknown`. |
 | `submit-invalid-path` | AFFE031 | Form submit wiring carries an invalid callback, so pre-mutation validation failure has a visible path. |
 | `controller-field-state` | AFFE032 | A controlled field reads and surfaces its `fieldState` error. |
-| `verify-has-avp-proof` | AFFE033 | Every ViewModel declares `@verify`; its exact co-located Assay suite carries the matching `@avp` executable proof. |
+| `verify-has-avp-proof` | AFFE033 | Every ViewModel `@verify` has an exact co-located executable `@avp`, and every `@avp` belongs to a declared `@verify`, so proofs cannot disappear from E2E coverage. |
 | `no-disabled-tests` | AFFE034 | Test/spec files contain no skipped, conditional, todo, or focused declarations. |
 | `feature-has-e2e-flow` | AFFE035 | Every ViewModel declares distinct happy and sad `@e2e <flow-id>` obligations; the workspace doctor resolves both to executable surface journeys. |
 
