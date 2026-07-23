@@ -87,17 +87,19 @@ Every gate inventories the complete proof surface. `af gate --affected` executes
 the Git delta; `af gate --full` is the exhaustive release audit. Together they enforce:
 
 1. manifest validation, package synchronization, backend analyzers, frontend lint, and typecheck;
-2. affected backend tests and subject-bound AVP/Journey proofs (all of them under `--full`);
+2. affected backend tests and subject-bound AVP/Journey proofs, reached transitively through the C# dependency
+   graph when a shared type changes (all of them under `--full`);
 3. affected non-Assay frontend tests plus direct Assay verification (all packages under `--full`);
 4. feature-to-flow coverage across the workspace;
 5. global E2E shape/inventory and real Playwright/Maestro execution for affected flows (every flow under `--full`);
 6. the traceability matrix printed on every run and persisted as `VERIFICATION.md` and `VERIFICATION.json` only
    by the canonical `--full` audit.
 
-The selector is framework-owned and fail-closed: no product risk flag or caller test filter exists. Shared or
-unmapped changes widen. Pull requests normally require the affected status; releases require a full verdict.
-Only an explicitly selected full mode replaces the committed attestation, even when an uncertain affected run
-widens its execution for safety.
+The selector is framework-owned and fail-closed: no product risk flag or caller test filter exists. Shared runtime
+or unmapped production changes widen. CLI pins, hooks, and workflows stay in the doctor-validated control plane
+and do not widen application proofs merely because the gate itself changed. Pull requests normally require the
+affected status; releases require a full verdict. Only an explicitly selected full mode replaces the committed
+attestation, even when an uncertain affected run widens its execution for safety.
 
 ## Package-first framework updates
 

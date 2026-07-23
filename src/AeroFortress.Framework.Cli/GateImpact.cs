@@ -61,7 +61,8 @@ internal sealed record GateImpactPlan(
 
 /// <summary>
 /// Expands changed files into the backend AVP/Journey and frontend Assay/E2E closure. Selection is convention-
-/// derived; ambiguous production or infrastructure changes widen to a full surface instead of trusting a skip.
+/// derived; ambiguous production or runtime-wide infrastructure changes widen instead of trusting a skip.
+/// Control-plane changes are validated by the doctor without impersonating application impact.
 /// </summary>
 internal static class GateImpact
 {
@@ -77,7 +78,14 @@ internal static class GateImpact
     {
         var normalized = changes.Select(Normalize).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var reasons = new List<string>();
-        var global = normalized.Any(IsGlobalInfrastructure);
+        var gateControl = normalized.Count(IsGateControlInfrastructure);
+        if (gateControl > 0)
+        {
+            reasons.Add(
+                $"gate: {gateControl} control-only path(s) changed; the doctor validates them without widening application proofs");
+        }
+
+        var global = normalized.Any(IsRuntimeWideInfrastructure);
         var backend = SelectBackend(root, normalized, slices, proofs, journeys, testClasses, global, reasons);
         var frontend = packages.Select(package => new FrontendImpact(package)).ToList();
         SelectFrontends(root, normalized, frontend, backend, global, reasons);
@@ -96,7 +104,7 @@ internal static class GateImpact
     {
         if (global)
         {
-            reasons.Add("backend: shared build/gate infrastructure changed; selecting the full backend");
+            reasons.Add("backend: runtime-wide build infrastructure changed; selecting the full backend");
             return FullBackend();
         }
 
@@ -105,6 +113,7 @@ internal static class GateImpact
         var filters = new HashSet<string>(StringComparer.Ordinal);
         var affected = new HashSet<string>(StringComparer.Ordinal);
         var full = false;
+        CSharpImpactGraph? csharpGraph = null;
 
         foreach (var change in changes)
         {
@@ -128,14 +137,16 @@ internal static class GateImpact
             if (!change.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            csharpGraph ??= CSharpImpactGraph.Build(root);
+            var impactedFiles = csharpGraph.Expand(change);
             var matched = false;
-            foreach (var slice in slices.Where(slice => SamePath(slice.File, change)))
+            foreach (var slice in slices.Where(slice => impactedFiles.Contains(Normalize(slice.File))))
             {
                 SelectSlice(slice, filters, affected, proofs, journeys);
                 matched = true;
             }
 
-            foreach (var proof in proofs.Where(proof => SamePath(proof.File, change)))
+            foreach (var proof in proofs.Where(proof => impactedFiles.Contains(Normalize(proof.File))))
             {
                 filters.Add(proof.ClassName);
                 foreach (var slice in slices.Where(slice => slice.Name == proof.Subject))
@@ -143,7 +154,7 @@ internal static class GateImpact
                 matched = true;
             }
 
-            foreach (var journey in journeys.Where(journey => SamePath(journey.File, change)))
+            foreach (var journey in journeys.Where(journey => impactedFiles.Contains(Normalize(journey.File))))
             {
                 filters.Add(journey.ClassName);
                 foreach (var slice in slices.Where(slice => slice.Name == journey.Subject))
@@ -151,11 +162,14 @@ internal static class GateImpact
                 matched = true;
             }
 
-            foreach (var site in testClasses.Where(site => SamePath(site.File, change)))
+            foreach (var site in testClasses.Where(site => impactedFiles.Contains(Normalize(site.File))))
             {
                 filters.Add(site.ClassName);
                 matched = true;
             }
+
+            if (matched && impactedFiles.Count > 1)
+                reasons.Add($"backend: {change} reaches {impactedFiles.Count - 1} transitive C# consumer(s)");
 
             if (!matched && backendPath)
             {
@@ -415,13 +429,15 @@ internal static class GateImpact
         return feature.Length > 0;
     }
 
-    private static bool IsGlobalInfrastructure(string path) =>
+    private static bool IsRuntimeWideInfrastructure(string path) =>
         path.Equals(AeroFortressManifest.FileName, StringComparison.OrdinalIgnoreCase)
-        || path.Equals("lefthook.yml", StringComparison.OrdinalIgnoreCase)
         || path.Equals("global.json", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith(".github/workflows/", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith(".config/dotnet-tools", StringComparison.OrdinalIgnoreCase)
         || Path.GetFileName(path).StartsWith("Directory.Build.", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsGateControlInfrastructure(string path) =>
+        path.Equals("lefthook.yml", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith(".github/workflows/", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith(".config/dotnet-tools", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsRootFrontendContract(string path) =>
         !path.Contains('/') && path is "package.json" or "package-lock.json" or "npm-shrinkwrap.json";

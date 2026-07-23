@@ -518,9 +518,12 @@ The doctor answers "is the form right?"; the AVP proofs answer "does the behavio
    independently forces every rule exported by the installed harness, so an indirect config expression cannot
    hide one either. The contract must be satisfied, not silenced.
 2. **Backend proof leg** — the default/`--affected` form expands changed slices and test files to their unit,
-   `[AVP]`, and `[Journey]` classes and supplies the resulting filter itself. `--staged --fast` roots that selection
-   in the index; `--full` executes every test. A caller-authored `--filter` is rejected, and any selected
-   skipped/not-executed result makes the gate red.
+   `[AVP]`, and `[Journey]` classes and supplies the resulting filter itself. A Roslyn syntax graph follows changed
+   shared types and extension methods through every direct and transitive C# consumer, so an entity or service
+   selects the slices and test classes that actually depend on it instead of paying for the whole solution.
+   Ambiguous names conservatively add edges; a production file with no reachable proof remains fail-closed.
+   `--staged --fast` roots that selection in the index; `--full` executes every test. A caller-authored `--filter`
+   is rejected, and any selected skipped/not-executed result makes the gate red.
 3. **Frontend proof legs, selected by product role** — every product `core` runs `npm run test`
    over the non-Assay partition plus direct `assay verify` over `*.assay.test.*`; every executable `frontend`
    runs those same legs plus the strict `affe-e2e-doctor` and `npm run test:e2e`. The workspace-level
@@ -550,8 +553,10 @@ Execution modes are closed and framework-owned:
 - `af gate --staged --fast` — index-rooted pre-commit feedback; browser/device execution is deferred;
 - `af gate --full` — exhaustive audit, mandatory before release and optionally configured for main/manual/nightly.
 
-If Git ancestry is missing, a changed production file cannot be mapped, or shared build/test infrastructure
-changes, the selector widens to full. Application annotations and arbitrary test filters never participate.
+If Git ancestry is missing, a changed production file cannot be mapped, or runtime-wide build/test infrastructure
+changes, the selector widens to full. Gate-control files (`.config/dotnet-tools.json`, `lefthook.yml`, and checked
+workflows) are different: the doctor validates their contract, but changing the fiscal does not execute unrelated
+application proofs. Application annotations and arbitrary test filters never participate.
 
 An explicit `--full` audit writes the canonical artifacts at the workspace root: **`VERIFICATION.md`**
 (human — commit it; a reviewer reads the exhaustive proof state without running anything) and

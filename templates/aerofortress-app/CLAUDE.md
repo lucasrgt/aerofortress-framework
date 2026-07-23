@@ -148,7 +148,8 @@ af gate --full                    # release: exhaustive audit
 ```
 
 Every mode validates the complete proof inventory. The application cannot supply a risk label or test filter;
-ambiguous/shared changes widen to a full surface, and unselected rows are `not-affected`, never counterfeit passes.
+ambiguous/shared runtime changes widen to a full surface; CLI pins, hooks, and workflows stay doctor-validated
+control-plane changes. Unselected rows are `not-affected`, never counterfeit passes.
 
 Never leave the workspace red. If the doctor is red, **fix the code — never suppress a rule.** A rule fires on a
 real defect class; the fix *is* the convention.

@@ -60,17 +60,21 @@ bar, so uncertainty never lowers proof.
   Maestro. Cypress/Detox configuration and a target/engine mismatch are blocking gaps.
 - CI wiring is validated locally; required branch status is the external enforcement boundary.
 - Runtime selection comes from the Git index/revision delta and the subject bindings already required by the
-  framework. The application cannot author a risk label or test filter. Unknown/shared changes widen to a full
-  surface, and unavailable Git ancestry widens to full.
+  framework. A reverse C# syntax graph follows shared types and extension methods to their transitive slice and
+  test consumers. The application cannot author a risk label or test filter. Unknown/shared runtime changes with
+  no reachable proof widen to a full surface, and unavailable Git ancestry widens to full. Changes limited to the
+  CLI pin, Git hooks, or checked workflows remain doctor-validated control-plane changes; they do not alter
+  application behavior and therefore do not widen runtime proofs.
 
 Prompt instructions remain useful guidance, but none is relied upon for the verdict.
 
 ## Consequences and limits
 
 The proof inventory grows monotonically; ordinary execution does not. Pre-commit uses `--staged --fast`, pre-push
-and pull requests use `--affected`, and releases use `--full`. Shared infrastructure and ambiguous dependencies
-widen rather than guess. Sharding remains available for the exhaustive audit, but is not required to pay the cost
-of unrelated tests on every small change.
+and pull requests use `--affected`, and releases use `--full`. Shared runtime infrastructure and ambiguous
+dependencies widen rather than guess; control-plane edits are validated without impersonating runtime impact.
+Sharding remains available for the exhaustive audit, but is not required to pay the cost of unrelated tests on
+every small change.
 
 Static rules can enforce proof identity, shape, execution, and a structural assertion floor. They cannot prove that
 an assertion is semantically strong. Review and occasional mutation testing remain depth audits, but neither can

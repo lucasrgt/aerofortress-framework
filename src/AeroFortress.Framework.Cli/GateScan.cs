@@ -320,7 +320,7 @@ internal static class GateScan
     }
 
     // Depth-first file walk that skips build/dependency dirs — enumerating into node_modules would dominate the scan.
-    private static IEnumerable<string> Walk(string root, string pattern)
+    internal static IEnumerable<string> Walk(string root, string pattern)
     {
         var stack = new Stack<string>();
         stack.Push(root);

@@ -75,6 +75,45 @@ public sealed class GateImpactTests
     }
 
     [Fact]
+    public void A_shared_backend_dependency_selects_transitive_slice_and_test_consumers()
+    {
+        var root = Workspace();
+        try
+        {
+            var infrastructure = Path.Combine(root, "src/App/Infrastructure");
+            var module = Path.Combine(root, "src/App/Modules/Account");
+            var tests = Path.Combine(root, "tests/App.Tests");
+            Directory.CreateDirectory(infrastructure);
+            Directory.CreateDirectory(module);
+            Directory.CreateDirectory(tests);
+            File.WriteAllText(Path.Combine(infrastructure, "Clock.cs"),
+                "namespace App.Infrastructure; public sealed class Clock { }");
+            File.WriteAllText(Path.Combine(module, "Login.cs"),
+                "using App.Infrastructure; [Slice] public static class Login { private static Clock? clock; }");
+            File.WriteAllText(Path.Combine(tests, "LoginTests.cs"),
+                "public sealed class LoginTests { [Fact] public void Holds() { _ = typeof(Login); } }");
+
+            var plan = GateImpact.Build(
+                root,
+                ["src/App/Infrastructure/Clock.cs"],
+                [new SliceSite("Account", "Login", "src/App/Modules/Account/Login.cs")],
+                [],
+                [],
+                [new CSharpTestSite("tests/App.Tests/LoginTests.cs", "App.Tests.LoginTests")],
+                []);
+
+            Assert.False(plan.Backend.Full);
+            Assert.Contains("Account/Login", plan.Backend.AffectedSlices);
+            Assert.Contains("App.Tests.LoginTests", plan.Backend.Filters);
+            Assert.Contains(plan.Reasons, reason => reason.Contains("transitive C# consumer"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void An_unmapped_shared_library_change_widens_to_every_surface()
     {
         var root = Workspace();
@@ -93,6 +132,77 @@ public sealed class GateImpactTests
 
             Assert.All(plan.Frontends, impact => Assert.True(impact.Full));
             Assert.Contains(plan.Reasons, reason => reason.Contains("every surface"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(".config/dotnet-tools.json")]
+    [InlineData("lefthook.yml")]
+    [InlineData(".github/workflows/ci.yml")]
+    public void Gate_control_changes_do_not_execute_unrelated_application_proofs(string change)
+    {
+        var root = Workspace();
+        try
+        {
+            var package = new FrontendPackage(Path.Combine(root, "clients/web"), FrontendPackageRole.Surface);
+
+            var plan = GateImpact.Build(root, [change], [], [], [], [], [package]);
+
+            Assert.False(plan.Backend.RunsTests);
+            Assert.False(Assert.Single(plan.Frontends).Selected);
+            Assert.Contains(plan.Reasons, reason => reason.Contains("control-only"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("AeroFortress.toml")]
+    [InlineData("global.json")]
+    [InlineData("Directory.Build.props")]
+    public void Runtime_wide_contract_changes_remain_fail_closed(string change)
+    {
+        var root = Workspace();
+        try
+        {
+            var package = new FrontendPackage(Path.Combine(root, "clients/web"), FrontendPackageRole.Surface);
+
+            var plan = GateImpact.Build(root, [change], [], [], [], [], [package]);
+
+            Assert.True(plan.Backend.Full);
+            Assert.True(Assert.Single(plan.Frontends).Full);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_cli_upgrade_beside_a_frontend_lockfile_never_impersonates_backend_impact()
+    {
+        var root = Workspace();
+        try
+        {
+            var package = new FrontendPackage(Path.Combine(root, "clients/web"), FrontendPackageRole.Surface);
+
+            var plan = GateImpact.Build(
+                root,
+                [".config/dotnet-tools.json", "package-lock.json"],
+                [],
+                [],
+                [],
+                [],
+                [package]);
+
+            Assert.False(plan.Backend.RunsTests);
+            Assert.True(Assert.Single(plan.Frontends).Full);
         }
         finally
         {
