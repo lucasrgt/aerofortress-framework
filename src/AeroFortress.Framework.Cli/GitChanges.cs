@@ -25,6 +25,7 @@ internal static class GitChanges
             return Diff(root, ["diff", "--cached", "--name-only", "--diff-filter=ACMRDTUXB", "-z", "--"]);
 
         var baseRevision = options.BaseRevision ?? Environment.GetEnvironmentVariable("AF_GATE_BASE");
+        var rangeIsExplicit = !string.IsNullOrWhiteSpace(baseRevision);
         if (string.IsNullOrWhiteSpace(baseRevision))
         {
             var originHead = Capture(root, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]);
@@ -44,6 +45,11 @@ internal static class GitChanges
             ["diff", "--name-only", "--diff-filter=ACMRDTUXB", "-z", $"{baseRevision}...HEAD", "--"]);
         if (!committed.Reliable)
             return new GitChangeSet([], false, $"base revision '{baseRevision}' is unavailable");
+
+        // A caller-supplied base freezes the proof scope to the commits that can actually be pushed or reviewed.
+        // The default interactive mode still adds local work so `af gate` cannot overlook an uncommitted change.
+        if (rangeIsExplicit)
+            return committed;
 
         var local = WorkingTree(root);
         if (!local.Reliable)

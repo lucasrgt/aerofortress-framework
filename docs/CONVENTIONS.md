@@ -534,7 +534,8 @@ The doctor answers "is the form right?"; the AVP proofs answer "does the behavio
 
 Execution modes are closed and framework-owned:
 
-- `af gate` / `af gate --affected --base <revision>` — complete transitive proof closure for a push or PR;
+- `af gate` — complete transitive proof closure for committed and local working-tree changes;
+- `af gate --affected --base <revision>` — push/PR closure frozen to `<revision>...HEAD`, excluding local-only and untracked files that cannot enter that review;
 - `af gate --staged --fast` — index-rooted pre-commit feedback; browser/device execution is deferred;
 - `af gate --full` — exhaustive audit, mandatory before release and optionally configured for main/manual/nightly.
 

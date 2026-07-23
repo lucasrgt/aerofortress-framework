@@ -55,7 +55,7 @@ static int Usage()
           af g auth:email               augment auth with email verification + password reset
           af doctor                     run the convention analyzers (build)
           af gate [--affected] [--base <rev>]
-                                        run the Git-affected proof closure (the default)
+                                        run the Git-affected proof closure; an explicit base freezes base...HEAD
           af gate --staged --fast      pre-commit gate rooted only in the index; defers browser/device execution
           af gate --full               run the exhaustive audit (required before a release)
                                         every mode runs the universal inventory and emits the honest matrix

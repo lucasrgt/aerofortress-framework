@@ -27,7 +27,7 @@ public sealed class GitChangesTests
     }
 
     [Fact]
-    public void Affected_mode_includes_committed_working_and_untracked_changes()
+    public void Affected_mode_without_an_explicit_base_includes_working_and_untracked_changes()
     {
         var root = Repository();
         try
@@ -35,10 +35,34 @@ public sealed class GitChangesTests
             Write(root, "tracked.cs", "working");
             Write(root, "new.cs", "untracked");
 
-            var changes = GitChanges.Read(root, new GateOptions(GateMode.Affected, false, "HEAD", []));
+            var changes = GitChanges.Read(root, new GateOptions(GateMode.Affected, false, null, []));
 
             Assert.True(changes.Reliable);
             Assert.Equal(["new.cs", "tracked.cs"], changes.Files);
+        }
+        finally
+        {
+            DeleteRepository(root);
+        }
+    }
+
+    [Fact]
+    public void An_explicit_base_reads_only_the_committed_range()
+    {
+        var root = Repository();
+        try
+        {
+            var baseline = GitOutput(root, "rev-parse", "HEAD");
+            Write(root, "committed.cs", "committed");
+            Git(root, "add", "committed.cs");
+            Git(root, "commit", "-q", "-m", "committed change");
+            Write(root, "tracked.cs", "working");
+            Write(root, "new.cs", "untracked");
+
+            var changes = GitChanges.Read(root, new GateOptions(GateMode.Affected, false, baseline, []));
+
+            Assert.True(changes.Reliable);
+            Assert.Equal(["committed.cs"], changes.Files);
         }
         finally
         {
@@ -65,7 +89,7 @@ public sealed class GitChangesTests
 
             var read = Task.Run(() => GitChanges.Read(
                 root,
-                new GateOptions(GateMode.Affected, false, "HEAD", [])));
+                new GateOptions(GateMode.Affected, false, null, [])));
 
             var changes = await read.WaitAsync(TimeSpan.FromSeconds(30));
 
@@ -98,6 +122,23 @@ public sealed class GitChangesTests
         using var process = Process.Start(info)!;
         process.WaitForExit();
         Assert.Equal(0, process.ExitCode);
+    }
+
+    private static string GitOutput(string root, params string[] arguments)
+    {
+        var info = new ProcessStartInfo("git")
+        {
+            UseShellExecute = false,
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+        };
+        foreach (var argument in arguments)
+            info.ArgumentList.Add(argument);
+        using var process = Process.Start(info)!;
+        var output = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        Assert.Equal(0, process.ExitCode);
+        return output.Trim();
     }
 
     private static void Write(string root, string relativePath, string content) =>

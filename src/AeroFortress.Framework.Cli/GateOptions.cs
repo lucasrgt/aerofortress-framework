@@ -3,7 +3,7 @@ namespace AeroFortress.Framework.Cli;
 /// <summary>The source revision set that drives one gate execution.</summary>
 internal enum GateMode
 {
-    /// <summary>Use the committed and working-tree delta from a base revision.</summary>
+    /// <summary>Use the Git-affected delta; an explicit base freezes the scope to <c>base...HEAD</c>.</summary>
     Affected,
 
     /// <summary>Use only paths present in the Git index.</summary>
@@ -16,7 +16,7 @@ internal enum GateMode
 /// <summary>The gate-owned options, separated from arguments forwarded to the .NET solution.</summary>
 /// <param name="Mode">How changed files are discovered.</param>
 /// <param name="Fast">Whether browser/device execution is deferred to pre-push or CI.</param>
-/// <param name="BaseRevision">The revision compared with <c>HEAD</c> in affected mode.</param>
+/// <param name="BaseRevision">The revision compared with <c>HEAD</c> in affected mode; when explicit, local-only files are excluded.</param>
 /// <param name="ToolArguments">Arguments forwarded to <c>dotnet build/test</c>.</param>
 internal sealed record GateOptions(
     GateMode Mode,
