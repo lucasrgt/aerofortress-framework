@@ -33,6 +33,32 @@ public sealed class GateImpactTests
     }
 
     [Fact]
+    public void A_widened_change_keeps_the_specific_proofs_already_mapped()
+    {
+        var root = Workspace();
+        try
+        {
+            var plan = GateImpact.Build(
+                root,
+                ["src/App/Modules/Account/Slices/Login.cs", "src/App/App.csproj"],
+                [new SliceSite("Account", "Login", "src/App/Modules/Account/Slices/Login.cs")],
+                [new AvpProof("Account", "Login", "valid-session", "src/App/Login.Avp.Tests.cs", "LoginProof", "Holds")],
+                [new JourneyProof("Login", "src/App/AuthJourney.Tests.cs", "AuthJourney", "Signs_in")],
+                [],
+                []);
+
+            Assert.True(plan.Backend.Full);
+            Assert.Contains("Account/Login", plan.Backend.AffectedSlices);
+            Assert.Contains("LoginProof", plan.Backend.Filters);
+            Assert.Contains("AuthJourney", plan.Backend.Filters);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void A_viewmodel_change_selects_its_assay_and_semantically_linked_flow()
     {
         var root = Workspace();

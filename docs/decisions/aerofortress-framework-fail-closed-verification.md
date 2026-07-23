@@ -70,11 +70,13 @@ Prompt instructions remain useful guidance, but none is relied upon for the verd
 
 ## Consequences and limits
 
-The proof inventory grows monotonically; ordinary execution does not. Pre-commit uses `--staged --fast`, pre-push
-and pull requests use `--affected`, and releases use `--full`. Shared runtime infrastructure and ambiguous
-dependencies widen rather than guess; control-plane edits are validated without impersonating runtime impact.
-Sharding remains available for the exhaustive audit, but is not required to pay the cost of unrelated tests on
-every small change.
+The proof inventory grows monotonically; ordinary execution does not. Pre-commit uses `--staged --fast`, local
+pre-push uses `--affected --base <revision> --fast`, pull requests use authoritative `--affected`, and releases
+use `--full`. Fast local feedback still executes every mapped backend filter, unit test, and Assay, but explicitly
+defers an exhaustive fallback and browser/device execution to CI. Shared runtime infrastructure and ambiguous
+dependencies widen rather than guess in authoritative gates; control-plane edits are validated without
+impersonating runtime impact. Sharding remains available for the exhaustive audit, but is not required to pay the
+cost of unrelated tests on every small change.
 
 Static rules can enforce proof identity, shape, execution, and a structural assertion floor. They cannot prove that
 an assertion is semantically strong. Review and occasional mutation testing remain depth audits, but neither can

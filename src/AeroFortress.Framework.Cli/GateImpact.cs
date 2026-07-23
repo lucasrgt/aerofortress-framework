@@ -184,7 +184,7 @@ internal static class GateImpact
         }
 
         if (full)
-            return FullBackend();
+            return new BackendImpact(true, filters, affected);
         if (filters.Count > 0)
             reasons.Add($"backend: selected {affected.Count} slice(s) through {filters.Count} test filter term(s)");
         return new BackendImpact(false, filters, affected);

@@ -57,6 +57,7 @@ internal static class GateCommand
                 GateScan.ScanTestClasses(root),
                 targets);
         }
+        impact = ApplyFastFeedback(impact, options.Fast);
 
         var scope = effectiveFull ? "full" : options.Mode == GateMode.Staged ? "staged" : "affected";
         if (options.Fast)
@@ -118,6 +119,29 @@ internal static class GateCommand
             ? "gate: GREEN — form, proofs and the matrix all hold."
             : "gate: RED — a leg failed or the matrix has findings (see above).");
         return code;
+    }
+
+    /// <summary>
+    /// Keep local feedback bounded: mapped proof filters still execute, while an exhaustive fallback waits for
+    /// the authoritative affected CI or an explicit full audit. The reason remains visible in the plan.
+    /// </summary>
+    internal static GateImpactPlan ApplyFastFeedback(GateImpactPlan impact, bool fast)
+    {
+        if (!fast || !impact.Backend.Full)
+            return impact;
+
+        return impact with
+        {
+            Backend = new BackendImpact(
+                false,
+                impact.Backend.Filters,
+                impact.Backend.AffectedSlices),
+            Reasons =
+            [
+                .. impact.Reasons,
+                "backend: exhaustive fallback deferred by --fast; affected CI or an explicit --full audit executes it",
+            ],
+        };
     }
 
     /// <summary>Build the proof-run arguments, reusing a doctor build only when it actually passed.</summary>

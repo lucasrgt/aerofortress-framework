@@ -9,4 +9,4 @@ pre-commit:
 pre-push:
   commands:
     affected-release:
-      run: dotnet tool run af gate --affected --base origin/main
+      run: dotnet tool run af gate --affected --base origin/main --fast

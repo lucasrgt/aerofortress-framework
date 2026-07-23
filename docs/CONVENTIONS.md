@@ -550,7 +550,10 @@ Execution modes are closed and framework-owned:
 
 - `af gate` — complete transitive proof closure for committed and local working-tree changes;
 - `af gate --affected --base <revision>` — push/PR closure frozen to `<revision>...HEAD`, excluding local-only and untracked files that cannot enter that review;
-- `af gate --staged --fast` — index-rooted pre-commit feedback; browser/device execution is deferred;
+- `af gate --staged --fast` — index-rooted pre-commit feedback; exhaustive fallbacks and browser/device execution
+  are deferred to authoritative CI;
+- `af gate --affected --base <revision> --fast` — bounded local pre-push feedback over the commits being sent;
+  mapped backend filters still execute, while any full widening is explicitly reported as deferred;
 - `af gate --full` — exhaustive audit, mandatory before release and optionally configured for main/manual/nightly.
 
 If Git ancestry is missing, a changed production file cannot be mapped, or runtime-wide build/test infrastructure

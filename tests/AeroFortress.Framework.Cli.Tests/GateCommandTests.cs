@@ -64,6 +64,60 @@ public class GateCommandTests
         Assert.Contains("FullyQualifiedName~AuthJourney", filter);
     }
 
+    [Fact]
+    public void Fast_feedback_defers_an_exhaustive_backend_fallback_without_calling_it_passed()
+    {
+        var frontend = new FrontendImpact(new FrontendPackage("clients/web", FrontendPackageRole.Surface))
+        {
+            Full = true,
+        };
+        var impact = new GateImpactPlan(
+            new BackendImpact(true, new HashSet<string>(), new HashSet<string>()),
+            [frontend],
+            ["runtime-wide contract changed"]);
+
+        var bounded = GateCommand.ApplyFastFeedback(impact, fast: true);
+
+        Assert.False(bounded.Backend.RunsTests);
+        Assert.True(Assert.Single(bounded.Frontends).Full);
+        Assert.Contains(bounded.Reasons, reason => reason.Contains("deferred by --fast"));
+    }
+
+    [Fact]
+    public void Fast_feedback_preserves_mapped_proofs_inside_an_exhaustive_fallback()
+    {
+        var impact = new GateImpactPlan(
+            new BackendImpact(
+                true,
+                new HashSet<string> { "LoginProof" },
+                new HashSet<string> { "Account/Login" }),
+            [],
+            ["backend contract changed"]);
+
+        var bounded = GateCommand.ApplyFastFeedback(impact, fast: true);
+
+        Assert.False(bounded.Backend.Full);
+        Assert.Contains("LoginProof", bounded.Backend.Filters);
+        Assert.Contains("Account/Login", bounded.Backend.AffectedSlices);
+    }
+
+    [Fact]
+    public void Fast_feedback_keeps_every_mapped_backend_proof_selected()
+    {
+        var impact = new GateImpactPlan(
+            new BackendImpact(
+                false,
+                new HashSet<string> { "LoginProof" },
+                new HashSet<string> { "Account/Login" }),
+            [],
+            []);
+
+        var bounded = GateCommand.ApplyFastFeedback(impact, fast: true);
+
+        Assert.True(bounded.Backend.RunsTests);
+        Assert.Contains("LoginProof", bounded.Backend.Filters);
+    }
+
     [Theory]
     [InlineData((int)GateMode.Affected, false)]
     [InlineData((int)GateMode.Staged, false)]

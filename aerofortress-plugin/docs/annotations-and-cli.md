@@ -35,7 +35,9 @@
 - `af gate` / `--affected --base <rev>` — the default done verdict: doctor + universal inventory + the complete
   Git-affected AVP/Assay/Journey/E2E closure. Missing, skipped, focused, mocked-as-real, or selected-but-not-executed
   proofs fail; caller-authored test filters are rejected.
-- `af gate --staged --fast` — index-rooted pre-commit feedback; browser/device execution waits for pre-push/CI.
+- `af gate --staged --fast` — bounded index-rooted pre-commit feedback; mapped proofs run, while exhaustive
+  fallbacks and browser/device execution wait for authoritative CI.
+- `af gate --affected --base <rev> --fast` — bounded local pre-push feedback over the commits being sent.
 - `af gate --full` — exhaustive release audit over every declared proof.
 - `af test [--unit|--integration|--e2e]` — the .NET test leg, optionally filtered by category.
 

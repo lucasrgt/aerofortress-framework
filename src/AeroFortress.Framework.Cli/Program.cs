@@ -56,7 +56,9 @@ static int Usage()
           af doctor                     run the convention analyzers (build)
           af gate [--affected] [--base <rev>]
                                         run the Git-affected proof closure; an explicit base freezes base...HEAD
-          af gate --staged --fast      pre-commit gate rooted only in the index; defers browser/device execution
+          af gate --staged --fast      bounded pre-commit gate; defers exhaustive fallbacks and browser/device execution
+          af gate --affected --base <rev> --fast
+                                        bounded local pre-push gate over base...HEAD
           af gate --full               run the exhaustive audit (required before a release)
                                         every mode runs the universal inventory and emits the honest matrix
           af test [--unit|--integration|--e2e]   run the .NET tests (fast leg)

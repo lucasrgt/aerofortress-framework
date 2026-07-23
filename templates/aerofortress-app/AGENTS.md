@@ -142,8 +142,9 @@ A badly-wired route **fails the build**.
 ## Build & verify — green before you are done
 
 ```
-af gate --staged --fast           # pre-commit: index-rooted, browser/device deferred
-af gate --affected --base <rev>   # push/PR: every transitively affected backend/frontend proof
+af gate --staged --fast           # pre-commit: mapped proofs run; exhaustive/browser work waits for CI
+af gate --affected --base <rev> --fast # local pre-push: bounded feedback over the commits being sent
+af gate --affected --base <rev>   # PR CI: every transitively affected backend/frontend proof
 af gate --full                    # release: exhaustive audit
 ```
 
