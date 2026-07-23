@@ -591,6 +591,36 @@ describe("checkE2e", () => {
     }
   });
 
+  it("accepts an exact proof after an intermediate wait for a subset", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeContract(dir, ["GetNotification", "MarkNotificationRead"]);
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([{
+        id: "notification-happy", name: "notification", path: "happy", target: "web", terminal: "Recebida em",
+        spec: "e2e/notification.spec.ts", case: "opens a notification",
+        backendSlices: ["GetNotification", "MarkNotificationRead"], backendContract: "contract/api.json",
+      }]));
+      writeFileSync(join(dir, "e2e", "notification.spec.ts"), [
+        'import { expectBackendSlices, observeBackend, waitForBackendSlices } from "@aerofortress/frontend-sdk/playwright-backend";',
+        'test("opens a notification", async ({ page }) => {',
+        '  const backend = await observeBackend(page, "contract/api.json");',
+        '  await waitForBackendSlices(backend, ["GetNotification"], { status: "success" });',
+        '  await expect(page.getByText("Recebida em")).toBeVisible();',
+        '  expectBackendSlices(backend, ["GetNotification", "MarkNotificationRead"], { status: "success" });',
+        '});',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.gaps).toBe(0);
+      expect(result.execution["ci-gated"]).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("allows a sad business state to prove a successful backend response explicitly", () => {
     const dir = tmp();
     try {

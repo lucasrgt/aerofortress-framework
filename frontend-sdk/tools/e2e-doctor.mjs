@@ -370,13 +370,13 @@ export function checkE2e(root) {
         }
       }
 
-      const proof = extractBackendProof(proofSource);
+      const backendProofs = extractBackendProofs(proofSource);
       const expectedStatus = flow.backendOutcome ?? (flow.path === "happy" ? "success" : "error");
       const expectedSlices = JSON.stringify(flow.backendSlices);
-      if (!proof
-          || proof.contract !== flow.backendContract
-          || JSON.stringify(proof.slices) !== expectedSlices
-          || proof.status !== expectedStatus) {
+      const hasExactProof = backendProofs.some((proof) => proof.contract === flow.backendContract
+        && JSON.stringify(proof.slices) === expectedSlices
+        && proof.status === expectedStatus);
+      if (!hasExactProof) {
         messages.push(
           `journey "${name}" must observe ${flow.backendContract} and assert exactly ${expectedSlices} `
             + `with status:"${expectedStatus}" in its own case`,
@@ -585,24 +585,28 @@ function hasBackendObservation(source) {
     && /\b(?:expect|waitFor)BackendSlices\s*\(/.test(source);
 }
 
-function extractBackendProof(source) {
+function extractBackendProofs(source) {
   const executable = stripComments(source);
   const observation = executable.match(
     /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+observeBackend\s*\(\s*([A-Za-z_$][\w$]*)\s*,\s*(["'])([^"']+)\3\s*\)/,
   );
-  if (!observation) return null;
+  if (!observation) return [];
   const variable = escapeRegex(observation[1]);
-  const assertion = executable.match(new RegExp(
+  const assertionPattern = new RegExp(
     `\\b(?:expect|waitFor)BackendSlices\\s*\\(\\s*${variable}\\s*,\\s*\\[([^\\]]*)\\]\\s*,`
       + `\\s*\\{\\s*status\\s*:\\s*(["'])(success|error)\\2\\s*,?\\s*`
       + `(?:(?:timeoutMs|intervalMs)\\s*:\\s*\\d+(?:\\.\\d+)?\\s*,?\\s*)*\\}\\s*,?\\s*\\)`,
-  ));
-  if (!assertion) return null;
-  const rawSlices = assertion[1];
-  const slices = [...rawSlices.matchAll(/(["'])([^"']+)\1/g)].map((match) => match[2]);
-  const residue = rawSlices.replace(/(["'])[^"']+\1/g, "").replace(/[\s,]/g, "");
-  if (slices.length === 0 || residue) return null;
-  return { contract: observation[4], slices, status: assertion[3] };
+    "g",
+  );
+  const proofs = [];
+  for (const assertion of executable.matchAll(assertionPattern)) {
+    const rawSlices = assertion[1];
+    const slices = [...rawSlices.matchAll(/(["'])([^"']+)\1/g)].map((match) => match[2]);
+    const residue = rawSlices.replace(/(["'])[^"']+\1/g, "").replace(/[\s,]/g, "");
+    if (slices.length === 0 || residue) continue;
+    proofs.push({ contract: observation[4], slices, status: assertion[3] });
+  }
+  return proofs;
 }
 
 function readBackendContract(root, value) {
