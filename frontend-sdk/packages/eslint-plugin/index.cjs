@@ -1663,8 +1663,8 @@ const rules = {
   // field (the pilot's Description input: `render={({ field }) => …}` — its validation failure showed nowhere,
   // not inline, not as a toast). The sibling of AFFE031: that one guarantees the FORM-level surface, this one the
   // FIELD-level one; together "a validation error always shows" holds by construction. Near-zero false positives:
-  // passing `error={fieldState.error?.message}` on a field without validation is inert, and the rare deliberately
-  // surface-less control can eslint-disable with its justification. Warn-tier on entry, promoted alongside
+  // passing `error={fieldState.error?.message}` on a field without validation is inert. A deliberately non-inline
+  // surface must still expose the same error state explicitly. Warn-tier on entry, promoted alongside
   // AFFE031. Only an inline render function is analyzed — a referenced render component is visible in review.
   "controller-field-state": {
     meta: {

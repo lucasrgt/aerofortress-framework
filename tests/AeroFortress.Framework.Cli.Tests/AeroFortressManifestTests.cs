@@ -354,6 +354,40 @@ public class AeroFortressManifestTests
     }
 
     [Fact]
+    public void Endpoint_coverage_follows_the_configured_product_topology()
+    {
+        var root = NewDir();
+        foreach (var package in new[] { "clients/core", "clients/web", "clients/native" })
+        {
+            Directory.CreateDirectory(Path.Combine(root, package, "src"));
+            File.WriteAllText(Path.Combine(root, package, "package.json"), "{}");
+        }
+        Directory.CreateDirectory(Path.Combine(root, "clients/core/src/client.gen"));
+        File.WriteAllText(Path.Combine(root, "AeroFortress.toml"), """
+            [workspace]
+            name = "MyApp"
+
+            [products.web]
+            core = "clients/core"
+            frontend = "clients/web"
+
+            [products.native]
+            core = "clients/core"
+            frontend = "clients/native"
+            """);
+
+        var target = Assert.Single(AeroFortressManifest.EndpointCoverageTargets(root));
+
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(root, "clients/core/src/client.gen")),
+            target.ClientPath);
+        Assert.Equal(3, target.SourcePaths.Count);
+        Assert.Contains(Path.GetFullPath(Path.Combine(root, "clients/core/src")), target.SourcePaths);
+        Assert.Contains(Path.GetFullPath(Path.Combine(root, "clients/web/src")), target.SourcePaths);
+        Assert.Contains(Path.GetFullPath(Path.Combine(root, "clients/native/src")), target.SourcePaths);
+    }
+
+    [Fact]
     public void A_manifest_without_a_workspace_section_is_reported()
     {
         var root = NewDir();

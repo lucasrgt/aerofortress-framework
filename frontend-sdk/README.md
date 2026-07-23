@@ -17,16 +17,17 @@ frontend/
   packages/
     aerofortress-react/     # @aerofortress/react — the spine: AsyncState, Resource (+ guards, session as they graduate)
     eslint-plugin/    # eslint-plugin-aerofortress — the AFFE harness (rules + RuleTester self-tests)
-  sample/
-    items/            # the canonical feature unit — the blessed reference an app/agent copies (kept pristine)
-    harness/          # stand-ins for the app's @/ui, @/i18n, @/client.gen — so the sample compiles + tests
-  tools/              # generators: scaffold a feature unit + assemble the i18n resource tree (npm run scaffold / assemble-i18n)
+  tools/              # generators + cross-file doctors used by af doctor/af gate
+../examples/sample-app/frontend/
+  core/               # canonical shared ViewModel/View/Assay feature units
+  web/                # real web surface + Playwright journeys
+  mobile/             # native surface convention
 ```
 
-The gate (`npm run check`, also run by `.github/workflows/ci.yml` next to `dotnet build`): `tsc --noEmit` over
-the spine + sample, then `vitest run`. The spine has unit tests (every `toAsyncState` branch, every `<Resource>`
-state); the sample's test mounts its data door against the harness's real react-query hook — **wired, not mocked**,
-the same shape a real generated client would have.
+The framework-development gate (`npm run check`) runs strict typecheck, the plugin self-tests, unit/integration
+tests, and the Assay partition. In consuming apps, `af gate` additionally forces every installed AFFE rule with a
+zero warning budget, verifies the AVP/E2E inventory, and executes the Git-derived proof closure. The sample's tests
+mount data doors against the real generated-client shape — **wired, not mocked**.
 
 Apps (e.g. the Hostpoint dogfood) consume `@aerofortress/react` + the eslint plugin as packages; the `af` .NET CLI
 scaffolds them in and `af doctor` shells out to `npm run lint` for the frontend slice (Roslyn in-proc for the
@@ -52,7 +53,7 @@ agnostic; the app injects its loading/error/empty visuals via slots.
 
 ## The canonical unit (the frontend `[Slice]`)
 
-A feature is four co-located files, mapped to the backend:
+A feature is five co-located files plus its surface-owned E2E flows, mapped to the backend:
 
 | Backend `[Slice]` | Frontend unit |
 |---|---|
@@ -60,9 +61,11 @@ A feature is four co-located files, mapped to the backend:
 | `Output` (typed result) | `AsyncState<T>` |
 | route `Map` | `<Feature>.view.tsx` — render only; consumes the ViewModel via `<Resource>` |
 | co-located `*.Tests.cs` | `<Feature>.test.tsx` — mounts the door against the real client (wired, not mocked) |
+| `[AVP]` criteria | `<Feature>.assay.test.tsx` — executable semantic acceptance proofs for every `@verify` |
 | — | `<feature>.i18n.ts` — per-feature copy, all locales |
 
-See [`sample/items`](./sample/items) for the blessed reference.
+Visible features also declare reciprocal `@e2e` links whose flow criteria cover the complete Assay set; the web
+runner is Playwright and the native runner is Maestro.
 
 ## The harness (the frontend self-audit)
 
@@ -73,16 +76,9 @@ ViewModel has a co-located test (AFFE005), no mocks in production (AFFE003). The
 RuleTester (`npm test`) — a rule isn't done until a test pins that it fires on the violation and passes on the
 allowed shape.
 
-## Roadmap (closing the gap with the backend)
+## Current enforcement
 
-0. **Toolchain/CI** — workspace + strict TS + vitest + a CI gate beside `dotnet build` (done); the sample runs
-   wired against a harness.
-1. **Spine** — `AsyncState`/`Resource` + the routing/session primitives (`SessionState`/`toSessionState`, `safeBack`)
-   graduated from the pilots (done).
-2. **Rules** — grow AFFE into categories the way the backend has: state-completeness (screens use `<Resource>`),
-   i18n-completeness (keys in every locale), design-tokens (no inline hex), and the **routing harness**
-   (`AFFE015–019`: declarative redirects, one session seam, a tri-state guard, guarded params + Back) — **done**;
-   still ahead: the "no hardcoded string" half of i18n, a11y, error-handling (every mutation surfaces its error).
-3. **Generators** — beyond the typed client: scaffold a feature unit + assemble the i18n resource tree (`tools/`,
-   **done**); still ahead: wire route guards from declared policy, and the `af` .NET CLI front-door that shells
-   out to these.
+The shipped harness covers the MVVM/data door, complete async state, i18n, design tokens, mutation feedback,
+routing/session safety, form-validation surfaces, typed navigation, executable AVP/Assay proofs, omitted-test
+detection, and semantic E2E linkage. Cross-file doctors enforce generated-contract freshness, endpoint coverage,
+journey parity, Playwright/Maestro runner integrity, backend observations, and full Assay-to-flow criteria coverage.

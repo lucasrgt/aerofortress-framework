@@ -14,6 +14,10 @@ front-door shells out to these (the way `af doctor` shells out to `npm run lint`
 | AVP | `AFFE033` (every ViewModel declares its `@verify` set; the exact co-located `*.assay.test.tsx` registers a matching `@avp` + `defineVerification` for every id) | eslint + `npm run test:avp` |
 | **E2E** | `AFFE035` + **`feature-e2e-coverage.mjs`** (every ViewModel links flows whose `criteria` cover its AVP/Assay set; every UI-consumed backend slice is named) + **`e2e-doctor.mjs`** (every flow has an enabled case, terminal assertion, and runner) | eslint + workspace gate + surface gate |
 
+At the release boundary, `af gate` invokes `affe-eslint-gate`. That wrapper reads the installed
+`eslint-plugin-aerofortress` rule inventory and forces every exported AFFE rule with
+`--max-warnings=0 --no-inline-config`; a consumer config can add stricter policy, but cannot omit a framework rule.
+
 E2E remains flow-level, but coverage is now enforced in both directions. Every ViewModel declares every one of
 its `@e2e <flow-id>` obligations; `affe-feature-e2e` resolves them against the union of the product surfaces and
 also fails when a flow claims that ViewModel through `features` without the reciprocal `@e2e`. Every
@@ -96,8 +100,8 @@ affe-journey-parity ../api app/e2e/flows.json operator/e2e/flows.json partner/e2
 ## One report — the unified doctor
 
 `doctor.mjs` (`aggregateReport`) is the single front-door that captures the **whole crew** in one pass: `eslint
---format json` (every rule — the AFFE architecture rules, the community kit, expo's set — bucketed) plus the three
-script-doctors above (endpoint coverage, e2e, journey parity). The core is pure (feed it the eslint results, each
+--format json` (every rule — the AFFE architecture rules, the community kit, expo's set — bucketed) plus the
+fullstack script-doctors above. The core is pure (feed it the eslint results, each
 rule's configured level, and the loop summaries); a consumer CLI does the I/O. It surfaces the **AFFE roster
 including clean (0-hit) rules** so a `warn`→`error` promotion is an evidence-backed move — you see, in one place,
 which rules gate, which are a revealed backlog, and which are already clean. See the Hostpoint dogfood's

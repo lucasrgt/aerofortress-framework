@@ -68,7 +68,8 @@ internal static class GateCommand
             Console.WriteLine($"  select: {reason}");
 
         var forwarded = options.ToolArguments.ToArray();
-        var doctor = DoctorCommand.Run(forwarded);
+        var suppressions = SuppressionGate.Run(root);
+        var doctor = DoctorCommand.Run(forwarded, strictWarnings: true);
 
         var results = Path.Combine(Path.GetTempPath(), "af-gate-" + Guid.NewGuid().ToString("N"));
         var tests = 0;
@@ -108,7 +109,7 @@ internal static class GateCommand
             Console.WriteLine("gate: change-scoped verdict emitted without replacing the canonical full-audit artifacts.");
         }
 
-        var code = Math.Max(Math.Max(doctor, tests), matrix.Blocking ? 1 : 0);
+        var code = Math.Max(Math.Max(Math.Max(suppressions, doctor), tests), matrix.Blocking ? 1 : 0);
         if (frontend.Any(leg => !leg.Green))
             code = Math.Max(code, 1);
         if (skippedTests > 0)

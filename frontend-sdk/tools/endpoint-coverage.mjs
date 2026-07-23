@@ -2,10 +2,10 @@
 // AFFE008 — back->front endpoint coverage. Every app-facing generated operation should be consumed through its
 // generated hook (`use<Slice>`) or imperative function (`slice`) by at least one ViewModel; one with no consumer is
 // a "loose endpoint" — the backend slice exists but no screen wired it.
-// This is a WARNING, never a build failure: the front->back direction (a UI calling an endpoint that does not exist)
-// is the hard gate and it is free from `tsc` (the hook isn't generated, so it can't compile). back->front only
-// reveals "backend done, UI not wired." Non-app endpoints never reach the client (orval's audience filter drops
-// them), so the metric is high-signal by construction. See docs/FRONTEND-CONVENTIONS.md (AFFE008).
+// This is advisory during feature construction and blocking at `af gate`: the front->back direction (a UI calling
+// an endpoint that does not exist) is already free from `tsc`, while this back->front direction reveals "backend
+// done, UI not wired." Non-app endpoints never reach the client (orval's audience filter drops them), so the metric
+// is high-signal by construction. See docs/FRONTEND-CONVENTIONS.md (AFFE008).
 //
 // The core is pure (no I/O) so it is unit-testable; the CLI tail wires it to the filesystem. The scan also backs
 // AFFE002 directly: a consumer can accidentally scope the ESLint rule to `features/` and otherwise let a helper
@@ -108,6 +108,11 @@ export function checkEndpointCoverage(hooks, wiredText) {
   return { total: unique.length, wired: unique.length - loose.length, loose, messages };
 }
 
+/** Final exit policy: off-door access always blocks; loose app endpoints block only in strict release gates. */
+export function endpointCoverageExitCode(result, offDoor, strict) {
+  return offDoor.length > 0 || (strict && result.loose.length > 0) ? 1 : 0;
+}
+
 /** Recursively collect files under `dir` matching `pred` (missing dir -> []). */
 function walk(dir, pred) {
   const out = [];
@@ -125,21 +130,25 @@ function walk(dir, pred) {
   return out;
 }
 
-// CLI: node tools/endpoint-coverage.mjs <client.gen file> <srcDir> [moreSrcDirs...]
+// CLI: node tools/endpoint-coverage.mjs [--strict] <client.gen file-or-directory> <srcDir> [moreSrcDirs...]
 // Pass every source ROOT served by the generated client (not only features/): the scan unions every surface's data
 // doors — the ViewModels plus the lib/session|guards infra seams — so multi-app products and legally-consumed
 // session hooks do not pollute the loose list.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const [, , clientFile, ...srcDirs] = process.argv;
-  if (!clientFile || srcDirs.length === 0) {
-    console.error("usage: node tools/endpoint-coverage.mjs <client.gen file> <srcDir> [moreSrcDirs...]");
+  const strict = process.argv.includes("--strict") || process.env.AF_GATE === "1";
+  const [clientPath, ...srcDirs] = process.argv.slice(2).filter((argument) => argument !== "--strict");
+  if (!clientPath || srcDirs.length === 0) {
+    console.error("usage: node tools/endpoint-coverage.mjs [--strict] <client.gen file-or-directory> <srcDir> [moreSrcDirs...]");
     process.exit(2);
   }
-  if (!existsSync(clientFile)) {
-    console.log(`AFFE008 endpoint coverage: no generated client at ${clientFile} (bootstrap) — nothing to check yet.`);
+  if (!existsSync(clientPath)) {
+    console.log(`AFFE008 endpoint coverage: no generated client at ${clientPath} (bootstrap) — nothing to check yet.`);
     process.exit(0);
   }
-  const hooks = extractHooks(readFileSync(clientFile, "utf8"));
+  const clientFiles = statSync(clientPath).isDirectory()
+    ? walk(clientPath, (path) => /\.[cm]?[jt]sx?$/.test(path))
+    : [clientPath];
+  const hooks = clientFiles.flatMap((path) => extractHooks(readFileSync(path, "utf8")));
   const sourcePaths = srcDirs.flatMap((srcDir) =>
     walk(srcDir, (p) => /\.[cm]?[jt]sx?$/.test(p) && !/(^|[\\/])client\.gen([\\/]|$)/.test(p)),
   );
@@ -155,7 +164,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   if (offDoor.length > 0) {
     console.error(`AFFE002 data door: ${offDoor.length} file(s) consume generated operations outside a legal data door:`);
     for (const { filePath, operations } of offDoor) console.error(`  - ${filePath}: ${operations.join(", ")}`);
-    process.exit(1);
   }
-  process.exit(0); // loose endpoints stay warning-only; off-door operations are a hard architecture failure
+  if (strict && r.loose.length > 0)
+    console.error(`AFFE008 release gate: ${r.loose.length} app-facing endpoint(s) remain unwired.`);
+  process.exit(endpointCoverageExitCode(r, offDoor, strict));
 }

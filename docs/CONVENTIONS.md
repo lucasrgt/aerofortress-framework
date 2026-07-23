@@ -262,7 +262,9 @@ the two laws. The result is plain C# that happens to be hard to misuse.
   An entity that a persisted write touches also declares its **concurrency posture**: a `[Timestamp]
   public byte[]? RowVersion { get; private set; }` (or `[ConcurrencyCheck]` on a domain field), so two
   concurrent requests can't silently last-write-win each other —
-  `AF0026` (warning-tier) watches for the missing token.
+  `AF0026` (warning-tier during `af doctor`, blocking in `af gate`) watches for the missing token. It reports
+  tracked updates/deletes, not insert-only rows or entities merely read beside another write: a concurrency
+  token cannot improve either of those cases.
 
 - **Scalar value objects are transparent on the wire.** A scalar `[ValueObject]` that crosses the API
   boundary subclasses `ScalarJsonConverter<TVo, TPrimitive>` (next to the type, pointed at by
@@ -477,7 +479,7 @@ never speculation. Keep it minimal; add only on real drift.
 | `AF0023` | **An injected `ICurrentUser` is consulted**: a `[Slice]` `Handle` that takes an `ICurrentUser` parameter and never reads it is flagged — the caller was wired in to scope the operation, so an unread parameter is a missing ownership/role/org check, not dead code. Consult the caller or remove the parameter | **shipped** | the signature claims an authorization posture the body doesn't have — the check was meant and then silently dropped |
 | `AF0024` | **Raw SQL never absorbs runtime values as text**: a `*Raw` EF call (`FromSqlRaw`, `ExecuteSqlRaw`/`Async`, `SqlQueryRaw`) whose SQL argument interpolates or concatenates a non-literal is flagged — the SQL-injection shape. The fix is one token: `FromSql`/`ExecuteSql`/`SqlQuery` take the same interpolated string and turn every hole into a `DbParameter`. Constant SQL through `*Raw` stays legal | **shipped** | injection hides in the one raw query an app eventually needs — the safe twin costs nothing |
 | `AF0025` | **A held `Result<T>` is checked before it is unwrapped**: reading `.Value`/`.Error` on a result stored in a local or parameter with no earlier outcome consult in the same member (`IsSuccess`/`IsFailure`, an `is { IsSuccess: … }` pattern, or a `Validation.Collect` fold) is flagged — on the wrong outcome the access throws. Unwrapping *inline* on a fresh construction (`Money.From(10m).Value` in a seed/test) stays legal: it is the deliberate known-valid idiom | **shipped** | the type's number-one misuse — `result.Value` straight through, an exception where an `Error` was supposed to flow |
-| `AF0026` | **Every persisted write declares its concurrency posture**: a slice whose `Handle` saves an entity with no visible token (`[Timestamp]`, `[ConcurrencyCheck]`, or `RowVersion`) is flagged. Warning-tier because fluent-only configuration is invisible | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
+| `AF0026` | **Every tracked update/delete declares its concurrency posture**: a slice whose `Handle` mutates or explicitly updates/removes an entity with no visible token (`[Timestamp]`, `[ConcurrencyCheck]`, or `RowVersion`) is flagged. Insert-only rows and entities merely read beside a different write are excluded. Advisory in `af doctor` because fluent-only configuration is invisible; blocking in `af gate` | **shipped** | the sample's own `Deposit` raced: two concurrent deposits, one balance silently lost |
 | `AF0027` | **A slice must not materialize an unbounded set**: a `ToListAsync`/`ToList` (or the array twins) ending a `DbSet`-rooted chain — directly or through a queryable local — with no `Take`/`ToPageAsync` on the way is flagged. **Parent-scoped queries are exempt**: a `Where` equating (or `Contains`-matching) a `*Id` member (`s => s.JobId == id` — the steps of ONE job) is bounded by the aggregate's cardinality, and a synthetic `Take(n)` there would document a bound that isn't the real rule; `OrgId`/`TenantId` equality is the tenant scope itself and stays flagged. Warning-tier: legitimately small sets exist, and the fix documents the decision — `.Take(n)` writes the bound down, `ToPageAsync` pages it behind a stable order | **shipped** | hostpoint: list slices served whole tables that paged fine at dev-data scale; pauta's 0.3.0 adoption surfaced ~16 parent-scoped loads (steps of one job, sessions of one user) where the v1 rule over-fired — the exemption is that lesson |
 | `AF0028` | **A paged order needs a unique tiebreaker**: the ordering chain feeding `ToPageAsync` must contain the entity's primary key — a member named `Id`, or the EF-conventional `{Entity}Id` on the queried entity itself (a foreign `*Id` such as `CustomerId` is many-rows-shared and does not count) — else the final sort key is flagged. Warning-tier; a pre-ordered local the analyzer cannot read stays silent | **shipped** | hostpoint: `ListPublicPointReviews` ordered `OrderByDescending(CreatedAt)` with no tiebreaker past a green doctor — rows repeated and vanished between pages once timestamps tied; pauta: 0/34 migrated slices had a tiebreaker before the wave |
 | `AF0030` | **A manifest-declared criterion has a subject-bound AVP proof**: `<Module>.spec.toml`'s `(module, slice, criterion)` obligation is flagged unless an `[AVP(typeof(Slice), "criterion")]` proof with that exact tuple exists. One slice can never borrow another slice's proof | **shipped** | repo-wide id matching let one passing test pay unrelated verification debt |
@@ -506,6 +508,15 @@ The doctor answers "is the form right?"; the AVP proofs answer "does the behavio
 
 1. **Doctor legs** — manifest validation, framework sync, the backend build (every AF* rule,
    including the AF0030/AF0031 bridge) and each manifest-selected frontend harness's lint + typecheck.
+   The standalone `af doctor` keeps warning-tier findings advisory while work is in progress. `af gate`
+   is the final-state boundary: it adds `-warnaserror`, reruns ESLint with `--max-warnings=0`, and invokes
+   AFFE008 in strict mode over each conventional `src/client.gen` and the union of source roots in its
+   manifest-declared product topology. A warning therefore remains
+   readable during construction but can never be the path by which incomplete work reaches the gate.
+   The gate also rejects AF/AFFE `#pragma`, `SuppressMessage`, `NoWarn`, downgraded analyzer severity,
+   generated-code impersonation, inline `eslint-disable`, and disabled-rule configuration. Its ESLint leg
+   independently forces every rule exported by the installed harness, so an indirect config expression cannot
+   hide one either. The contract must be satisfied, not silenced.
 2. **Backend proof leg** — the default/`--affected` form expands changed slices and test files to their unit,
    `[AVP]`, and `[Journey]` classes and supplies the resulting filter itself. `--staged --fast` roots that selection
    in the index; `--full` executes every test. A caller-authored `--filter` is rejected, and any selected

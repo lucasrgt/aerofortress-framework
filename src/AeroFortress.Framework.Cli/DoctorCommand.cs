@@ -12,7 +12,12 @@ internal static class DoctorCommand
 {
     /// <summary>Run every doctor leg from the current directory; the exit code is the worst leg's.</summary>
     /// <param name="rest">Extra arguments forwarded to the backend <c>dotnet build</c> (e.g. a solution path).</param>
-    public static int Run(string[] rest)
+    /// <param name="strictWarnings">
+    /// Whether the release gate must promote every compiler, analyzer, ESLint, and loose-endpoint warning to a
+    /// blocking finding. The standalone doctor leaves warnings visible while a feature is under construction;
+    /// <c>af gate</c> always enables this final-state policy.
+    /// </param>
+    public static int Run(string[] rest, bool strictWarnings = false)
     {
         // The manifest is the topology's source of truth — confirm the project has one and that the paths it
         // declares exist before trusting the rest. A missing manifest is a notice; a broken one fails the doctor.
@@ -34,7 +39,7 @@ internal static class DoctorCommand
             () =>
             {
                 Console.WriteLine("af doctor — backend conventions (build)...");
-                return Tooling.Dotnet("build", rest);
+                return Tooling.Dotnet("build", BuildArguments(rest, strictWarnings));
             },
         };
 
@@ -51,7 +56,13 @@ internal static class DoctorCommand
                 Console.WriteLine($"af doctor — frontend typecheck ({Path.GetFileName(captured.Path)})...");
                 return FrontendScriptContract.Run(captured.Path, "typecheck");
             });
+            if (strictWarnings)
+            {
+                legs.Add(() => FrontendWarningGate.RunLint(captured.Path));
+            }
         }
+        if (strictWarnings)
+            legs.Add(() => FrontendWarningGate.RunEndpointCoverage(Directory.GetCurrentDirectory()));
 
         // Doctor legs are independent, read-only checks. A bounded fan-out avoids making a large monorepo pay their
         // sum serially while respecting the two-core hosted runner and keeping node/compiler memory predictable.
@@ -78,6 +89,20 @@ internal static class DoctorCommand
 
         Console.WriteLine(code == 0 ? "doctor: conventions pass." : "doctor: violations reported above.");
         return code;
+    }
+
+    /// <summary>Promote every backend warning at the gate without weakening the interactive doctor.</summary>
+    internal static string[] BuildArguments(string[] arguments, bool strictWarnings)
+    {
+        if (!strictWarnings || arguments.Any(argument =>
+                argument.Equals("-warnaserror", StringComparison.OrdinalIgnoreCase)
+                || argument.Equals("--warnaserror", StringComparison.OrdinalIgnoreCase)
+                || argument.Equals("/warnaserror", StringComparison.OrdinalIgnoreCase)
+                || argument.StartsWith("-warnaserror:", StringComparison.OrdinalIgnoreCase)
+                || argument.StartsWith("/warnaserror:", StringComparison.OrdinalIgnoreCase)))
+            return arguments;
+
+        return [.. arguments, "-warnaserror"];
     }
 
     // The manifest names every real frontend package. Validation independently inventories ViewModels and flow

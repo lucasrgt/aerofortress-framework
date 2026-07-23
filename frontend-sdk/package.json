@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "version": "4.0.15",
+  "version": "4.0.16",
   "type": "module",
   "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
   "license": "MIT",
@@ -51,6 +51,7 @@
     "affe-e2e-doctor": "./tools/e2e-doctor.mjs",
     "affe-endpoint-coverage": "./tools/endpoint-coverage.mjs",
     "affe-error-code-coverage": "./tools/error-code-coverage.mjs",
+    "affe-eslint-gate": "./tools/eslint-gate.mjs",
     "affe-feature-e2e": "./tools/feature-e2e-coverage.mjs",
     "affe-framework-sync": "./tools/framework-sync.mjs",
     "affe-i18n-parity": "./tools/i18n-parity.mjs",
@@ -77,7 +78,9 @@
     "check": "npm run typecheck && npm run lint && npm run test && npm run test:avp"
   },
   "peerDependencies": {
-    "@aerofortress/assay": "^0.4.0"
+    "@aerofortress/assay": "^0.4.0",
+    "eslint": ">=9",
+    "eslint-plugin-aerofortress": "^1.0.10"
   },
   "peerDependenciesMeta": {
     "@aerofortress/assay": {

@@ -36,6 +36,12 @@ export const AFFE_CODES = {
   "aerofortress/query-client-defaults": "AFFE027",
   "aerofortress/no-manual-refetch-ritual": "AFFE028",
   "aerofortress/refresh-one-door": "AFFE029",
+  "aerofortress/no-cast-navigation": "AFFE030",
+  "aerofortress/submit-handles-invalid": "AFFE031",
+  "aerofortress/controller-field-state": "AFFE032",
+  "aerofortress/verify-has-avp-proof": "AFFE033",
+  "aerofortress/no-disabled-tests": "AFFE034",
+  "aerofortress/feature-has-e2e-flow": "AFFE035",
 };
 
 /**

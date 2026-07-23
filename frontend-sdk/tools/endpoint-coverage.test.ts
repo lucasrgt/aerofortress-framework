@@ -6,6 +6,7 @@ import {
   extractGeneratedExports,
   findOffDoorOperations,
   checkEndpointCoverage,
+  endpointCoverageExitCode,
   isDataDoor,
 } from "./endpoint-coverage.mjs";
 
@@ -78,6 +79,24 @@ describe("checkEndpointCoverage", () => {
       `const changePassword = () => updateCredentials();`,
     );
     expect(localOnly.loose).toEqual(["useChangePassword"]);
+  });
+});
+
+describe("endpointCoverageExitCode", () => {
+  it("keeps loose endpoints advisory while a feature is being built", () => {
+    const result = checkEndpointCoverage(["useA"], "");
+    expect(endpointCoverageExitCode(result, [], false)).toBe(0);
+  });
+
+  it("blocks a release gate with a loose app endpoint", () => {
+    const result = checkEndpointCoverage(["useA"], "");
+    expect(endpointCoverageExitCode(result, [], true)).toBe(1);
+  });
+
+  it("blocks off-door access in every mode", () => {
+    const result = checkEndpointCoverage([], "");
+    const offDoor = [{ filePath: "src/lib/api.ts", operations: ["useA"] }];
+    expect(endpointCoverageExitCode(result, offDoor, false)).toBe(1);
   });
 });
 

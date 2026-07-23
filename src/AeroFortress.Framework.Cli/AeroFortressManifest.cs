@@ -23,6 +23,11 @@ internal enum FrontendPackageRole
 /// <param name="Role">Whether the package is an application core, reusable library, or executable surface.</param>
 internal sealed record FrontendPackage(string Path, FrontendPackageRole Role);
 
+/// <summary>A generated app client and every product source root legally allowed to consume it.</summary>
+/// <param name="ClientPath">The absolute conventional <c>src/client.gen</c> directory.</param>
+/// <param name="SourcePaths">All core/surface source roots in the same product topology.</param>
+internal sealed record EndpointCoverageTarget(string ClientPath, IReadOnlyList<string> SourcePaths);
+
 /// <summary>
 /// Reads + validates the workspace manifest, <c>AeroFortress.toml</c> — the single source of truth for an app's
 /// topology (which dirs are the backend, the frontend core, and the executable surfaces; which harness gates the
@@ -132,6 +137,53 @@ internal static class AeroFortressManifest
         return [];
     }
 
+    /// <summary>
+    /// Bind each conventional generated client to the union of source roots in its product. This preserves
+    /// AFFE008 across configurable <c>core</c>/<c>frontend</c>/<c>website</c> layouts: an app shell may legally
+    /// consume the core's client without either package becoming a false loose-endpoint island.
+    /// </summary>
+    public static IReadOnlyList<EndpointCoverageTarget> EndpointCoverageTargets(string root)
+    {
+        var manifestPath = Path.Combine(root, FileName);
+        if (!File.Exists(manifestPath))
+            return [];
+
+        var targets = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match section in ProductSections(File.ReadAllText(manifestPath)))
+        {
+            var packages = FrontendDeclarations(section.Groups["body"].Value)
+                .Select(declaration => OwningPackage(root, declaration.RelativePath))
+                .Where(path => path is not null)
+                .Select(path => path!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var sources = packages
+                .Select(package => Path.Combine(package, "src"))
+                .Where(Directory.Exists)
+                .ToList();
+
+            foreach (var package in packages)
+            {
+                var client = Path.Combine(package, "src", "client.gen");
+                if (!Directory.Exists(client))
+                    continue;
+                if (!targets.TryGetValue(client, out var targetSources))
+                {
+                    targetSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    targets.Add(client, targetSources);
+                }
+                targetSources.UnionWith(sources);
+            }
+        }
+
+        return targets
+            .OrderBy(target => target.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(target => new EndpointCoverageTarget(
+                target.Key,
+                target.Value.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToList()))
+            .ToList();
+    }
+
     /// <summary>Return every distinct backend root declared by the workspace topology.</summary>
     public static IReadOnlyList<string> BackendPaths(string root)
     {
@@ -171,21 +223,21 @@ internal static class AeroFortressManifest
     private static IReadOnlyList<FrontendDeclaration> ProductFrontendDeclarations(string text)
     {
         var declarations = new List<FrontendDeclaration>();
-        foreach (Match section in Regex.Matches(
-                     text,
-                     @"(?ms)^\s*\[products\.[^\]\r\n]+\]\s*(?<body>.*?)(?=^\s*\[|\z)"))
-        {
-            foreach (Match entry in Regex.Matches(
-                         section.Groups["body"].Value,
-                         @"^\s*(frontend|website|core|library)\s*=\s*""([^""]+)""",
-                         RegexOptions.Multiline))
-            {
-                declarations.Add(new FrontendDeclaration(entry.Groups[1].Value, entry.Groups[2].Value));
-            }
-        }
+        foreach (Match section in ProductSections(text))
+            declarations.AddRange(FrontendDeclarations(section.Groups["body"].Value));
 
         return declarations;
     }
+
+    private static MatchCollection ProductSections(string text) =>
+        Regex.Matches(text, @"(?ms)^\s*\[products\.[^\]\r\n]+\]\s*(?<body>.*?)(?=^\s*\[|\z)");
+
+    private static IEnumerable<FrontendDeclaration> FrontendDeclarations(string body) =>
+        Regex.Matches(
+                body,
+                @"^\s*(frontend|website|core|library)\s*=\s*""([^""]+)""",
+                RegexOptions.Multiline)
+            .Select(entry => new FrontendDeclaration(entry.Groups[1].Value, entry.Groups[2].Value));
 
     /// <summary>
     /// Keep the workspace schema closed. Verification has no manifest section or mode: its complete depth is an

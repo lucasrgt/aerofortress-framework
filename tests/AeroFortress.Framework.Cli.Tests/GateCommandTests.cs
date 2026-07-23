@@ -5,6 +5,34 @@ namespace AeroFortress.Framework.Cli.Tests;
 public class GateCommandTests
 {
     [Fact]
+    public void The_release_gate_promotes_backend_warnings()
+    {
+        var arguments = DoctorCommand.BuildArguments(["App.slnx", "-c", "Release"], strictWarnings: true);
+
+        Assert.Contains("-warnaserror", arguments);
+    }
+
+    [Fact]
+    public void The_interactive_doctor_keeps_warnings_advisory()
+    {
+        var arguments = DoctorCommand.BuildArguments(["App.slnx"], strictWarnings: false);
+
+        Assert.DoesNotContain("-warnaserror", arguments);
+    }
+
+    [Theory]
+    [InlineData("-warnaserror")]
+    [InlineData("--warnaserror")]
+    [InlineData("/warnaserror")]
+    [InlineData("-warnaserror:AF0026")]
+    public void An_explicit_warning_policy_is_not_duplicated(string option)
+    {
+        var arguments = DoctorCommand.BuildArguments(["App.slnx", option], strictWarnings: true);
+
+        Assert.Equal(1, arguments.Count(argument => argument.Contains("warnaserror", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [Fact]
     public void A_green_doctor_reuses_its_successful_build_for_the_proof_run()
     {
         var arguments = GateCommand.ProofArguments(["App.slnx", "-c", "Release"], 0, "evidence");

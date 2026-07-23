@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { aggregateReport, bucket } from "./doctor.mjs";
+import { createRequire } from "node:module";
+import { AFFE_CODES, aggregateReport, bucket } from "./doctor.mjs";
 
 // The doctor aggregates the whole lint surface + the fullstack loops into one report. Pin the bucketing, the
 // error/warn tallies, the per-rule file counts, and the clean-AFFE roster (the promotion-candidate view).
@@ -64,6 +65,7 @@ describe("aggregateReport", () => {
     // data-door clean + gated; state-completeness clean + warn (promotion candidate)
     expect(clean.AFFE002).toBe("error");
     expect(clean.AFFE010).toBe("warn");
+    expect(clean.AFFE035).toBe("?");
   });
 
   it("is ok when there are no gated errors (warnings are the revealed backlog)", () => {
@@ -74,5 +76,16 @@ describe("aggregateReport", () => {
     expect(r.ok).toBe(true);
     expect(r.summary.errors).toBe(0);
     expect(r.loops.journey).toContain("0 parity gap");
+  });
+});
+
+describe("AFFE_CODES", () => {
+  it("tracks every rule shipped by the plugin", () => {
+    const require = createRequire(import.meta.url);
+    const plugin = require("../packages/eslint-plugin/index.cjs");
+
+    expect(Object.keys(AFFE_CODES).sort()).toEqual(
+      Object.keys(plugin.rules).map((rule) => `aerofortress/${rule}`).sort(),
+    );
   });
 });
