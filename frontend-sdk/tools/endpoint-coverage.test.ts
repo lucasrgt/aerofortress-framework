@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 // @ts-expect-error - plain .mjs tool module, typed by its JSDoc
-import { extractHooks, extractGeneratedImports, checkEndpointCoverage, isDataDoor } from "./endpoint-coverage.mjs";
+import {
+  extractHooks,
+  extractGeneratedImports,
+  extractGeneratedExports,
+  findOffDoorOperations,
+  checkEndpointCoverage,
+  isDataDoor,
+} from "./endpoint-coverage.mjs";
 
 // AFFE008 — every app-facing generated hook should be consumed by a ViewModel; an unconsumed one is a warn-tier
 // "loose endpoint" (backend done, UI not wired). Pin extraction + the wired/loose split on the pure core.
@@ -82,6 +89,60 @@ describe("extractGeneratedImports", () => {
       import { localThing } from "@/lib/local";
     `;
     expect([...extractGeneratedImports(source)].sort()).toEqual(["getFile", "useMe"]);
+  });
+});
+
+describe("extractGeneratedExports", () => {
+  it("detects value re-exports without treating type re-exports as data access", () => {
+    const source = `
+      export { useMe, getFile as download, type MeOutput } from "@/client.gen/app";
+      export type { ErrorBody } from "@/client.gen/model";
+    `;
+    expect([...extractGeneratedExports(source)].sort()).toEqual(["getFile", "useMe"]);
+  });
+});
+
+describe("findOffDoorOperations", () => {
+  it("fails generated operations hidden in helpers while leaving generated contract values free", () => {
+    const result = findOffDoorOperations(
+      ["useRequestUpload", "useMe"],
+      [
+        {
+          filePath: "src/lib/upload.ts",
+          source: `import { useRequestUpload } from "@/client.gen/app";`,
+        },
+        {
+          filePath: "src/lib/labels.ts",
+          source: `import { Status } from "@/client.gen/model";`,
+        },
+        {
+          filePath: "src/features/Profile.viewModel.ts",
+          source: `import { useMe } from "@/client.gen/app";`,
+        },
+      ],
+    );
+
+    expect(result).toEqual([{ filePath: "src/lib/upload.ts", operations: ["useRequestUpload"] }]);
+  });
+
+  it("detects an imperative operation laundered through a re-export", () => {
+    const result = findOffDoorOperations(["useGetFile"], [
+      {
+        filePath: "src/lib/api.ts",
+        source: `export { getFile as download } from "@/client.gen/app";`,
+      },
+    ]);
+
+    expect(result).toEqual([{ filePath: "src/lib/api.ts", operations: ["getFile"] }]);
+  });
+
+  it("allows the session and guard infrastructure seams", () => {
+    const result = findOffDoorOperations(["useMe", "useRefresh"], [
+      { filePath: "src/lib/session.ts", source: `import { useRefresh } from "@/client.gen/app";` },
+      { filePath: "src/lib/guards/auth.ts", source: `import { useMe } from "@/client.gen/app";` },
+    ]);
+
+    expect(result).toEqual([]);
   });
 });
 

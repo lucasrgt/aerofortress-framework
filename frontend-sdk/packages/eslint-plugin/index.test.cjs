@@ -70,6 +70,8 @@ ruleTester.run("data-door", plugin.rules["data-door"], {
     { filename: "src/lib/session.ts", code: `import { useMe, getMeQueryKey } from "@/client.gen/sample";` },
     { filename: "src/lib/guards/RouteGuard.tsx", code: `import { useMe } from "@/client.gen/sample";` },
     { filename: "Foo.view.tsx", code: `import type { Thing } from "@/client.gen/model";` },
+    // Generated enums are contract vocabulary, not a server-access door.
+    { filename: "Foo.view.tsx", code: `import { Status } from "@/client.gen/model";` },
   ],
   invalid: [
     { filename: "Foo.view.tsx", code: `import { useThing } from "@/client.gen/sample";`, errors: [{ messageId: "offdoor" }] },
@@ -418,6 +420,7 @@ ruleTester.run("data-door", plugin.rules["data-door"], {
   valid: [
     // Type re-exports are the shared contract vocabulary, not data access.
     { filename: "src/lib/contracts.ts", code: `export type { Thing } from "@/client.gen/model";` },
+    { filename: "src/lib/contracts.ts", code: `export { Status } from "@/client.gen/model";` },
     // The ViewModel door may compose over the client however it likes.
     { filename: "Foo.viewModel.ts", code: `export { useThing } from "@/client.gen/sample";` },
   ],

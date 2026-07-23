@@ -7,8 +7,10 @@
 // reveals "backend done, UI not wired." Non-app endpoints never reach the client (orval's audience filter drops
 // them), so the metric is high-signal by construction. See docs/FRONTEND-CONVENTIONS.md (AFFE008).
 //
-// The core (`extractHooks` + `checkEndpointCoverage`) is pure (no I/O) so it is unit-testable; the CLI tail wires it
-// to the filesystem. Same split as journey-parity.mjs.
+// The core is pure (no I/O) so it is unit-testable; the CLI tail wires it to the filesystem. The scan also backs
+// AFFE002 directly: a consumer can accidentally scope the ESLint rule to `features/` and otherwise let a helper
+// import an operation outside the ViewModel. Because this command receives every product source root, that config
+// mistake cannot turn an off-door endpoint into an invisible green.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,6 +36,22 @@ export function extractGeneratedImports(wiredText) {
   return imports;
 }
 
+/** Value symbols re-exported from a generated client module (the laundering form of an off-door import). */
+export function extractGeneratedExports(sourceText) {
+  const exports = new Set();
+  const declarations = sourceText.matchAll(
+    /\bexport\s+(?!type\b)\{([^}]*)\}\s+from\s+["'][^"']*client\.gen(?:\/[^"']*)?["']/g,
+  );
+  for (const declaration of declarations) {
+    for (const raw of declaration[1].split(",")) {
+      const specifier = raw.trim();
+      if (!specifier || specifier.startsWith("type ")) continue;
+      exports.add(specifier.split(/\s+as\s+/)[0].trim());
+    }
+  }
+  return exports;
+}
+
 /**
  * Whether a file is a legal data door whose hook references count as "wired": a screen's `*.viewModel.ts`, or
  * the auth/routing infra seams (`lib/session*`, `lib/guards*`) that AFFE002 already blesses as client consumers.
@@ -43,6 +61,31 @@ export function extractGeneratedImports(wiredText) {
 export function isDataDoor(filePath) {
   const p = filePath.replace(/\\/g, "/");
   return p.endsWith(".viewModel.ts") || /(^|\/)lib\/(session|guards)($|[./])/.test(p);
+}
+
+/**
+ * Generated operations consumed outside a legal data door. Contract values such as generated enums remain free:
+ * this compares imports with the generated client's operation inventory, so only actual server access is gated.
+ * @param {string[]} hooks
+ * @param {{ filePath: string, source: string }[]} sources
+ * @returns {{ filePath: string, operations: string[] }[]}
+ */
+export function findOffDoorOperations(hooks, sources) {
+  const operations = new Set();
+  for (const hook of hooks) {
+    operations.add(hook);
+    const operation = hook.slice(3);
+    operations.add(operation.charAt(0).toLowerCase() + operation.slice(1));
+  }
+
+  return sources
+    .filter(({ filePath }) => !isDataDoor(filePath) && !/(^|[\\/])client\.gen([\\/]|$)/.test(filePath))
+    .map(({ filePath, source }) => {
+      const accesses = new Set([...extractGeneratedImports(source), ...extractGeneratedExports(source)]);
+      return { filePath, operations: [...accesses].filter((name) => operations.has(name)).sort() };
+    })
+    .filter(({ operations: names }) => names.length > 0)
+    .sort((a, b) => a.filePath.localeCompare(b.filePath));
 }
 
 /**
@@ -97,12 +140,22 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(0);
   }
   const hooks = extractHooks(readFileSync(clientFile, "utf8"));
-  const wiredText = srcDirs
-    .flatMap((srcDir) => walk(srcDir, isDataDoor))
-    .map((p) => readFileSync(p, "utf8"))
+  const sourcePaths = srcDirs.flatMap((srcDir) =>
+    walk(srcDir, (p) => /\.[cm]?[jt]sx?$/.test(p) && !/(^|[\\/])client\.gen([\\/]|$)/.test(p)),
+  );
+  const sources = sourcePaths.map((filePath) => ({ filePath, source: readFileSync(filePath, "utf8") }));
+  const wiredText = sources
+    .filter(({ filePath }) => isDataDoor(filePath))
+    .map(({ source }) => source)
     .join("\n");
   const r = checkEndpointCoverage(hooks, wiredText);
   console.log(`AFFE008 endpoint coverage: ${r.wired}/${r.total} app-facing operations wired by a ViewModel.`);
   for (const m of r.messages) console.log(`  ${m}`);
-  process.exit(0); // warning-only — front->back (tsc) is the hard gate
+  const offDoor = findOffDoorOperations(hooks, sources);
+  if (offDoor.length > 0) {
+    console.error(`AFFE002 data door: ${offDoor.length} file(s) consume generated operations outside a legal data door:`);
+    for (const { filePath, operations } of offDoor) console.error(`  - ${filePath}: ${operations.join(", ")}`);
+    process.exit(1);
+  }
+  process.exit(0); // loose endpoints stay warning-only; off-door operations are a hard architecture failure
 }

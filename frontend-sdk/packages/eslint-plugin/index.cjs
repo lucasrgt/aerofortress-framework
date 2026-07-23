@@ -9,7 +9,8 @@ const { version } = require("./package.json");
 // renders, the ViewModel is the only data door, and no fixture/mock leaks into production. Doctor-removable: delete
 // the plugin and the app still builds; you only lose enforcement. Canonical home: aerofortress-framework/frontend-sdk.
 
-const GENERATED_CLIENT = /(^|\/)client\.gen(\/|$)/;     // the orval-generated typed client
+const GENERATED_CLIENT = /(^|\/)client\.gen(\/|$)/;     // every generated file, including contract models
+const GENERATED_OPERATIONS = /(^|\/)client\.gen(?:\/(?!model(?:\/|$))|$)/; // transport/hooks, never model values
 const DATA_LIBS = /^(axios)$|^@tanstack\/react-query$/;  // raw transport / the Model layer
 const MOCKS = /(^|\/)(__mocks__|fixtures)(\/|$)|^msw($|\/)/;
 
@@ -228,7 +229,7 @@ const rules = {
         ImportDeclaration(node) {
           if (isTypeOnly(node)) return; // contract types are fine in a View; only data access is not
           const src = node.source.value;
-          if (GENERATED_CLIENT.test(src) || DATA_LIBS.test(src)) {
+          if (GENERATED_OPERATIONS.test(src) || DATA_LIBS.test(src)) {
             context.report({ node, messageId: "impure" });
           }
         },
@@ -255,15 +256,15 @@ const rules = {
         node.exportKind === "type" ||
         (node.specifiers?.length > 0 && node.specifiers.every((s) => s.exportKind === "type"));
       return {
-        ...forbidImport(context, GENERATED_CLIENT, "offdoor"),
+        ...forbidImport(context, GENERATED_OPERATIONS, "offdoor"),
         // `export { useThing } from "@/client.gen/x"` / `export * from "@/client.gen/x"` — the import rule's
         // trivial bypass: no import statement, same access handed to every consumer.
         ExportNamedDeclaration(node) {
-          if (node.source && !isTypeOnlyExport(node) && GENERATED_CLIENT.test(node.source.value))
+          if (node.source && !isTypeOnlyExport(node) && GENERATED_OPERATIONS.test(node.source.value))
             context.report({ node, messageId: "laundered" });
         },
         ExportAllDeclaration(node) {
-          if (node.exportKind !== "type" && GENERATED_CLIENT.test(node.source.value))
+          if (node.exportKind !== "type" && GENERATED_OPERATIONS.test(node.source.value))
             context.report({ node, messageId: "laundered" });
         },
       };
@@ -1506,7 +1507,7 @@ const rules = {
       const isClientSeam = /(^|\/)lib\/(aerofortress-)?client(\.|\/)/.test(f);
       if (isInfraDataDoor(f) || isClientSeam || isGenerated(f) || isTest(f)) return {};
       const REFRESH_NAMES = /^(use)?refresh(accesstoken|token|session)?$/i;
-      const REFRESH_SOURCE = new RegExp(`${GENERATED_CLIENT.source}|(^|/)lib/(aerofortress-)?client`);
+      const REFRESH_SOURCE = new RegExp(`${GENERATED_OPERATIONS.source}|(^|/)lib/(aerofortress-)?client`);
       return {
         ImportDeclaration(node) {
           if (isTypeOnly(node) || !REFRESH_SOURCE.test(node.source.value.replace(/\\/g, "/"))) return;
