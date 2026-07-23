@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const plugin = require("../packages/eslint-plugin/index.cjs");
 
 describe("eslintGateArguments", () => {
-  it("forces every shipped AFFE rule with a zero warning budget and no inline overrides", () => {
+  it("loads the plugin and forces every shipped AFFE rule with a zero warning budget", () => {
     const rules = Object.keys(plugin.rules);
     const arguments_ = eslintGateArguments(["src"], rules);
     const forced = arguments_
@@ -15,6 +15,8 @@ describe("eslintGateArguments", () => {
 
     expect(arguments_).toContain("--max-warnings=0");
     expect(arguments_).toContain("--no-inline-config");
+    expect(arguments_).toContain("--plugin");
+    expect(arguments_).toContain("aerofortress");
     expect(forced.sort()).toEqual(rules.sort());
   });
 });

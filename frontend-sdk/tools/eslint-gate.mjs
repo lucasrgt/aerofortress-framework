@@ -7,9 +7,15 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 
-/** Build a closed ESLint invocation that cannot lose an AFFE rule through consumer configuration. */
+/** Build a closed ESLint invocation that cannot lose the plugin or an AFFE rule through consumer configuration. */
 export function eslintGateArguments(sourcePaths, ruleNames) {
-  const arguments_ = [...sourcePaths, "--max-warnings=0", "--no-inline-config"];
+  const arguments_ = [
+    ...sourcePaths,
+    "--max-warnings=0",
+    "--no-inline-config",
+    "--plugin",
+    "aerofortress",
+  ];
   for (const rule of [...ruleNames].sort()) {
     arguments_.push("--rule", `aerofortress/${rule}:warn`);
   }
