@@ -35,4 +35,13 @@ public class GateCommandTests
         Assert.Contains("FullyQualifiedName~LoginProof", filter);
         Assert.Contains("FullyQualifiedName~AuthJourney", filter);
     }
+
+    [Theory]
+    [InlineData((int)GateMode.Affected, false)]
+    [InlineData((int)GateMode.Staged, false)]
+    [InlineData((int)GateMode.Full, true)]
+    public void Only_an_explicit_full_audit_replaces_the_canonical_artifacts(int mode, bool expected)
+    {
+        Assert.Equal(expected, GateCommand.PersistsArtifacts((GateMode)mode));
+    }
 }

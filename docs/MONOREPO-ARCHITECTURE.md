@@ -91,10 +91,13 @@ the Git delta; `af gate --full` is the exhaustive release audit. Together they e
 3. affected non-Assay frontend tests plus direct Assay verification (all packages under `--full`);
 4. feature-to-flow coverage across the workspace;
 5. global E2E shape/inventory and real Playwright/Maestro execution for affected flows (every flow under `--full`);
-6. the traceability matrix emitted as `VERIFICATION.md` and `VERIFICATION.json`.
+6. the traceability matrix printed on every run and persisted as `VERIFICATION.md` and `VERIFICATION.json` only
+   by the canonical `--full` audit.
 
 The selector is framework-owned and fail-closed: no product risk flag or caller test filter exists. Shared or
 unmapped changes widen. Pull requests normally require the affected status; releases require a full verdict.
+Only an explicitly selected full mode replaces the committed attestation, even when an uncertain affected run
+widens its execution for safety.
 
 ## Package-first framework updates
 

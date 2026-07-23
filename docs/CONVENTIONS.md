@@ -541,10 +541,11 @@ Execution modes are closed and framework-owned:
 If Git ancestry is missing, a changed production file cannot be mapped, or shared build/test infrastructure
 changes, the selector widens to full. Application annotations and arbitrary test filters never participate.
 
-Artifacts, written at the workspace root: **`VERIFICATION.md`** (human — commit it; a reviewer reads
-the proof state without running anything) and **`VERIFICATION.json`** (machine — CI and the harness
-read the verdict without parsing prose). The exit code IS the verdict: 0 only when every leg and the
-matrix hold. Run it to close a slice, as the CI gate, or fanned out across an ecosystem of repos.
+An explicit `--full` audit writes the canonical artifacts at the workspace root: **`VERIFICATION.md`**
+(human — commit it; a reviewer reads the exhaustive proof state without running anything) and
+**`VERIFICATION.json`** (machine-readable attestation). Staged and affected gates print the same scoped matrix
+without replacing those files, so hooks and CI never dirty a checkout or downgrade the committed full audit to a
+partial snapshot. The exit code IS every gate's verdict: 0 only when every selected leg and the matrix hold.
 
 ### The gate travels with the scaffold — born gated, like slices and modules
 

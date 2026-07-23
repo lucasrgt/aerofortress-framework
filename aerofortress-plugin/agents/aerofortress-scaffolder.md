@@ -29,7 +29,8 @@ framework way — generators first, hand-writing only what generators don't cove
   Hub is wire only: it calls the matching slice and fans the result out.
 - `af doctor` — run after scaffolding; everything you generate must pass it.
 - `af gate --affected` — the normal done-gate (doctor + Git-derived proof closure + universal traceability matrix).
-- `af gate --full` — the exhaustive release audit. Both emit `VERIFICATION.md`/`.json`; unaffected rows are named,
+- `af gate --full` — the exhaustive release audit. Both print the matrix; only `--full` replaces the canonical
+  `VERIFICATION.md`/`.json` artifacts. Unaffected rows are named,
   never counted as passes.
 - `af test [--unit|--integration|--e2e]` — run the .NET test leg, optionally by category.
 

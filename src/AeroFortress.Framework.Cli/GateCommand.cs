@@ -5,9 +5,9 @@ namespace AeroFortress.Framework.Cli;
 /// instead of duplicating them: the doctor (manifest + framework sync + build with the AF* analyzers,
 /// including the AF0030/AF0031 bridge + the frontend AFFE* legs), then the proof run (<c>dotnet test</c>,
 /// which executes every <c>[AVP]</c> verification), and finally joins declarations × proofs × verdicts into
-/// the traceability matrix. The matrix lands as <c>VERIFICATION.md</c> (for humans, committed with the repo)
-/// and <c>VERIFICATION.json</c> (for machines); the exit code IS the verdict, so CI and the harness read it
-/// without parsing anything.
+/// the traceability matrix. A full audit persists the canonical <c>VERIFICATION.md</c> (for humans, committed
+/// with the repo) and <c>VERIFICATION.json</c> (for machines). Change-scoped gates report the same verdict to
+/// the console without dirtying the application checkout; their exit code remains the machine contract.
 /// </summary>
 internal static class GateCommand
 {
@@ -97,9 +97,16 @@ internal static class GateCommand
         var legs = new GateLegs(doctor, tests, frontend, skippedTests, scope);
 
         GateReport.WriteConsole(matrix, legs, Console.Out);
-        File.WriteAllText(Path.Combine(root, MarkdownArtifact), GateReport.Markdown(matrix, legs, DateTimeOffset.Now));
-        File.WriteAllText(Path.Combine(root, JsonArtifact), GateReport.Json(matrix, legs, DateTimeOffset.Now));
-        Console.WriteLine($"gate: wrote {MarkdownArtifact} + {JsonArtifact}.");
+        if (PersistsArtifacts(options.Mode))
+        {
+            File.WriteAllText(Path.Combine(root, MarkdownArtifact), GateReport.Markdown(matrix, legs, DateTimeOffset.Now));
+            File.WriteAllText(Path.Combine(root, JsonArtifact), GateReport.Json(matrix, legs, DateTimeOffset.Now));
+            Console.WriteLine($"gate: wrote {MarkdownArtifact} + {JsonArtifact}.");
+        }
+        else
+        {
+            Console.WriteLine("gate: change-scoped verdict emitted without replacing the canonical full-audit artifacts.");
+        }
 
         var code = Math.Max(Math.Max(doctor, tests), matrix.Blocking ? 1 : 0);
         if (frontend.Any(leg => !leg.Green))
@@ -133,6 +140,9 @@ internal static class GateCommand
         }
         return [.. arguments];
     }
+
+    /// <summary>Keep the committed attestation stable until an explicitly requested exhaustive audit replaces it.</summary>
+    internal static bool PersistsArtifacts(GateMode mode) => mode == GateMode.Full;
 
     // The TRX scratch dir is disposable; a locked file on Windows must never fail the gate itself.
     private static void TryDelete(string directory)
