@@ -134,7 +134,8 @@ internal static class GateCommand
 
         var filter = ProofFilter(impact.Backend);
         var oversized = filter.Length > MaxInlineFilterLength;
-        if (!impact.Backend.Full && !oversized)
+        var exhaustiveFrontend = impact.Frontends.Any(frontend => frontend.Full);
+        if (!impact.Backend.Full && !oversized && !exhaustiveFrontend)
             return impact;
 
         var reasons = new List<string>(impact.Reasons);
@@ -142,13 +143,18 @@ internal static class GateCommand
             reasons.Add("backend: exhaustive fallback deferred by --fast; affected CI or an explicit --full audit executes it");
         if (oversized)
             reasons.Add("backend: oversized mapped proof closure deferred by --fast; affected CI executes it without a local command-line fan-out");
+        if (exhaustiveFrontend)
+            reasons.Add("frontend: exhaustive runtime closure deferred by --fast; affected CI executes every test and Assay");
 
         return impact with
         {
             Backend = new BackendImpact(
                 false,
                 oversized ? new HashSet<string>() : impact.Backend.Filters,
-                impact.Backend.AffectedSlices),
+                oversized ? new HashSet<string>() : impact.Backend.AffectedSlices),
+            Frontends = impact.Frontends
+                .Select(frontend => frontend.Full ? new FrontendImpact(frontend.Package) : frontend)
+                .ToList(),
             Reasons = reasons,
         };
     }

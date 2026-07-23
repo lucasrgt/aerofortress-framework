@@ -79,8 +79,9 @@ public class GateCommandTests
         var bounded = GateCommand.ApplyFastFeedback(impact, fast: true);
 
         Assert.False(bounded.Backend.RunsTests);
-        Assert.True(Assert.Single(bounded.Frontends).Full);
+        Assert.False(Assert.Single(bounded.Frontends).Selected);
         Assert.Contains(bounded.Reasons, reason => reason.Contains("deferred by --fast"));
+        Assert.Contains(bounded.Reasons, reason => reason.Contains("frontend: exhaustive runtime closure"));
     }
 
     [Fact]
@@ -132,6 +133,7 @@ public class GateCommandTests
         var bounded = GateCommand.ApplyFastFeedback(impact, fast: true);
 
         Assert.False(bounded.Backend.RunsTests);
+        Assert.Empty(bounded.Backend.AffectedSlices);
         Assert.Contains(bounded.Reasons, reason => reason.Contains("oversized mapped proof closure"));
     }
 
