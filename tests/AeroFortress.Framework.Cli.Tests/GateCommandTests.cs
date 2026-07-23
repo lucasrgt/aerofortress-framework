@@ -118,6 +118,36 @@ public class GateCommandTests
         Assert.Contains("LoginProof", bounded.Backend.Filters);
     }
 
+    [Fact]
+    public void Fast_feedback_defers_an_oversized_mapped_backend_closure()
+    {
+        var filters = Enumerable.Range(0, 200)
+            .Select(index => $"App.Tests.Modules.Feature{index:D3}.A_very_descriptive_proof_class")
+            .ToHashSet();
+        var impact = new GateImpactPlan(
+            new BackendImpact(false, filters, new HashSet<string> { "Feature/Change" }),
+            [],
+            []);
+
+        var bounded = GateCommand.ApplyFastFeedback(impact, fast: true);
+
+        Assert.False(bounded.Backend.RunsTests);
+        Assert.Contains(bounded.Reasons, reason => reason.Contains("oversized mapped proof closure"));
+    }
+
+    [Fact]
+    public void An_oversized_filter_fails_closed_to_the_complete_backend_suite()
+    {
+        var filters = Enumerable.Range(0, 200)
+            .Select(index => $"App.Tests.Modules.Feature{index:D3}.A_very_descriptive_proof_class")
+            .ToHashSet();
+        var impact = new BackendImpact(false, filters, new HashSet<string> { "Feature/Change" });
+
+        var arguments = GateCommand.ProofArguments(["App.slnx"], 0, "evidence", impact);
+
+        Assert.DoesNotContain("--filter", arguments);
+    }
+
     [Theory]
     [InlineData((int)GateMode.Affected, false)]
     [InlineData((int)GateMode.Staged, false)]

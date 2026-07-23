@@ -11,6 +11,8 @@ namespace AeroFortress.Framework.Cli;
 /// </summary>
 internal static class GateCommand
 {
+    private const int MaxInlineFilterLength = 6000;
+
     /// <summary>The human-facing matrix artifact, written at the workspace root.</summary>
     public const string MarkdownArtifact = "VERIFICATION.md";
 
@@ -127,20 +129,27 @@ internal static class GateCommand
     /// </summary>
     internal static GateImpactPlan ApplyFastFeedback(GateImpactPlan impact, bool fast)
     {
-        if (!fast || !impact.Backend.Full)
+        if (!fast)
             return impact;
+
+        var filter = ProofFilter(impact.Backend);
+        var oversized = filter.Length > MaxInlineFilterLength;
+        if (!impact.Backend.Full && !oversized)
+            return impact;
+
+        var reasons = new List<string>(impact.Reasons);
+        if (impact.Backend.Full)
+            reasons.Add("backend: exhaustive fallback deferred by --fast; affected CI or an explicit --full audit executes it");
+        if (oversized)
+            reasons.Add("backend: oversized mapped proof closure deferred by --fast; affected CI executes it without a local command-line fan-out");
 
         return impact with
         {
             Backend = new BackendImpact(
                 false,
-                impact.Backend.Filters,
+                oversized ? new HashSet<string>() : impact.Backend.Filters,
                 impact.Backend.AffectedSlices),
-            Reasons =
-            [
-                .. impact.Reasons,
-                "backend: exhaustive fallback deferred by --fast; affected CI or an explicit --full audit executes it",
-            ],
+            Reasons = reasons,
         };
     }
 
@@ -160,11 +169,20 @@ internal static class GateCommand
         arguments.Add(resultsDirectory);
         if (impact is { Full: false } && impact.Filters.Count > 0)
         {
-            arguments.Add("--filter");
-            arguments.Add(string.Join('|', impact.Filters.Order().Select(filter => $"FullyQualifiedName~{filter}")));
+            var filter = ProofFilter(impact);
+            // Omitting an oversized filter widens to the complete backend suite. It is slower but fail-closed and
+            // avoids CreateProcess rejecting the command before a single proof can execute on Windows.
+            if (filter.Length <= MaxInlineFilterLength)
+            {
+                arguments.Add("--filter");
+                arguments.Add(filter);
+            }
         }
         return [.. arguments];
     }
+
+    private static string ProofFilter(BackendImpact impact) =>
+        string.Join('|', impact.Filters.Order().Select(filter => $"FullyQualifiedName~{filter}"));
 
     /// <summary>Keep the committed attestation stable until an explicitly requested exhaustive audit replaces it.</summary>
     internal static bool PersistsArtifacts(GateMode mode) => mode == GateMode.Full;
