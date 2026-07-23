@@ -127,6 +127,21 @@ describe("feature E2E coverage", () => {
     expect(extractSlices(sources)).toEqual(["Login", "Profile"]);
   });
 
+  it("discovers every explicitly named operation owned by a slice mapping", () => {
+    const sources = [
+      [
+        "[Slice]",
+        "public static class ExportReport {",
+        '  public static void Map() => app.MapGet("/pdf", Handle).WithName("ExportReportPdf");',
+        '  public static void MapCsv() => app.MapGet("/csv", Handle).WithName("ExportReportCsv");',
+        "}",
+      ].join("\n"),
+      'public static class Health { public static void Map() => app.MapGet("/", Ping).WithName("Health"); }',
+    ];
+
+    expect(extractSlices(sources)).toEqual(["ExportReport", "ExportReportCsv", "ExportReportPdf"]);
+  });
+
   it("finds only generated slice hooks consumed by the ViewModel", () => {
     expect(sliceHooks('import { useLogin, usePing } from "@/client.gen/api";\nuseLogin();', ["Login", "Pay"]))
       .toEqual(["Login"]);

@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "version": "4.0.20",
+  "version": "4.0.21",
   "type": "module",
   "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
   "license": "MIT",

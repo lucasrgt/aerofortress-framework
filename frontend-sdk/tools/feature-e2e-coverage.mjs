@@ -49,19 +49,28 @@ export function extractVerificationCriteria(source) {
 function sliceDeclarations(sources) {
   const declarations = [];
   for (const source of sources) {
+    let ownsSlice = false;
     const classes = source.matchAll(
       /((?:^\s*\[[^\]\r\n]+\]\s*(?:\/\/[^\r\n]*)?\r?\n)+)\s*public\s+static\s+class\s+([A-Za-z_]\w*)/gm,
     );
     for (const match of classes) {
       const attributes = match[1];
       if (!/\bSlice(?:Attribute)?\b/.test(attributes)) continue;
+      ownsSlice = true;
       declarations.push({ name: match[2] });
     }
+    if (!ownsSlice) continue;
+
+    // A slice may map more than one explicitly named operation. Generated clients and the browser ledger
+    // identify those operations by WithName rather than by the containing class, so both identities belong to
+    // the same proof inventory until the pilot splits the mappings into one class per slice.
+    for (const match of source.matchAll(/\.WithName\s*\(\s*"([A-Za-z_]\w*)"\s*\)/g))
+      declarations.push({ name: match[1] });
   }
   return declarations;
 }
 
-/** Every backend slice class name from ordinary C# source files. */
+/** Every backend slice class and explicitly named operation identity from ordinary C# source files. */
 export function extractSlices(sources) {
   return [...new Set(sliceDeclarations(sources).map(({ name }) => name))].sort();
 }
