@@ -89,7 +89,10 @@ affe-endpoint-coverage app-core/src/client.gen/api.ts app-core/src operator/src 
 
 A generated hook or imperative operation counts only when a legal data door value-imports that exact symbol from
 `client.gen`. This covers on-demand downloads/lookups without letting a similarly named local callback manufacture
-coverage.
+coverage. A raw infrastructure call may instead declare `@backendSlice Slice METHOD /path`; endpoint coverage
+recognizes it only as one leg of the complete gate, while feature-E2E independently rejects a declaration without
+the matching call and happy/sad browser journeys. Browser assets whose URL is carried by another response use
+`EndpointKind.Asset` and never enter this data-operation inventory.
 
 When one backend serves multiple executable surfaces, pass every independently-gated manifest; parity is computed
 over their union without pretending operator or partner journeys belong to the consumer app:

@@ -36,7 +36,7 @@ describe("client-scaffold", () => {
     const config = renderOrvalConfig("shop", "./contract/Shop.Api.json");
 
     expect(config).toContain('target: "./contract/Shop.Api.json"');
-    expect(config).toContain('tags: ["aerofortress:webhook", "aerofortress:internal"]');
+    expect(config).toContain('tags: ["aerofortress:asset", "aerofortress:webhook", "aerofortress:internal"]');
     expect(config).toContain('mutator: { path: "./src/lib/aerofortress-client.ts", name: "aerofortressClient" }');
     expect(config).toContain('target: "./src/client.gen/shop.ts"');
   });

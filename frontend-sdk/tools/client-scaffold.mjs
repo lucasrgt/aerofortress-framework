@@ -219,7 +219,7 @@ export default defineConfig({
       target: "${contract}",
       // Audience filter: webhooks/internal endpoints carry an aerofortress:* tag (WithEndpointKind on the backend)
       // and never become a hook — so they never trip the AFFE008 loose-endpoint warning.
-      filters: { mode: "exclude", tags: ["aerofortress:webhook", "aerofortress:internal"] },
+      filters: { mode: "exclude", tags: ["aerofortress:asset", "aerofortress:webhook", "aerofortress:internal"] },
     },
     output: {
       mode: "split",

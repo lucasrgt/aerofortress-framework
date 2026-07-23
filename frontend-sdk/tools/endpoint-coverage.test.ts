@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   extractHooks,
   extractGeneratedImports,
+  extractBackendSliceLinks,
   extractGeneratedExports,
   findOffDoorOperations,
   checkEndpointCoverage,
@@ -79,6 +80,27 @@ describe("checkEndpointCoverage", () => {
       `const changePassword = () => updateCredentials();`,
     );
     expect(localOnly.loose).toEqual(["useChangePassword"]);
+  });
+
+  it("counts an explicit raw infrastructure slice link that the feature E2E gate validates", () => {
+    const r = checkEndpointCoverage(
+      ["useRefresh"],
+      `/** @backendSlice Refresh POST /account/refresh */`,
+    );
+
+    expect(r.loose).toEqual([]);
+  });
+});
+
+describe("extractBackendSliceLinks", () => {
+  it("extracts only complete slice, method, and absolute-path declarations", () => {
+    const links = extractBackendSliceLinks(`
+      /** @backendSlice Refresh POST /account/refresh */
+      /** @backendSlice ExportReport GET /reports/\${id} */
+      /** @backendSlice Incomplete */
+    `);
+
+    expect([...links].sort()).toEqual(["ExportReport", "Refresh"]);
   });
 });
 

@@ -36,6 +36,14 @@ export function extractGeneratedImports(wiredText) {
   return imports;
 }
 
+/** Slice identities carried by validated raw-call declarations such as `@backendSlice Refresh POST /refresh`. */
+export function extractBackendSliceLinks(sourceText) {
+  return new Set(
+    [...sourceText.matchAll(/@backendSlice\s+([A-Za-z_]\w*)\s+(?:DELETE|GET|HEAD|OPTIONS|PATCH|POST|PUT)\s+\/\S+/g)]
+      .map((match) => match[1]),
+  );
+}
+
 /** Value symbols re-exported from a generated client module (the laundering form of an off-door import). */
 export function extractGeneratedExports(sourceText) {
   const exports = new Set();
@@ -97,10 +105,11 @@ export function findOffDoorOperations(hooks, sources) {
 export function checkEndpointCoverage(hooks, wiredText) {
   const unique = [...new Set(hooks)];
   const imports = extractGeneratedImports(wiredText);
+  const rawLinks = extractBackendSliceLinks(wiredText);
   const loose = unique.filter((hook) => {
     const operation = hook.slice(3);
     const imperative = operation.charAt(0).toLowerCase() + operation.slice(1);
-    return !imports.has(hook) && !imports.has(imperative);
+    return !imports.has(hook) && !imports.has(imperative) && !rawLinks.has(operation);
   }).sort();
   const messages = loose.length
     ? [`${loose.length} loose endpoint(s) — a backend slice with no screen wired yet (warning):`, ...loose.map((h) => `  - ${h}`)]
@@ -154,7 +163,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   );
   const sources = sourcePaths.map((filePath) => ({ filePath, source: readFileSync(filePath, "utf8") }));
   const wiredText = sources
-    .filter(({ filePath }) => isDataDoor(filePath))
+    .filter(({ filePath, source }) => isDataDoor(filePath) || extractBackendSliceLinks(source).size > 0)
     .map(({ source }) => source)
     .join("\n");
   const r = checkEndpointCoverage(hooks, wiredText);

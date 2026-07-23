@@ -7,7 +7,7 @@ namespace AeroFortress.Framework.Cli;
 internal static class FrameworkPackageVersions
 {
     /// <summary>The current AeroFortress.Framework.* release consumed by generated applications.</summary>
-    public const string Framework = "3.0.5";
+    public const string Framework = "3.0.6";
 
     /// <summary>The Assay.Net protocol implementation required by generated applications and the gate.</summary>
     public const string Assay = "0.4.0";
