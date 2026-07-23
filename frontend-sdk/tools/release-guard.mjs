@@ -32,12 +32,16 @@ export const RELEASE_UNITS = Object.freeze([
   {
     name: "eslint-plugin-aerofortress",
     version: "frontend-sdk/packages/eslint-plugin/package.json",
-    paths: ["frontend-sdk/packages/eslint-plugin/index.cjs", "frontend-sdk/packages/eslint-plugin/README.md"],
+    paths: [
+      "frontend-sdk/packages/eslint-plugin/index.cjs",
+      "frontend-sdk/packages/eslint-plugin/README.md",
+      "frontend-sdk/packages/eslint-plugin/package.json",
+    ],
   },
   {
     name: "@aerofortress/frontend-sdk",
     version: "frontend-sdk/package.json",
-    paths: ["frontend-sdk/tools", "frontend-sdk/README.md"],
+    paths: ["frontend-sdk/tools", "frontend-sdk/README.md", "frontend-sdk/package.json"],
   },
 ]);
 

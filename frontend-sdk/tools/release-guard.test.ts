@@ -26,6 +26,12 @@ describe("release-guard", () => {
     ]);
   });
 
+  it("treats every npm manifest as immutable published content", () => {
+    const npmUnits = RELEASE_UNITS.filter((unit) => unit.version.endsWith("package.json"));
+    expect(npmUnits).not.toHaveLength(0);
+    expect(npmUnits.every((unit) => unit.paths.includes(unit.version))).toBe(true);
+  });
+
   it("accepts the externally released Assay protocol in the synchronization table", () => {
     expect(canonicalDrift(
       [{ name: "@aerofortress/assay", version: "0.4.0" }],
