@@ -7,17 +7,28 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 
+/** Rules that define release evidence rather than project-scoped architecture or design policy. */
+export const MANDATORY_RELEASE_RULES = Object.freeze([
+  "data-door",
+  "feature-has-e2e-flow",
+  "no-disabled-tests",
+  "no-mock",
+  "test-colocated",
+  "verify-has-avp-proof",
+  "view-integration-test",
+]);
+
 /** Build a closed ESLint invocation that cannot lose the plugin or an AFFE rule through consumer configuration. */
 export function eslintGateArguments(sourcePaths, ruleNames) {
   const arguments_ = [
     ...sourcePaths,
-    "--max-warnings=0",
+    "--quiet",
     "--no-inline-config",
     "--plugin",
     "aerofortress",
   ];
   for (const rule of [...ruleNames].sort()) {
-    arguments_.push("--rule", `aerofortress/${rule}:warn`);
+    arguments_.push("--rule", `aerofortress/${rule}:error`);
   }
   return arguments_;
 }
@@ -38,6 +49,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     );
     process.exit(1);
   }
+  const missing = MANDATORY_RELEASE_RULES.filter((rule) => !plugin.rules?.[rule]);
+  if (missing.length > 0) {
+    console.error(`AFFE release gate: installed plugin is missing mandatory rule(s): ${missing.join(", ")}.`);
+    process.exit(1);
+  }
 
   let eslint;
   try {
@@ -48,7 +64,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
   const result = spawnSync(
     process.execPath,
-    [eslint, ...eslintGateArguments(sourcePaths, Object.keys(plugin.rules ?? {}))],
+    [eslint, ...eslintGateArguments(sourcePaths, MANDATORY_RELEASE_RULES)],
     { cwd: process.cwd(), stdio: "inherit" },
   );
   if (result.error) {

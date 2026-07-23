@@ -25,9 +25,11 @@ frontend/
 ```
 
 The framework-development gate (`npm run check`) runs strict typecheck, the plugin self-tests, unit/integration
-tests, and the Assay partition. In consuming apps, `af gate` additionally forces every installed AFFE rule with a
-zero warning budget, verifies the AVP/E2E inventory, and executes the Git-derived proof closure. The sample's tests
-mount data doors against the real generated-client shape — **wired, not mocked**.
+tests, and the Assay partition. In consuming apps, `af gate` additionally promotes the mandatory release-evidence
+AFFE rules to errors, verifies the AVP/E2E inventory, and executes the Git-derived proof closure.
+Project-scoped architecture and design rules retain the file scopes and severities declared by the app rather than
+being sprayed over every source file. The sample's tests mount data doors against the real generated-client shape
+— **wired, not mocked**.
 
 Apps (e.g. the Hostpoint dogfood) consume `@aerofortress/react` + the eslint plugin as packages; the `af` .NET CLI
 scaffolds them in and `af doctor` shells out to `npm run lint` for the frontend slice (Roslyn in-proc for the

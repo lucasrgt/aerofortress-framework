@@ -1,9 +1,9 @@
 namespace AeroFortress.Framework.Cli;
 
 /// <summary>
-/// Promotes the frontend's revealed warning backlog to a release-gate failure. The package-owned lint script still
-/// runs because it may compose contract freshness and framework sync; this leg independently invokes the canonical
-/// engines so a script cannot omit <c>--max-warnings=0</c> or run endpoint coverage in advisory mode.
+/// Promotes release-evidence gaps and loose app-facing endpoints to gate failures. The package-owned lint script
+/// still owns project-scoped architecture and design policy; this leg independently invokes the canonical proof
+/// rules as errors so a script cannot demote required proof or run endpoint coverage in advisory mode.
 /// </summary>
 internal static class FrontendWarningGate
 {
@@ -19,7 +19,7 @@ internal static class FrontendWarningGate
         }
 
         Console.WriteLine(
-            $"af gate — frontend warnings ({name}): every shipped AFFE rule is forced; warning budget is zero...");
+            $"af gate — frontend evidence ({name}): mandatory AFFE proof rules are forced as errors...");
         return Tooling.Run(
             "npx",
             ["--no-install", "affe-eslint-gate", "src"],
