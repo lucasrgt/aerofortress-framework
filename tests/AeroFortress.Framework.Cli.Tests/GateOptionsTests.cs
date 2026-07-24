@@ -4,6 +4,24 @@ namespace AeroFortress.Framework.Cli.Tests;
 
 public sealed class GateOptionsTests
 {
+    [Theory]
+    [InlineData("--help")]
+    [InlineData("-h")]
+    [InlineData("-?")]
+    public void Gate_help_is_printed_without_starting_workspace_discovery(string argument)
+    {
+        var output = new StringWriter();
+
+        Assert.True(GateCommand.TryWriteHelp([argument], output));
+        Assert.Contains("local uncommitted paths are excluded", output.ToString());
+    }
+
+    [Fact]
+    public void Ordinary_gate_arguments_do_not_trigger_help()
+    {
+        Assert.False(GateCommand.TryWriteHelp(["--affected", "--fast"], TextWriter.Null));
+    }
+
     [Fact]
     public void Gate_defaults_to_the_affected_change_instead_of_the_full_suite()
     {

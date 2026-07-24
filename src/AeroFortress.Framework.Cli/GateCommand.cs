@@ -23,6 +23,9 @@ internal static class GateCommand
     /// <param name="rest">Gate options and arguments forwarded to the build/test legs.</param>
     public static int Run(string[] rest)
     {
+        if (TryWriteHelp(rest, Console.Out))
+            return 0;
+
         var root = Directory.GetCurrentDirectory();
         if (!GateOptions.TryParse(rest, out var options, out var error))
         {
@@ -121,6 +124,36 @@ internal static class GateCommand
             ? "gate: GREEN — form, proofs and the matrix all hold."
             : "gate: RED — a leg failed or the matrix has findings (see above).");
         return code;
+    }
+
+    /// <summary>Print gate-specific help before any workspace discovery or proof execution begins.</summary>
+    internal static bool TryWriteHelp(IReadOnlyCollection<string> arguments, TextWriter output)
+    {
+        if (!arguments.Contains("--help") && !arguments.Contains("-h") && !arguments.Contains("-?"))
+            return false;
+
+        output.WriteLine(
+            """
+            af gate — execute the mandatory proof closure
+
+            usage:
+              af gate [--affected] [--base <rev>] [--fast] [dotnet arguments...]
+              af gate --staged [--fast] [dotnet arguments...]
+              af gate --full [dotnet arguments...]
+
+            modes:
+              --affected   select proofs from Git changes; this is the default
+              --staged     select proofs from paths currently staged in the Git index
+              --full       execute every backend, Assay, and browser/device proof
+
+            options:
+              --base <rev> compare <rev>...HEAD in affected mode; local uncommitted paths are excluded
+              --fast       keep local feedback bounded; authoritative affected CI executes deferred closures
+              -h, --help   print this help without executing the gate
+
+            The gate always runs the universal inventory and rejects caller-authored test filters.
+            """);
+        return true;
     }
 
     /// <summary>

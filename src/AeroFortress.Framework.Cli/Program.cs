@@ -61,6 +61,7 @@ static int Usage()
                                         bounded local pre-push gate over base...HEAD
           af gate --full               run the exhaustive audit (required before a release)
                                         every mode runs the universal inventory and emits the honest matrix
+          af gate --help               explain gate modes, local-change scope, and forwarded arguments
           af test [--unit|--integration|--e2e]   run the .NET tests (fast leg)
           af mutate                     run mutation testing via Stryker (deep leg)
 
