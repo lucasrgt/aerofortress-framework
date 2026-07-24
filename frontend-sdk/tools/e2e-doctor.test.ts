@@ -157,7 +157,7 @@ describe("checkE2e", () => {
     const dir = tmp();
     try {
       writeFileSync(join(dir, "package.json"), JSON.stringify({
-        devDependencies: { "@aerofortress/frontend-sdk": "4.0.22" },
+        devDependencies: { "@aerofortress/frontend-sdk": "4.0.23" },
       }));
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
@@ -181,7 +181,7 @@ describe("checkE2e", () => {
     const dir = tmp();
     try {
       writeFileSync(join(dir, "package.json"), JSON.stringify({
-        devDependencies: { "@aerofortress/frontend-sdk": "4.0.22" },
+        devDependencies: { "@aerofortress/frontend-sdk": "4.0.23" },
       }));
       writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
       mkdirSync(join(dir, "e2e"));
