@@ -153,6 +153,52 @@ describe("checkE2e", () => {
     }
   });
 
+  it("requires the fail-closed Playwright fixture in an AeroFortress frontend", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({
+        devDependencies: { "@aerofortress/frontend-sdk": "4.0.22" },
+      }));
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        { id: "welcome", name: "welcome", path: "happy", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
+      ]));
+      writeFileSync(join(dir, "e2e", "welcome.spec.ts"), [
+        'import { expect, test } from "@playwright/test";',
+        'test("welcome", async ({ page }) => expect(page).toHaveURL("/home"));',
+      ].join("\n"));
+
+      const result = checkE2e(dir);
+
+      expect(result.messages.join(" ")).toContain("@aerofortress/frontend-sdk/playwright");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts the canonical fail-closed Playwright fixture", () => {
+    const dir = tmp();
+    try {
+      writeFileSync(join(dir, "package.json"), JSON.stringify({
+        devDependencies: { "@aerofortress/frontend-sdk": "4.0.22" },
+      }));
+      writeFileSync(join(dir, "playwright.config.ts"), "export default {};\n");
+      mkdirSync(join(dir, "e2e"));
+      writeFileSync(join(dir, "e2e", "flows.json"), JSON.stringify([
+        { id: "welcome", name: "welcome", path: "happy", target: "web", terminal: "/home", spec: "e2e/welcome.spec.ts" },
+      ]));
+      writeFileSync(join(dir, "e2e", "welcome.spec.ts"), [
+        'import { expect, test } from "@aerofortress/frontend-sdk/playwright";',
+        'test("welcome", async ({ page }) => expect(page).toHaveURL("/home"));',
+      ].join("\n"));
+
+      expect(checkE2e(dir).gaps).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("flags a curated flow whose spec is missing", () => {
     const dir = tmp();
     try {

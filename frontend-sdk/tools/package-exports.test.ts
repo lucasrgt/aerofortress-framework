@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
@@ -12,6 +13,16 @@ describe("frontend SDK package exports", () => {
       waitForBackendSlices: expect.any(Function),
       observeBackend: expect.any(Function),
       probeBackend: expect.any(Function),
+    });
+  });
+
+  it("loads the fail-closed Playwright fixture", async () => {
+    const playwright = await import("@aerofortress/frontend-sdk/playwright");
+
+    expect(playwright).toMatchObject({
+      expect: expect.any(Function),
+      test: expect.any(Function),
+      watchPageQuality: expect.any(Function),
     });
   });
 });

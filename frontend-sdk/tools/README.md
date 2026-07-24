@@ -41,6 +41,9 @@ and sad flows require 4xx/5xx evidence. A Playwright global setup calls `probeBa
 local namesake cannot impersonate the branded observation, another case cannot lend it, and a backend-bound spec
 cannot install request interception, import mock/stub support, or call the API directly outside the rendered page.
 The check follows relative local imports recursively, so moving that bypass into a support helper is still red.
+Every web spec imports `test` from `@aerofortress/frontend-sdk/playwright`. Its automatic fixture records
+`pageerror` events plus warning/error console output and fails the case at teardown; a visible terminal cannot
+manufacture green evidence while the browser reports a broken or deprecated execution path.
 The conventional `src/storybook/` development surface is outside this production inventory; arbitrary source
 directories remain scanned, so this is a fixed convention rather than a configurable coverage exclusion.
 `checkE2e(root)` then proves every declared flow has an enabled spec/case, terminal assertion, and its canonical

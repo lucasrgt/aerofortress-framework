@@ -182,6 +182,8 @@ export function checkE2e(root) {
   const ids = new Set();
   const names = new Set();
   const proofs = new Set();
+  const qualityCheckedSpecs = new Set();
+  const enforcePageQuality = declaresFrontendSdk(root);
 
   for (const flow of flows) {
     if (!flow || typeof flow !== "object" || Array.isArray(flow)) {
@@ -292,6 +294,16 @@ export function checkE2e(root) {
       continue;
     }
     const specSource = readFileSync(specPath, "utf8");
+    if (flow.target === "web" && enforcePageQuality && !qualityCheckedSpecs.has(specPath)) {
+      qualityCheckedSpecs.add(specPath);
+      if (!importsCanonicalPlaywrightTest(specSource)) {
+        messages.push(
+          `${spec} must import test from @aerofortress/frontend-sdk/playwright so page errors and browser `
+            + "warnings fail the E2E gate",
+        );
+        gaps++;
+      }
+    }
     const backendBoundSource = `${specSource}\n${importedLocalSource(root, specPath)}`;
     const caseSource = caseName ? testCaseSource(specSource, caseName) : specSource;
     if (caseName && caseSource === null) {
@@ -405,6 +417,31 @@ export function checkE2e(root) {
   }
 
   return { runners, flows: flows.length, gaps, depthGaps, execution, seedPending, messages };
+}
+
+function declaresFrontendSdk(root) {
+  try {
+    const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    return [
+      packageJson.dependencies,
+      packageJson.devDependencies,
+      packageJson.peerDependencies,
+    ].some((dependencies) => dependencies
+      && typeof dependencies["@aerofortress/frontend-sdk"] === "string");
+  } catch {
+    return false;
+  }
+}
+
+function importsCanonicalPlaywrightTest(source) {
+  const executable = stripComments(source);
+  for (const match of executable.matchAll(
+    /\bimport\s*\{([^}]*)\}\s*from\s*["']@aerofortress\/frontend-sdk\/playwright["']/g,
+  )) {
+    const bindings = match[1].split(",").map((binding) => binding.trim());
+    if (bindings.some((binding) => /^test(?:\s+as\s+[A-Za-z_$][\w$]*)?$/.test(binding))) return true;
+  }
+  return false;
 }
 
 /** Parse Playwright's stable `--list` lines into file/title pairs. */

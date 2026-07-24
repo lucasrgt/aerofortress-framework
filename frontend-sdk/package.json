@@ -1,6 +1,6 @@
 {
   "name": "@aerofortress/frontend-sdk",
-  "version": "4.0.21",
+  "version": "4.0.22",
   "type": "module",
   "description": "Canonical AeroFortress frontend doctor and scaffolding tools.",
   "license": "MIT",
@@ -39,6 +39,11 @@
       "import": "./tools/playwright-backend.mjs",
       "require": "./tools/playwright-backend.mjs",
       "default": "./tools/playwright-backend.mjs"
+    },
+    "./playwright": {
+      "types": "./tools/playwright.d.mts",
+      "import": "./tools/playwright.mjs",
+      "default": "./tools/playwright.mjs"
     },
     "./product-verification": {
       "types": "./tools/product-verification.d.mts",
@@ -79,16 +84,21 @@
   },
   "peerDependencies": {
     "@aerofortress/assay": "^0.4.0",
+    "@playwright/test": ">=1.50.0",
     "eslint": ">=9",
     "eslint-plugin-aerofortress": "^1.0.10"
   },
   "peerDependenciesMeta": {
     "@aerofortress/assay": {
       "optional": true
+    },
+    "@playwright/test": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@aerofortress/assay": "0.4.0",
+    "@playwright/test": "1.61.1",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/eslint-plugin-query": "^5.62.16",
     "@tanstack/react-query": "^5.62.7",
